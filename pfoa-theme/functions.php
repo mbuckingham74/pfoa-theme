@@ -295,6 +295,34 @@ function pfoa_get_donation_url() {
 }
 
 /**
+ * Return a safe Donate destination for homepage components.
+ *
+ * Unlike the header/footer compatibility fallback, homepage action cards must
+ * not become a self-link when no configured or published destination exists.
+ *
+ * @return string
+ */
+function pfoa_get_homepage_donation_url() {
+	$donation_url = get_theme_mod( 'pfoa_donate_url', '' );
+
+	if ( $donation_url ) {
+		return $donation_url;
+	}
+
+	$membership_page = pfoa_get_page_by_paths( array( 'membership' ) );
+
+	if ( $membership_page ) {
+		$membership_url = get_permalink( $membership_page );
+
+		if ( $membership_url ) {
+			return $membership_url;
+		}
+	}
+
+	return '';
+}
+
+/**
  * Find the first published Page matching one of the supplied slugs.
  *
  * This keeps homepage teasers pointed at existing WordPress Pages without
