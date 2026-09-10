@@ -41,6 +41,11 @@ if ! command -v zip >/dev/null 2>&1; then
 	exit 1
 fi
 
+if ! command -v unzip >/dev/null 2>&1; then
+	echo "Error: the unzip command is required to validate the theme archive." >&2
+	exit 1
+fi
+
 version="$(sed -nE 's/^Version:[[:space:]]*//p' "$theme_dir/style.css" | head -n 1 | tr -d '\r')"
 if [[ -z "$version" ]]; then
 	echo "Error: could not read a Version value from style.css." >&2
@@ -80,9 +85,23 @@ while IFS= read -r -d '' source_file; do
 	destination_file="$stage_dir/$relative_file"
 	mkdir -p "$(dirname -- "$destination_file")"
 	cp "$source_file" "$destination_file"
-done < <(find "$theme_dir" -type f -print0)
+	# Use a ZIP-safe, fixed timestamp so unchanged source produces unchanged bytes.
+	touch -t 198001010000 "$destination_file"
+done < <(find "$theme_dir" -type f -print0 | LC_ALL=C sort -z)
 
 rm -f "$archive"
-(cd "$build_dir" && zip -qr "$archive" pfoa-theme)
+(cd "$build_dir" && find pfoa-theme -type f -print0 | LC_ALL=C sort -z | tr '\0' '\n' | zip -qX "$archive" -@)
+
+if ! unzip -t "$archive" >/dev/null; then
+	echo "Error: archive integrity validation failed: $archive" >&2
+	exit 1
+fi
+
+unexpected_members="$(unzip -Z1 "$archive" | grep -Ev '^pfoa-theme/' || true)"
+if [[ -n "$unexpected_members" ]]; then
+	echo "Error: archive contains an unexpected top-level member:" >&2
+	echo "$unexpected_members" >&2
+	exit 1
+fi
 
 echo "Created $archive"

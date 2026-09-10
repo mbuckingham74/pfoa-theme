@@ -18,43 +18,43 @@
       "palette": [
         {
           "color": "#302d2b",
-          "name": "Ink",
-          "slug": "ink"
+          "name": "Primary text",
+          "slug": "text"
         },
         {
-          "color": "#77716c",
-          "name": "Muted",
+          "color": "#6f6963",
+          "name": "Muted text",
           "slug": "muted"
         },
         {
           "color": "#ffffff",
-          "name": "Canvas",
-          "slug": "canvas"
+          "name": "Canvas white",
+          "slug": "background"
         },
         {
           "color": "#ebe7dd",
-          "name": "Surface",
-          "slug": "surface"
+          "name": "Outer neutral",
+          "slug": "outer"
         },
         {
           "color": "#211e1d",
-          "name": "Header",
-          "slug": "header"
+          "name": "Warm charcoal",
+          "slug": "charcoal"
         },
         {
           "color": "#934244",
-          "name": "Brand",
+          "name": "Brick brand",
           "slug": "brand"
         },
         {
           "color": "#e9ad4e",
-          "name": "Accent",
-          "slug": "accent"
+          "name": "Warm gold",
+          "slug": "gold"
         },
         {
           "color": "#e5e0da",
           "name": "Rule",
-          "slug": "rule"
+          "slug": "border"
         }
       ]
     },
@@ -68,24 +68,44 @@
       "padding": true,
       "spacingSizes": [
         {
-          "name": "Small",
-          "size": "0.5rem",
-          "slug": "10"
+          "name": "XS",
+          "size": "8px",
+          "slug": "space-1"
         },
         {
-          "name": "Medium",
-          "size": "1rem",
-          "slug": "20"
+          "name": "S",
+          "size": "12px",
+          "slug": "space-2"
         },
         {
-          "name": "Large",
-          "size": "2rem",
-          "slug": "40"
+          "name": "M",
+          "size": "16px",
+          "slug": "space-3"
         },
         {
-          "name": "Extra large",
-          "size": "4rem",
-          "slug": "80"
+          "name": "L",
+          "size": "24px",
+          "slug": "space-4"
+        },
+        {
+          "name": "XL",
+          "size": "32px",
+          "slug": "space-5"
+        },
+        {
+          "name": "2XL",
+          "size": "48px",
+          "slug": "space-6"
+        },
+        {
+          "name": "3XL",
+          "size": "64px",
+          "slug": "space-7"
+        },
+        {
+          "name": "4XL",
+          "size": "80px",
+          "slug": "space-8"
         }
       ],
       "units": [
@@ -120,7 +140,7 @@
           "slug": "small"
         },
         {
-          "name": "Medium",
+          "name": "Body",
           "size": "1rem",
           "slug": "medium"
         },
@@ -130,7 +150,7 @@
           "slug": "large"
         },
         {
-          "name": "Extra large",
+          "name": "Display",
           "size": "clamp(2.25rem, 4vw, 3.75rem)",
           "slug": "x-large"
         }
@@ -140,39 +160,49 @@
   },
   "styles": {
     "color": {
-      "background": "var:preset|color|canvas",
-      "text": "var:preset|color|ink"
+      "background": "var:preset|color|background",
+      "text": "var:preset|color|text"
     },
     "elements": {
       "button": {
         "border": {
-          "radius": "4px"
+          "color": "var:preset|color|text",
+          "radius": "5px",
+          "style": "solid",
+          "width": "1px"
         },
         "color": {
-          "background": "var:preset|color|accent",
-          "text": "var:preset|color|ink"
+          "background": "var:preset|color|gold",
+          "text": "var:preset|color|text"
+        },
+        "typography": {
+          "fontFamily": "var:preset|font-family|display",
+          "fontWeight": "700"
         }
       },
       "heading": {
         "typography": {
           "fontFamily": "var:preset|font-family|display",
           "fontWeight": "700",
-          "lineHeight": "1.1"
+          "lineHeight": "1.12"
         }
       },
       "link": {
         "color": {
           "text": "var:preset|color|brand"
+        },
+        "typography": {
+          "textDecoration": "underline"
         }
       }
     },
     "spacing": {
-      "blockGap": "var:preset|spacing|40"
+      "blockGap": "var:preset|spacing|space-4"
     },
     "typography": {
       "fontFamily": "var:preset|font-family|body",
       "fontSize": "var:preset|font-size|medium",
-      "lineHeight": "1.6"
+      "lineHeight": "1.65"
     }
   }
 }
