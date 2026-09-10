@@ -295,6 +295,28 @@ function pfoa_get_donation_url() {
 }
 
 /**
+ * Find the first published Page matching one of the supplied slugs.
+ *
+ * This keeps homepage teasers pointed at existing WordPress Pages without
+ * creating a theme-owned content model or assuming that every destination is
+ * present on every installation.
+ *
+ * @param string[] $paths Candidate Page slugs, in preference order.
+ * @return WP_Post|null
+ */
+function pfoa_get_page_by_paths( $paths ) {
+	foreach ( (array) $paths as $path ) {
+		$page = get_page_by_path( trim( (string) $path, '/' ), OBJECT, 'page' );
+
+		if ( $page instanceof WP_Post && 'publish' === $page->post_status ) {
+			return $page;
+		}
+	}
+
+	return null;
+}
+
+/**
  * Render a minimal recovery menu when no Primary Menu has been assigned.
  *
  * This is only a no-menu fallback; normal navigation always comes from the
