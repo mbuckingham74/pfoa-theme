@@ -47,8 +47,10 @@ function pfoa_setup() {
 
 	register_nav_menus(
 		array(
-			'primary' => esc_html__( 'Primary Menu', 'pfoa-theme' ),
-			'footer'  => esc_html__( 'Footer Menu', 'pfoa-theme' ),
+			'primary'        => esc_html__( 'Primary Menu', 'pfoa-theme' ),
+			'footer'         => esc_html__( 'Footer Menu — Explore PFOA', 'pfoa-theme' ),
+			'footer_support' => esc_html__( 'Footer Menu — Ways to Help', 'pfoa-theme' ),
+			'footer_legal'   => esc_html__( 'Footer Legal Menu', 'pfoa-theme' ),
 		)
 	);
 }
@@ -86,8 +88,8 @@ add_action( 'wp_enqueue_scripts', 'pfoa_enqueue_assets' );
  * Add the small amount of site configuration owned by the theme.
  *
  * The destination is intentionally a URL setting rather than a payment
- * setting. Payment recipient and provider configuration remain outside the
- * theme and can continue to be managed by WordPress or an approved plugin.
+ * setting. Payment-provider configuration remains outside the theme and can
+ * continue to be managed by WordPress or an approved plugin.
  *
  * @param WP_Customize_Manager $wp_customize Customizer manager instance.
  * @return void
@@ -116,6 +118,146 @@ function pfoa_customize_register( $wp_customize ) {
 			'label'       => esc_html__( 'Donate destination', 'pfoa-theme' ),
 			'description' => esc_html__( 'Enter the approved donation or donation-information URL. Leave blank to use the site\'s Membership page until a final destination is configured.', 'pfoa-theme' ),
 			'section'     => 'pfoa_header',
+			'type'        => 'url',
+		)
+	);
+
+	$wp_customize->add_section(
+		'pfoa_footer',
+		array(
+			'title'    => esc_html__( 'PFOA Footer', 'pfoa-theme' ),
+			'priority' => 35,
+		)
+	);
+
+	$wp_customize->add_setting(
+		'pfoa_footer_hours',
+		array(
+			'default'           => '11:00 am–4:00 pm Tuesday–Saturday, by appointment.',
+			'sanitize_callback' => 'sanitize_textarea_field',
+			'transport'         => 'refresh',
+		)
+	);
+
+	$wp_customize->add_control(
+		'pfoa_footer_hours',
+		array(
+			'label'       => esc_html__( 'Public hours', 'pfoa-theme' ),
+			'description' => esc_html__( 'Use line breaks if needed. Leave blank to omit hours from the footer.', 'pfoa-theme' ),
+			'section'     => 'pfoa_footer',
+			'type'        => 'textarea',
+		)
+	);
+
+	$wp_customize->add_setting(
+		'pfoa_footer_mailing_address',
+		array(
+			'default'           => "P.O. Box 404\nSequim, WA 98382",
+			'sanitize_callback' => 'sanitize_textarea_field',
+			'transport'         => 'refresh',
+		)
+	);
+
+	$wp_customize->add_control(
+		'pfoa_footer_mailing_address',
+		array(
+			'label'       => esc_html__( 'Mailing address', 'pfoa-theme' ),
+			'description' => esc_html__( 'Use line breaks between address lines. Leave blank to omit this address.', 'pfoa-theme' ),
+			'section'     => 'pfoa_footer',
+			'type'        => 'textarea',
+		)
+	);
+
+	$wp_customize->add_setting(
+		'pfoa_footer_physical_address',
+		array(
+			'default'           => "257509 Highway 101\nPort Angeles, WA",
+			'sanitize_callback' => 'sanitize_textarea_field',
+			'transport'         => 'refresh',
+		)
+	);
+
+	$wp_customize->add_control(
+		'pfoa_footer_physical_address',
+		array(
+			'label'       => esc_html__( 'Physical address', 'pfoa-theme' ),
+			'description' => esc_html__( 'Use line breaks between address lines. Leave blank to omit this address.', 'pfoa-theme' ),
+			'section'     => 'pfoa_footer',
+			'type'        => 'textarea',
+		)
+	);
+
+	$wp_customize->add_setting(
+		'pfoa_footer_phone',
+		array(
+			'default'           => '(360) 452-0414',
+			'sanitize_callback' => 'sanitize_text_field',
+			'transport'         => 'refresh',
+		)
+	);
+
+	$wp_customize->add_control(
+		'pfoa_footer_phone',
+		array(
+			'label'   => esc_html__( 'Main phone', 'pfoa-theme' ),
+			'section' => 'pfoa_footer',
+			'type'    => 'text',
+		)
+	);
+
+	$wp_customize->add_setting(
+		'pfoa_footer_fax',
+		array(
+			'default'           => '(360) 452-0412',
+			'sanitize_callback' => 'sanitize_text_field',
+			'transport'         => 'refresh',
+		)
+	);
+
+	$wp_customize->add_control(
+		'pfoa_footer_fax',
+		array(
+			'label'       => esc_html__( 'Fax', 'pfoa-theme' ),
+			'description' => esc_html__( 'Leave blank to omit fax information from the footer.', 'pfoa-theme' ),
+			'section'     => 'pfoa_footer',
+			'type'        => 'text',
+		)
+	);
+
+	$wp_customize->add_setting(
+		'pfoa_footer_facebook_url',
+		array(
+			'default'           => '',
+			'sanitize_callback' => 'esc_url_raw',
+			'transport'         => 'refresh',
+		)
+	);
+
+	$wp_customize->add_control(
+		'pfoa_footer_facebook_url',
+		array(
+			'label'       => esc_html__( 'Facebook URL', 'pfoa-theme' ),
+			'description' => esc_html__( 'Enter the approved Facebook URL, or leave blank to omit the link.', 'pfoa-theme' ),
+			'section'     => 'pfoa_footer',
+			'type'        => 'url',
+		)
+	);
+
+	$wp_customize->add_setting(
+		'pfoa_footer_instagram_url',
+		array(
+			'default'           => '',
+			'sanitize_callback' => 'esc_url_raw',
+			'transport'         => 'refresh',
+		)
+	);
+
+	$wp_customize->add_control(
+		'pfoa_footer_instagram_url',
+		array(
+			'label'       => esc_html__( 'Instagram URL', 'pfoa-theme' ),
+			'description' => esc_html__( 'Enter the approved Instagram URL, or leave blank to omit the link.', 'pfoa-theme' ),
+			'section'     => 'pfoa_footer',
 			'type'        => 'url',
 		)
 	);
