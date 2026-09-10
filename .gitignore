@@ -1,0 +1,5 @@
+# Build output is reproducible and should not be versioned.
+/dist/*.zip
+
+# Operating-system metadata does not belong in the repository or theme ZIP.
+.DS_Store

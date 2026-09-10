@@ -1,0 +1,504 @@
+/*
+Theme Name: PFOA
+Author: PFOA project
+Description: A conventional, accessible foundation for the PFOA website.
+Version: 0.1.0
+Requires at least: 6.4
+Requires PHP: 7.4
+License: GNU General Public License v2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: pfoa-theme
+*/
+
+:root {
+	--pfoa-color-ink: #302d2b;
+	--pfoa-color-muted: #77716c;
+	--pfoa-color-canvas: #ffffff;
+	--pfoa-color-surface: #ebe7dd;
+	--pfoa-color-header: #211e1d;
+	--pfoa-color-brand: #934244;
+	--pfoa-color-accent: #e9ad4e;
+	--pfoa-color-rule: #e5e0da;
+	--pfoa-content-width: 1200px;
+	--pfoa-wide-width: 1280px;
+	--pfoa-space-10: 0.5rem;
+	--pfoa-space-20: 1rem;
+	--pfoa-space-30: 1.5rem;
+	--pfoa-space-40: 2rem;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	background: var(--pfoa-color-surface);
+	color: var(--pfoa-color-ink);
+	font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 1rem;
+	line-height: 1.6;
+}
+
+img,
+svg,
+video,
+iframe {
+	max-width: 100%;
+}
+
+img {
+	height: auto;
+	vertical-align: middle;
+}
+
+a {
+	color: var(--pfoa-color-brand);
+	text-decoration-thickness: 0.08em;
+	text-underline-offset: 0.16em;
+}
+
+a:hover {
+	color: #6f3032;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+	outline: 3px solid var(--pfoa-color-accent);
+	outline-offset: 3px;
+}
+
+.skip-link {
+	position: fixed;
+	top: 1rem;
+	left: 1rem;
+	z-index: 1000;
+	padding: 0.75rem 1rem;
+	transform: translateY(-200%);
+	background: var(--pfoa-color-ink);
+	color: #fff;
+	font-weight: 700;
+}
+
+.skip-link:focus {
+	transform: translateY(0);
+	color: #fff;
+}
+
+.site {
+	min-height: 100vh;
+	max-width: var(--pfoa-wide-width);
+	margin-inline: auto;
+	background: var(--pfoa-color-canvas);
+}
+
+.site-header {
+	background: var(--pfoa-color-header);
+	color: #fff;
+}
+
+.site-header__inner,
+.site-footer__inner {
+	width: min(100% - 2.5rem, var(--pfoa-content-width));
+	margin-inline: auto;
+}
+
+.site-header__inner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--pfoa-space-30);
+	min-height: 5rem;
+}
+
+.site-branding {
+	flex: 0 1 auto;
+}
+
+.site-branding a {
+	color: #fff;
+	font-family: Georgia, "Times New Roman", serif;
+	font-size: 1.35rem;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.site-branding .custom-logo-link {
+	display: block;
+}
+
+.site-branding .custom-logo {
+	max-height: 3.5rem;
+	width: auto;
+}
+
+.main-navigation {
+	font-family: Georgia, "Times New Roman", serif;
+}
+
+.primary-menu,
+.primary-menu ul,
+.footer-menu {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.primary-menu {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 0.25rem;
+}
+
+.primary-menu .menu-item {
+	position: relative;
+}
+
+.primary-menu a {
+	display: block;
+	padding: 0.55rem 0.75rem;
+	color: #fff;
+	font-size: 0.9rem;
+	text-decoration: none;
+}
+
+.primary-menu a:hover,
+.primary-menu a:focus-visible,
+.primary-menu .current-menu-item > a,
+.primary-menu .current-menu-ancestor > a {
+	background: var(--pfoa-color-accent);
+	color: var(--pfoa-color-ink);
+}
+
+.primary-menu .sub-menu {
+	display: none;
+	min-width: 13rem;
+	padding: 0.25rem;
+	background: var(--pfoa-color-brand);
+}
+
+.primary-menu .menu-item:hover > .sub-menu,
+.primary-menu .menu-item:focus-within > .sub-menu {
+	display: block;
+}
+
+@media (min-width: 721px) {
+	.primary-menu > .menu-item > .sub-menu {
+		position: absolute;
+		top: 100%;
+		left: 0;
+		z-index: 20;
+	}
+
+	.primary-menu .sub-menu .sub-menu {
+		position: absolute;
+		top: -0.25rem;
+		left: 100%;
+	}
+}
+
+.site-main {
+	min-height: 50vh;
+}
+
+.content-shell {
+	width: min(100% - 2.5rem, var(--pfoa-content-width));
+	margin-inline: auto;
+	padding-block: clamp(2.5rem, 6vw, 5rem);
+}
+
+.page-header,
+.entry-header {
+	margin-bottom: var(--pfoa-space-30);
+}
+
+.page-title,
+.entry-title {
+	margin-block: 0;
+	font-family: Georgia, "Times New Roman", serif;
+	font-weight: 700;
+	line-height: 1.1;
+}
+
+.page-title {
+	font-size: clamp(2.25rem, 4vw, 3.75rem);
+}
+
+.entry-title {
+	font-size: clamp(1.65rem, 3vw, 2.5rem);
+}
+
+.entry-title a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.entry-meta,
+.entry-footer {
+	color: var(--pfoa-color-muted);
+	font-size: 0.9rem;
+}
+
+.entry-content > * {
+	max-width: 100%;
+}
+
+.entry-content > :first-child {
+	margin-top: 0;
+}
+
+.entry-content > :last-child {
+	margin-bottom: 0;
+}
+
+.entry-content table {
+	display: block;
+	max-width: 100%;
+	overflow-x: auto;
+	border-collapse: collapse;
+}
+
+.entry-content th,
+.entry-content td {
+	padding: 0.5rem;
+	border: 1px solid var(--pfoa-color-rule);
+	vertical-align: top;
+}
+
+.entry-content iframe,
+.entry-content video,
+.entry-content embed,
+.entry-content object {
+	max-width: 100%;
+}
+
+.entry-content iframe[src*="youtube.com/embed"],
+.entry-content iframe[src*="youtube-nocookie.com/embed"] {
+	width: 100%;
+	height: auto;
+	aspect-ratio: 16 / 9;
+}
+
+.entry-content .gca-column {
+	float: left;
+	padding-inline: 0.75rem;
+}
+
+.entry-content .one-half {
+	width: 50%;
+}
+
+.entry-content .one-third {
+	width: 33.333%;
+}
+
+.entry-content .gca-column.first,
+.entry-content .gca-column:first-child {
+	clear: left;
+}
+
+.entry-content::after {
+	display: table;
+	clear: both;
+	content: "";
+}
+
+.entry-content .alignleft,
+.entry-content .alignright {
+	max-width: 50%;
+}
+
+.entry-content .alignleft {
+	float: left;
+	margin: 0.35rem 1.5rem 1rem 0;
+}
+
+.entry-content .alignright {
+	float: right;
+	margin: 0.35rem 0 1rem 1.5rem;
+}
+
+.entry-content .aligncenter {
+	display: block;
+	margin-inline: auto;
+}
+
+.entry-content .wp-caption,
+.entry-content .wp-caption img {
+	max-width: 100% !important;
+}
+
+.entry-content .wp-caption-text,
+.entry-content .gallery-caption {
+	color: var(--pfoa-color-muted);
+	font-size: 0.9rem;
+}
+
+.entry-content .gallery {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 1rem;
+	margin-block: 1.5rem;
+}
+
+.entry-content .gallery .gallery-item {
+	width: auto !important;
+	margin: 0;
+	float: none;
+	text-align: center;
+}
+
+.entry-content pre,
+.entry-content code {
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+.post-list {
+	display: grid;
+	gap: var(--pfoa-space-40);
+}
+
+.post-summary {
+	padding-bottom: var(--pfoa-space-30);
+	border-bottom: 1px solid var(--pfoa-color-rule);
+}
+
+.post-summary__thumbnail {
+	display: block;
+	margin-bottom: var(--pfoa-space-20);
+}
+
+.post-summary__thumbnail img {
+	width: 100%;
+}
+
+.posts-navigation {
+	margin-top: var(--pfoa-space-40);
+}
+
+.not-found {
+	max-width: 45rem;
+}
+
+.site-footer {
+	background: var(--pfoa-color-brand);
+	color: #fff;
+}
+
+.site-footer__inner {
+	padding-block: 2.5rem;
+}
+
+.footer-navigation {
+	margin-bottom: 1.5rem;
+}
+
+.footer-menu {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 1.5rem;
+}
+
+.footer-menu a {
+	color: #fff;
+}
+
+.site-info {
+	border-top: 1px solid rgb(255 255 255 / 35%);
+	padding-top: 1rem;
+	font-size: 0.9rem;
+}
+
+.site-info p {
+	margin: 0;
+}
+
+@media (max-width: 720px) {
+	.site-header__inner {
+		align-items: flex-start;
+		flex-direction: column;
+		padding-block: 1rem;
+	}
+
+	.main-navigation,
+	.primary-menu {
+		width: 100%;
+	}
+
+	.primary-menu {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.primary-menu a {
+		padding-block: 0.7rem;
+	}
+
+	.primary-menu .sub-menu {
+		display: block;
+		min-width: 0;
+		margin-inline-start: 1rem;
+	}
+
+	.primary-menu .sub-menu .sub-menu {
+		position: static;
+	}
+
+	.content-shell,
+	.site-header__inner,
+	.site-footer__inner {
+		width: min(100% - 2rem, var(--pfoa-content-width));
+	}
+
+	.entry-content .gca-column,
+	.entry-content .one-half,
+	.entry-content .one-third {
+		float: none;
+		width: 100%;
+		padding-inline: 0;
+	}
+
+	.entry-content .alignleft,
+	.entry-content .alignright {
+		float: none;
+		max-width: 100%;
+		margin-inline: auto;
+	}
+
+	.entry-content .gallery {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.footer-menu {
+		flex-direction: column;
+	}
+}
+
+@media (max-width: 480px) {
+	.entry-content .gallery {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		scroll-behavior: auto !important;
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+	}
+}
