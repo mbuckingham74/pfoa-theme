@@ -368,7 +368,7 @@ pre {
 .button,
 .wp-element-button,
 .wp-block-button__link,
-button,
+.site-header button,
 input[type="button"],
 input[type="reset"],
 input[type="submit"] {
@@ -394,7 +394,7 @@ input[type="submit"] {
 .button:hover,
 .wp-element-button:hover,
 .wp-block-button__link:hover,
-button:hover,
+.site-header button:hover,
 input[type="button"]:hover,
 input[type="reset"]:hover,
 input[type="submit"]:hover {
@@ -408,7 +408,7 @@ input[type="submit"]:hover {
 .button:active,
 .wp-element-button:active,
 .wp-block-button__link:active,
-button:active,
+.site-header button:active,
 input[type="button"]:active,
 input[type="reset"]:active,
 input[type="submit"]:active {
@@ -784,6 +784,64 @@ input[type="file"] {
 .page-content-compatibility .entry-content :where(embed, object)[type="application/pdf"] {
 	width: 100%;
 	height: min(75vh, 48rem);
+}
+
+/*
+ * Popup Maker compatibility bridge. Popup content and controls remain owned by
+ * the plugin; these rules only keep observed legacy content inside its own
+ * available width and preserve theme-visible keyboard focus.
+ */
+.pum-container .pum-content {
+	min-width: 0;
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+
+.pum-container .pum-content :where(div, section, article, p, figure, table, img, iframe, video, embed, object, td, th)[style*="width"],
+.pum-container .pum-content :where(div, section, article, p, figure, table, img, iframe, video, embed, object, td, th)[width] {
+	max-width: 100%;
+}
+
+.pum-container .pum-content :where(div, section, article, p, figure, table, img, iframe, video, embed, object, td, th)[style*="min-width"] {
+	min-width: 0 !important;
+}
+
+.pum-container .pum-content :where(img, video, iframe, embed, object) {
+	max-width: 100%;
+}
+
+.pum-container .pum-content :where(iframe, embed, object) {
+	display: block;
+}
+
+/* Keep video treatment source-specific; arbitrary popup iframes keep authored dimensions. */
+.pum-container .pum-content iframe[src*="youtube.com/embed"],
+.pum-container .pum-content iframe[src*="youtube-nocookie.com/embed"] {
+	width: 100%;
+	height: auto;
+	aspect-ratio: 16 / 9;
+}
+
+/* Tables without a content wrapper still get a local surface when authored wide. */
+.pum-container .pum-content :where(table[width], table[style*="width"], table[style*="min-width"]) {
+	display: block;
+	width: 100%;
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+.pum-container .pum-content :where(input[type="text"], input[type="email"], input[type="tel"], input[type="url"], input[type="number"], input[type="search"], input[type="password"], input[type="date"], input[type="time"], input[type="month"], input[type="week"], input[type="datetime-local"], select, textarea) {
+	max-width: 100%;
+}
+
+.pum-container .pum-content input[type="image"] {
+	max-width: 100%;
+	height: auto;
+}
+
+.pum-container :where(a, button, input, select, textarea, summary, [role="button"]):focus-visible {
+	outline: 3px solid var(--pfoa-color-focus);
+	outline-offset: 3px;
 }
 
 /* Collection, error, and pagination surfaces. */
