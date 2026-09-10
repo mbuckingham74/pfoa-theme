@@ -23,16 +23,21 @@ baseline:
   captions, galleries, forms, and WordPress block content remain ordinary
   semantic output.
 - Images, video, iframes, `embed`, and `object` elements are capped by their
-  Page content container. Legacy iframes with authored width and height are
-  made fluid with a 16:9 aspect ratio. PDF `embed`/`object` output is fluid
-  and given a bounded reading height.
-- Tables retain their HTML structure, cell order, and authored data. The
-  theme contains wide tables within their content box and permits horizontal
-  scrolling/wrapping rather than rewriting table markup. CSS does not attempt
-  to guess whether a table is semantic data or a historical layout table.
+  Page content container. Known YouTube video iframes are fluid and use a
+  16:9 aspect ratio; arbitrary iframes and non-PDF document embeds receive
+  containment only. PDF `embed`/`object` output is fluid and given a bounded
+  reading height.
+- Tables retain their HTML structure, cell order, and authored data. Legacy
+  fixed-width tables under the compatibility wrapper receive a local horizontal
+  scroll surface, while modern WordPress Table blocks retain their native
+  wrapper behavior. Shared baseline borders and cell defaults remain ordinary
+  table presentation; CSS does not rewrite table markup or guess table intent.
 - Legacy inline width and minimum-width declarations are capped only on
-  viewport-escaping content elements. Inline colors and fonts are preserved
-  until an editor can make an intentional content-cleanup decision.
+  viewport-escaping content elements. Ordinary inline minimum widths are
+  overridden with a scoped `min-width: 0 !important` so they cannot defeat
+  mobile containment; inline `!important` outliers remain staging/content-cleanup
+  items. Inline colors and fonts are preserved until an editor can make an
+  intentional content-cleanup decision.
 - Only `.gca-column.one-half` and `.gca-column.one-third` are supported from
   the observed legacy column markup. `.first` starts a new floated row;
   `.clear`, `.clearfix`, and `.gca-columns` receive the minimum clearing

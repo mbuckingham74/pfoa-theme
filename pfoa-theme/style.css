@@ -575,6 +575,7 @@ input[type="file"] {
 	height: auto;
 }
 
+/* Known video sources may use a video-oriented aspect ratio. */
 .entry-content iframe[src*="youtube.com/embed"],
 .entry-content iframe[src*="youtube-nocookie.com/embed"] {
 	width: 100%;
@@ -687,10 +688,7 @@ input[type="file"] {
 }
 
 .entry-content table {
-	display: block;
-	width: 100%;
 	max-width: 100%;
-	overflow-x: auto;
 	border: 1px solid var(--pfoa-color-border);
 	border-collapse: collapse;
 	border-spacing: 0;
@@ -730,7 +728,7 @@ input[type="file"] {
 }
 
 .page-content-compatibility .entry-content :where(div, section, article, p, figure, table, img, iframe, video, embed, object, td, th)[style*="min-width"] {
-	min-width: 0;
+	min-width: 0 !important;
 }
 
 .page-content-compatibility .entry-content .gca-column {
@@ -768,16 +766,19 @@ input[type="file"] {
 	content: "";
 }
 
-/* Legacy media keeps its authored destination and aspect ratio, but not its fixed viewport width. */
+/* Legacy media stays contained; only the known video rule above assumes 16:9. */
 .page-content-compatibility .entry-content :where(iframe, embed, object) {
 	display: block;
 	max-width: 100%;
 }
 
-.page-content-compatibility .entry-content iframe[width][height] {
+/* Fixed-width legacy tables get a local scroll surface. Native Table blocks keep
+ * their own wrapper behavior and the normal table display model. */
+.page-content-compatibility .entry-content table:not(.wp-block-table table) {
+	display: block;
 	width: 100%;
-	height: auto;
-	aspect-ratio: 16 / 9;
+	max-width: 100%;
+	overflow-x: auto;
 }
 
 .page-content-compatibility .entry-content :where(embed, object)[type="application/pdf"] {
