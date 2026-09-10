@@ -8,8 +8,11 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
+$legacy_compatibility = ! empty( $args['legacy_compatibility'] );
+$page_classes         = 'page-content' . ( $legacy_compatibility ? ' page-content-compatibility' : '' );
 ?>
-<article id="post-<?php the_ID(); ?>" <?php post_class( 'page-content' ); ?>>
+<article id="post-<?php the_ID(); ?>" <?php post_class( $page_classes ); ?>>
 	<header class="entry-header">
 		<h1 class="entry-title"><?php the_title(); ?></h1>
 	</header>

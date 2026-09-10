@@ -309,6 +309,10 @@ pre {
 	margin-bottom: 0;
 }
 
+.entry-content > * {
+	max-width: 100%;
+}
+
 .entry-content > p,
 .entry-content > ul,
 .entry-content > ol,
@@ -326,12 +330,37 @@ pre {
 	max-width: 75ch;
 }
 
-.entry-content > * {
+.entry-content a:not(.pfoa-button):not(.wp-element-button):not(.wp-block-button__link) {
+	font-weight: 600;
+}
+
+/* Long-form Pages get a clear title boundary and a comfortable reading measure. */
+.page-content .entry-header {
+	max-width: 75ch;
+	margin-bottom: var(--pfoa-space-6);
+	border-bottom: 2px solid var(--pfoa-color-gold);
+	padding-bottom: var(--pfoa-space-4);
+}
+
+.page-content .entry-title {
+	font-size: clamp(2.25rem, 4vw, 3.75rem);
+}
+
+.page-content .entry-content {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.page-content .entry-content > :where(figure, .wp-caption, .gallery, table, form, .wp-block-embed, .wp-block-video, .wp-video, .wp-block-table) {
 	max-width: 100%;
 }
 
-.entry-content a:not(.pfoa-button):not(.wp-element-button):not(.wp-block-button__link) {
-	font-weight: 600;
+.page-content .entry-content > :where(h2, h3, h4, h5, h6) {
+	margin-top: var(--pfoa-space-6);
+}
+
+.page-content .entry-content > :first-child {
+	margin-top: 0;
 }
 
 /* Buttons, action links, and form controls. */
@@ -680,25 +709,45 @@ input[type="file"] {
 	font-weight: 700;
 }
 
-/* The old Page-template content gets compatibility rules; new components do not. */
+/*
+ * Temporary migration bridge for legacy-assigned Pages. This supports only
+ * the observed Genesis Columns Advanced half/third classes, their first-row
+ * marker, and common clearfix markers. It is not a replacement framework.
+ */
 .page-content-compatibility .entry-content {
+	min-width: 0;
 	overflow-wrap: anywhere;
 }
 
-.page-content-compatibility .entry-content [style*="width"] {
-	max-width: 100% !important;
+/*
+ * Legacy inline dimensions are authored content. Cap only the elements that
+ * can escape the Page column; keep inline colors and typography intact until
+ * content cleanup can make an editorial decision about them.
+ */
+.page-content-compatibility .entry-content :where(div, section, article, p, figure, table, img, iframe, video, embed, object, td, th)[style*="width"],
+.page-content-compatibility .entry-content :where(div, section, article, p, figure, table, img, iframe, video, embed, object, td, th)[width] {
+	max-width: 100%;
+}
+
+.page-content-compatibility .entry-content :where(div, section, article, p, figure, table, img, iframe, video, embed, object, td, th)[style*="min-width"] {
+	min-width: 0;
 }
 
 .page-content-compatibility .entry-content .gca-column {
+	min-width: 0;
+}
+
+.page-content-compatibility .entry-content .gca-column.one-half,
+.page-content-compatibility .entry-content .gca-column.one-third {
 	float: left;
 	padding-inline: var(--pfoa-space-2);
 }
 
-.page-content-compatibility .entry-content .one-half {
+.page-content-compatibility .entry-content .gca-column.one-half {
 	width: 50%;
 }
 
-.page-content-compatibility .entry-content .one-third {
+.page-content-compatibility .entry-content .gca-column.one-third {
 	width: 33.333%;
 }
 
@@ -708,16 +757,32 @@ input[type="file"] {
 	clear: left;
 }
 
+.page-content-compatibility .entry-content .clear {
+	clear: both;
+}
+
+.page-content-compatibility .entry-content :where(.clearfix, .gca-columns)::after,
 .page-content-compatibility .entry-content::after {
 	display: table;
 	clear: both;
 	content: "";
 }
 
-.page-content-compatibility .entry-content img[width],
-.page-content-compatibility .entry-content iframe[width],
-.page-content-compatibility .entry-content table[width] {
+/* Legacy media keeps its authored destination and aspect ratio, but not its fixed viewport width. */
+.page-content-compatibility .entry-content :where(iframe, embed, object) {
+	display: block;
 	max-width: 100%;
+}
+
+.page-content-compatibility .entry-content iframe[width][height] {
+	width: 100%;
+	height: auto;
+	aspect-ratio: 16 / 9;
+}
+
+.page-content-compatibility .entry-content :where(embed, object)[type="application/pdf"] {
+	width: 100%;
+	height: min(75vh, 48rem);
 }
 
 /* Collection, error, and pagination surfaces. */
@@ -1534,10 +1599,8 @@ input[type="file"] {
 		margin-inline: 0;
 	}
 
-	.entry-content .gca-column,
-	.page-content-compatibility .entry-content .gca-column,
-	.page-content-compatibility .entry-content .one-half,
-	.page-content-compatibility .entry-content .one-third {
+	.page-content-compatibility .entry-content .gca-column.one-half,
+	.page-content-compatibility .entry-content .gca-column.one-third {
 		float: none;
 		width: 100%;
 		padding-inline: 0;

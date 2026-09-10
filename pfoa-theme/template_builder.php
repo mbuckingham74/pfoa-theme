@@ -4,8 +4,10 @@
  * Template Post Type: page
  *
  * A deliberately small Page template for Pages that retain a historical
- * template filename. It uses the ordinary WordPress Page loop and content
- * filters so existing embeds, galleries, links, and plugin output can run.
+ * template filename. It uses the ordinary WordPress Page loop and delegates
+ * the presentation to the shared Page content part so existing embeds,
+ * galleries, links, and plugin output can run unchanged. That shared part
+ * owns the title, the_content(), and Page-link rendering.
  *
  * @package PFOA
  */
@@ -17,30 +19,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 get_header();
 ?>
 <main id="primary" class="site-main">
-	<div class="content-shell page-content-compatibility">
+	<div class="content-shell">
 		<?php
 		while ( have_posts() ) :
 			the_post();
-			?>
-			<article id="post-<?php the_ID(); ?>" <?php post_class( 'page-content' ); ?>>
-				<header class="entry-header">
-					<h1 class="entry-title"><?php the_title(); ?></h1>
-				</header>
-
-				<div class="entry-content">
-					<?php
-					the_content();
-
-					wp_link_pages(
-						array(
-							'before' => '<nav class="page-links" aria-label="' . esc_attr__( 'Page', 'pfoa-theme' ) . '">',
-							'after'  => '</nav>',
-						)
-					);
-					?>
-				</div>
-			</article>
-			<?php
+			get_template_part(
+				'template-parts/content',
+				'page',
+				array(
+					'legacy_compatibility' => true,
+				)
+			);
 		endwhile;
 		?>
 	</div>
