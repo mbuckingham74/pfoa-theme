@@ -13,6 +13,7 @@
 	var menuToggle = header ? header.querySelector( '.menu-toggle' ) : null;
 	var mobileQuery = window.matchMedia( '(max-width: 1319px)' );
 	var menuOpen = false;
+	var suppressDesktopFocusOpen = false;
 
 	if ( ! body || ! header || ! navigation || ! menuToggle ) {
 		return;
@@ -64,7 +65,9 @@
 		setSubmenuState( button, false );
 
 		if ( restoreFocus ) {
+			suppressDesktopFocusOpen = ! mobileQuery.matches;
 			button.focus();
+			suppressDesktopFocusOpen = false;
 		}
 	};
 
@@ -172,7 +175,7 @@
 		} );
 
 		menuItem.addEventListener( 'focusin', function () {
-			if ( ! mobileQuery.matches ) {
+			if ( ! mobileQuery.matches && ! suppressDesktopFocusOpen ) {
 				menuItem.classList.remove( 'is-dismissed' );
 				setSubmenuState( button, true );
 			}

@@ -94,12 +94,12 @@ if ( ! $promo_items ) {
 							<span class="homepage-promo__media-word"><?php echo esc_html( $promo['media_word'] ); ?></span>
 							<span class="homepage-promo__media-note"><?php echo esc_html( $promo['media_note'] ); ?></span>
 						</span>
-						<span class="homepage-promo__body">
+						<div class="homepage-promo__body">
 							<span class="homepage-card__eyebrow"><?php echo esc_html( $promo['eyebrow'] ); ?></span>
 							<h3 class="homepage-promo__title"><?php echo esc_html( $promo['title'] ); ?></h3>
 							<span class="homepage-promo__description"><?php echo esc_html( $promo['description'] ); ?></span>
 							<span class="pfoa-text-link homepage-promo__action"><?php echo esc_html( $promo['link_label'] ); ?></span>
-						</span>
+						</div>
 					</a>
 				</li>
 			<?php endforeach; ?>

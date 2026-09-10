@@ -1766,6 +1766,7 @@ input[type="file"] {
 .front-page-content .homepage-hero {
 	position: relative;
 	display: flex;
+	padding-block: 0;
 	min-height: clamp(25rem, 52vw, 43rem);
 	isolation: isolate;
 	background:
@@ -1938,6 +1939,7 @@ input[type="file"] {
 	border-color: #ffffff;
 	background: var(--pfoa-color-brand-dark);
 	color: #ffffff;
+	outline-color: #ffffff;
 }
 
 .front-page-content .homepage-pathway__media {
@@ -2070,6 +2072,11 @@ input[type="file"] {
 	max-width: 42rem;
 	margin: var(--pfoa-space-3) 0 0;
 	color: var(--pfoa-color-muted);
+}
+
+.front-page-content .homepage-news-events .homepage-section__intro,
+.front-page-content .homepage-promos .homepage-section__intro {
+	color: var(--pfoa-color-text);
 }
 
 .front-page-content .homepage-adoption__teaser {
@@ -2419,7 +2426,7 @@ input[type="file"] {
 
 .front-page-content .homepage-promos__grid {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
 	gap: var(--pfoa-space-4);
 	margin: 0;
 	padding: 0;
@@ -2705,12 +2712,6 @@ input[type="file"] {
 
 	.front-page-content .homepage-partner__link {
 		min-height: 6.5rem;
-	}
-}
-
-@media (min-width: 721px) and (max-width: 960px) {
-	.front-page-content .homepage-promos__grid {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
 

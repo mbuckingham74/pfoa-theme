@@ -39,7 +39,7 @@ get_header();
 
 			<?php get_template_part( 'template-parts/pagination' ); ?>
 		<?php else : ?>
-			<?php get_template_part( 'template-parts/content', 'none' ); ?>
+			<?php get_template_part( 'template-parts/content', 'none', array( 'heading_level' => 2 ) ); ?>
 		<?php endif; ?>
 	</div>
 </main>
