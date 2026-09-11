@@ -15,6 +15,57 @@ The validated release candidate was installed and activated on staging. No
 product code, legacy content, plugin configuration, or production state was
 changed during UAT.
 
+## Follow-up 0.1.2 front-page editorial remediation — PASS
+
+The confirmed root cause of the duplicated visible homepage was the assigned
+legacy front Page's `the_content()` output being rendered inside the new custom
+homepage through `front-page.php` and `template-parts/homepage-editorial.php`.
+The two-theme hypothesis was rejected: the new PFOA theme was active, and the
+old Rhodes/rescue material was the stored legacy Page body rendered inside the
+new theme.
+
+The 0.1.2 remediation removes that front-page-only editor-body insertion path
+and the now-unused editorial partial. The front-page loop remains in place so
+the assigned Page continues to provide valid WordPress context for the custom
+homepage regions. Ordinary Pages and `template_builder.php` continue to use
+the shared Page content part and `the_content()` normally.
+
+The stored legacy Homepage Page content remains untouched and available in
+WordPress for later migration/reference. Popup Maker was not disabled or
+changed; independently appended hidden/modal output is outside this visible
+front-page correction.
+
+Rendered staging verification was performed only on
+`https://pfoa-legacy-stage.forkstech.com/` and passed:
+
+- The custom homepage no longer visibly renders the stored legacy Homepage
+  body.
+- The custom homepage sections remain present.
+- Ordinary legacy Page rendering remains intact.
+- No test or production URL was accessed.
+
+| Follow-up artifact | Result |
+|---|---|
+| Theme/package version | `0.1.2` |
+| Validated release ZIP | `dist/pfoa-theme-0.1.2.zip` |
+| Candidate SHA-256 | `c08158b4a319a6b61268a09824b44f0860a8e4c35307d514ae7cbd3ce8784fbf` |
+| Staging installation/rendered verification | **PASS** — staging URL above only |
+
+## Local 0.1.2 validation
+
+- The focused front-page fixture passed: the legacy editor partial/body is not
+  rendered, all six custom homepage regions remain in order, the front-page
+  loop/context remains valid, ordinary Page and compatibility rendering still
+  use the shared `the_content()` path, and no CSS hiding workaround is used.
+- The existing focused navigation fixture passed.
+- PHP lint passed for all theme and local fixture PHP files; JavaScript syntax,
+  JSON validation, Bash syntax, and ShellCheck passed.
+- Clean-room implementation/dependency, path/environment,
+  payment-identifier, content-model/static, forbidden-artifact, and
+  `git diff --check` scans passed.
+- ZIP integrity, required/forbidden member checks, source parity, and ZIP
+  reproducibility passed. The existing 0.1.1 archive remains separate.
+
 ## Follow-up 0.1.1 mobile-navigation remediation
 
 The deployed-build verification for the prior corrected build proved that
@@ -230,20 +281,18 @@ and were not changed during this task.
 3. Literal `[more]` output remains in the Loki adoption story.
 4. Some sampled legacy gallery images have empty alt text, and the event table
    has no header cells.
-5. The homepage intentionally preserves the existing editorial content below
-   the new theme hero; this should be reviewed as a content architecture choice,
-   not removed during theme UAT.
+5. The stored legacy Homepage Page body remains preserved in WordPress but is
+   no longer rendered as a visible section by the custom front page in 0.1.2.
 6. The expected Potholders popup trigger was not found on `/potholders-2/`.
 
 ## Recommended next action
 
-The 0.1.1 mobile-navigation follow-up is complete with a rendered PASS. Do not
-begin the separate planned 0.1.2 legacy homepage-content remediation in this
-closeout. The PayPal configuration follow-up remains complete with the
-functional PASS WITH OBSERVATION disposition above. Popup Maker keyboard/focus
-behavior remains a separate finding. Handle the shortcode, alt-text,
-iframe-title, table-header, and missing-Potholders-trigger items as controlled
-legacy content cleanup.
+The 0.1.1 mobile-navigation follow-up and the 0.1.2 front-page editorial
+remediation are complete with rendered PASS results. The PayPal configuration
+follow-up remains complete with the functional PASS WITH OBSERVATION
+disposition above. Popup Maker keyboard/focus behavior remains a separate
+finding. Handle the shortcode, alt-text, iframe-title, table-header, and
+missing-Potholders-trigger items as controlled legacy content cleanup.
 
 ## Completion state
 
@@ -258,7 +307,7 @@ legacy content cleanup.
   OBSERVATION**.
 - UAT documentation: this file is updated for the 0.1.1 closeout and included
   in the remediation commit.
-- Legacy homepage-content remediation: **not started; separate planned 0.1.2
-  task**.
+- Legacy homepage-content remediation: **0.1.2 rendered PASS** on
+  `https://pfoa-legacy-stage.forkstech.com/` only.
 - Production `safehavenpfoa.org`: **not accessed or modified**.
 - `test.safehavenpfoa.org`: **not accessed**.

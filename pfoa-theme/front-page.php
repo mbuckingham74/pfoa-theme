@@ -2,9 +2,10 @@
 /**
  * The front page template.
  *
- * The structural homepage regions are intentionally content-light. Existing
- * Page content is rendered in its own section so the assigned static front
- * Page remains editable and its legacy filters/plugins continue to run.
+ * The structural homepage regions are intentionally content-light. The
+ * assigned static front Page remains the loop context for the homepage, but
+ * its stored editor body is not rendered here; ordinary Page templates retain
+ * the normal the_content() pipeline.
  *
  * @package PFOA
  */
@@ -21,10 +22,6 @@ get_header();
 			<?php the_post(); ?>
 
 			<?php get_template_part( 'template-parts/homepage', 'hero' ); ?>
-
-			<?php if ( trim( (string) get_the_content() ) ) : ?>
-				<?php get_template_part( 'template-parts/homepage', 'editorial' ); ?>
-			<?php endif; ?>
 
 			<?php get_template_part( 'template-parts/homepage', 'pathways' ); ?>
 			<?php get_template_part( 'template-parts/homepage', 'adoption' ); ?>

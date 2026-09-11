@@ -7,17 +7,17 @@ renders the assigned static front Page once. When that Page exists, the
 homepage regions appear in this document order:
 
 1. Hero (`#homepage-hero`)
-2. Assigned Page editor content (`#homepage-editorial`), only when the Page
-   has content
-3. Primary action pathways (`#homepage-pathways`)
-4. Adoption teaser (`#homepage-adoption`)
-5. News and events teasers (`#homepage-news-events`)
-6. Promotional and informational tiles (`#homepage-promos`)
-7. Partners and supporters (`#homepage-partners`)
+2. Primary action pathways (`#homepage-pathways`)
+3. Adoption teaser (`#homepage-adoption`)
+4. News and events teasers (`#homepage-news-events`)
+5. Promotional and informational tiles (`#homepage-promos`)
+6. Partners and supporters (`#homepage-partners`)
 
-The editor-content region is intentionally kept immediately after the hero so
-existing homepage material remains prominent and editable. The remaining
-regions are the static scaffold for later homepage component work.
+The assigned static front Page remains the front-page loop context so the hero
+can use its title and featured image. Its stored editor body is intentionally
+not rendered by the custom homepage; it remains available in WordPress for
+later migration and content cleanup. The regions above are the static
+scaffold for later homepage component work.
 
 ## Content sourcing
 
@@ -42,7 +42,6 @@ regions are the static scaffold for later homepage component work.
 The homepage is split into meaningful, independently replaceable parts:
 
 - `template-parts/homepage-hero.php`
-- `template-parts/homepage-editorial.php`
 - `template-parts/homepage-pathways.php`
 - `template-parts/homepage-adoption.php`
 - `template-parts/homepage-news-events.php`
@@ -78,16 +77,19 @@ changing section order or link structure.
 
 ## Editor-content behavior
 
-If the assigned static front Page contains editor content, the theme renders
-it through `the_content()` inside `.homepage-editorial`. Page links generated
-by `wp_link_pages()` are retained. The wrapper also exposes the existing
-`page-content-compatibility` hook so legacy tables, columns, media, embeds,
-Popup Maker trigger classes, and other filtered Page output continue through
-the normal WordPress pipeline.
+The custom front page does not call `the_content()` or render the assigned
+front Page's legacy editor body. The Page remains the active loop object while
+the custom sections render, preserving access to its title, featured image,
+ID, and metadata for homepage components. Stored Page content is untouched.
 
-If the Page has no editor content, the editorial region is omitted; the
-structural homepage sections still render. If the front-page query is empty,
-the normal no-results part is used.
+Ordinary Pages and the `template_builder.php` compatibility bridge continue to
+use the shared Page content part and its normal `the_content()` and
+`wp_link_pages()` pipeline. If the front-page query is empty, the normal
+no-results part is used.
+
+The former `template-parts/homepage-editorial.php` partial was removed in the
+0.1.2 front-page remediation because it had no remaining role after the
+editor-body insertion path was removed. No CSS hiding workaround replaces it.
 
 ## Deliberately deferred decisions
 
