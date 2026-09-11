@@ -380,6 +380,51 @@ class PFOA_Navigation_Walker extends Walker_Nav_Menu {
 	protected $submenu_ids = array();
 
 	/**
+	 * Whether each menu item has descendants in the current walk.
+	 *
+	 * @var bool[]
+	 */
+	protected $item_has_children = array();
+
+	/**
+	 * Record child ownership before the parent walker renders the item.
+	 *
+	 * Some WordPress runtimes do not expose the computed has_children value on
+	 * the start_el() arguments. The walker already receives the authoritative
+	 * children map, so use it to keep disclosure controls in the rendered menu.
+	 *
+	 * @param WP_Post     $element           Current menu item.
+	 * @param WP_Post[][] $children_elements Remaining child items by walker ID.
+	 * @param int         $max_depth         Maximum walk depth.
+	 * @param int         $depth             Current menu depth.
+	 * @param array       $args              Menu arguments passed by the walker.
+	 * @param string      $output            Used to append the markup.
+	 * @return void
+	 */
+	public function display_element( $element, &$children_elements, $max_depth, $depth, $args, &$output ) {
+		$item_id = $this->get_item_id( $element );
+
+		if ( $item_id ) {
+			$can_render_children = 0 === (int) $max_depth || (int) $max_depth > ( (int) $depth + 1 );
+			$this->item_has_children[ $item_id ] = $can_render_children && ! empty( $children_elements[ $item_id ] );
+		}
+
+		parent::display_element( $element, $children_elements, $max_depth, $depth, $args, $output );
+	}
+
+	/**
+	 * Return the identifier WordPress uses to index this walker's child map.
+	 *
+	 * @param WP_Post $item Menu item.
+	 * @return int
+	 */
+	protected function get_item_id( $item ) {
+		$id_field = isset( $this->db_fields['id'] ) ? $this->db_fields['id'] : 'ID';
+
+		return is_object( $item ) && isset( $item->{$id_field} ) ? absint( $item->{$id_field} ) : 0;
+	}
+
+	/**
 	 * Start a submenu level with an ID controlled by its disclosure button.
 	 *
 	 * @param string   $output Used to append the markup.
@@ -409,11 +454,13 @@ class PFOA_Navigation_Walker extends Walker_Nav_Menu {
 	public function start_el( &$output, $item, $depth = 0, $args = null, $id = 0 ) {
 		parent::start_el( $output, $item, $depth, $args, $id );
 
-		if ( empty( $args->has_children ) ) {
+		$item_id = $this->get_item_id( $item );
+
+		if ( empty( $this->item_has_children[ $item_id ] ) ) {
 			return;
 		}
 
-		$submenu_id = 'pfoa-submenu-' . absint( $item->ID ) . '-' . absint( $depth );
+		$submenu_id = 'pfoa-submenu-' . $item_id . '-' . absint( $depth );
 		$label      = sprintf(
 			/* translators: %s: menu item title. */
 			__( 'Open submenu for %s', 'pfoa-theme' ),
