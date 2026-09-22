@@ -30,12 +30,16 @@ if ( ! $has_hero_image && ! $has_fallback_hero ) {
 ?>
 <section id="homepage-hero" class="<?php echo esc_attr( implode( ' ', $hero_classes ) ); ?>" aria-labelledby="homepage-hero-title">
 	<?php if ( $has_hero_image ) : ?>
+		<?php $hero_image_url = get_the_post_thumbnail_url( null, 'full' ); ?>
 		<div class="homepage-hero__media">
+			<?php if ( $hero_image_url ) : ?>
+				<img src="<?php echo esc_url( $hero_image_url ); ?>" class="homepage-hero__image homepage-hero__image--backdrop" alt="" aria-hidden="true" loading="eager" decoding="async" />
+			<?php endif; ?>
 			<?php
 				the_post_thumbnail(
 					'full',
 					array(
-						'class'    => 'homepage-hero__image',
+						'class'    => 'homepage-hero__image homepage-hero__image--foreground',
 						'loading'  => 'eager',
 						'decoding' => 'async',
 					)
@@ -45,7 +49,8 @@ if ( ! $has_hero_image && ! $has_fallback_hero ) {
 		</div>
 	<?php elseif ( $has_fallback_hero ) : ?>
 		<div class="homepage-hero__media">
-			<img src="<?php echo esc_url( $fallback_hero ); ?>" class="homepage-hero__image" alt="" loading="eager" decoding="async" fetchpriority="high" />
+			<img src="<?php echo esc_url( $fallback_hero ); ?>" class="homepage-hero__image homepage-hero__image--backdrop" alt="" aria-hidden="true" loading="eager" decoding="async" />
+			<img src="<?php echo esc_url( $fallback_hero ); ?>" class="homepage-hero__image homepage-hero__image--foreground" alt="" loading="eager" decoding="async" fetchpriority="high" />
 			<span class="homepage-hero__scrim" aria-hidden="true"></span>
 		</div>
 	<?php endif; ?>
