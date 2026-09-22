@@ -10,6 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $has_hero_image    = has_post_thumbnail();
+$uploads           = wp_get_upload_dir();
+$fallback_hero     = trailingslashit( $uploads['baseurl'] ) . '2026/09/A1KittensBanner.jpg';
+$has_fallback_hero = ! empty( $fallback_hero );
 $hero_classes      = array( 'homepage-section', 'homepage-hero' );
 $hero_title        = get_the_title();
 $hero_title        = $hero_title ? $hero_title : get_bloginfo( 'name' );
@@ -21,7 +24,7 @@ $hero_primary_url    = $adoption_url ? $adoption_url : $volunteering_url;
 $hero_primary_label  = $adoption_url ? __( 'Adopt', 'pfoa-theme' ) : __( 'Volunteer', 'pfoa-theme' );
 $hero_secondary_url  = $adoption_url ? $volunteering_url : '';
 
-if ( ! $has_hero_image ) {
+if ( ! $has_hero_image && ! $has_fallback_hero ) {
 	$hero_classes[] = 'homepage-hero--no-image';
 }
 ?>
@@ -38,6 +41,11 @@ if ( ! $has_hero_image ) {
 					)
 				);
 			?>
+			<span class="homepage-hero__scrim" aria-hidden="true"></span>
+		</div>
+	<?php elseif ( $has_fallback_hero ) : ?>
+		<div class="homepage-hero__media">
+			<img src="<?php echo esc_url( $fallback_hero ); ?>" class="homepage-hero__image" alt="" loading="eager" decoding="async" fetchpriority="high" />
 			<span class="homepage-hero__scrim" aria-hidden="true"></span>
 		</div>
 	<?php endif; ?>
