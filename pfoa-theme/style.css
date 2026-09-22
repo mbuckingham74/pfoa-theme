@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
-Version: 0.1.6
+Version: 0.1.7
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -28,6 +28,7 @@ Text Domain: pfoa-theme
 	--pfoa-content-width: 1200px;
 	--pfoa-wide-width: 1280px;
 	--pfoa-gutter: 40px;
+	--pfoa-structural-gutter: var(--pfoa-gutter);
 	--pfoa-section-space: clamp(4rem, 6vw, 5.5rem);
 	--pfoa-space-1: 0.5rem;
 	--pfoa-space-2: 0.75rem;
@@ -241,16 +242,22 @@ pre {
 
 .site-header__inner,
 .site-footer__inner {
-	width: calc(100% - (2 * var(--pfoa-gutter)));
+	width: calc(100% - (2 * var(--pfoa-structural-gutter)));
 	max-width: none;
 	margin-inline: auto;
+}
+
+@media (min-width: 1320px) {
+	:root {
+		--pfoa-structural-gutter: clamp(2.5rem, 8vw - 3rem, 7rem);
+	}
 }
 
 .wide-container {
 	width: 100%;
 	max-width: none;
 	margin-inline: auto;
-	padding-inline: var(--pfoa-gutter);
+	padding-inline: var(--pfoa-structural-gutter);
 }
 
 .section {
@@ -942,7 +949,7 @@ input[type="file"] {
 
 .site-header__inner {
 	/* The full menu needs the wide canvas; the compact header handles narrower widths. */
-	width: calc(100% - (2 * var(--pfoa-gutter)));
+	width: calc(100% - (2 * var(--pfoa-structural-gutter)));
 	max-width: none;
 	margin-inline: auto;
 
