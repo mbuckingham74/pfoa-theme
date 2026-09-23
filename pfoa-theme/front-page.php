@@ -24,10 +24,6 @@ get_header();
 			<?php get_template_part( 'template-parts/homepage', 'hero' ); ?>
 
 			<?php get_template_part( 'template-parts/homepage', 'pathways' ); ?>
-			<?php get_template_part( 'template-parts/homepage', 'adoption' ); ?>
-			<?php get_template_part( 'template-parts/homepage', 'news-events' ); ?>
-			<?php get_template_part( 'template-parts/homepage', 'promos' ); ?>
-			<?php get_template_part( 'template-parts/homepage', 'partners' ); ?>
 		<?php endwhile; ?>
 	<?php else : ?>
 		<div class="content-shell">
