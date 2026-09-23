@@ -9,36 +9,41 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$volunteering_page = pfoa_get_page_by_paths( array( 'volunteering' ) );
-$adoption_page     = pfoa_get_page_by_paths( array( 'adoptablecats2' ) );
-$pathways          = array(
+$adoptable_cats_page = pfoa_get_page_by_paths( array( 'adoptablecats2' ) );
+$home_front_page     = pfoa_get_page_by_paths( array( 'news-announcements', 'fromthehomefront-2' ) );
+$potholders_page     = pfoa_get_page_by_paths( array( 'potholders-2' ) );
+$pet_tidings_page    = pfoa_get_page_by_paths( array( 'pettidings' ) );
+$wishlist_page       = pfoa_get_page_by_paths( array( 'wishlist' ) );
+$pathways            = array(
 	array(
-		'key'   => 'adopt',
-		'label' => __( 'Adopt', 'pfoa-theme' ),
-		'url'   => $adoption_page ? get_permalink( $adoption_page ) : '',
+		'key'   => 'adoptable-cats',
+		'label' => __( 'Adoptable Cats', 'pfoa-theme' ),
+		'url'   => $adoptable_cats_page ? get_permalink( $adoptable_cats_page ) : '',
 	),
 	array(
-		'key'   => 'foster',
-		'label' => __( 'Foster', 'pfoa-theme' ),
-		'url'   => $volunteering_page ? get_permalink( $volunteering_page ) : '',
+		'key'   => 'home-front',
+		'label' => __( 'From the Home Front', 'pfoa-theme' ),
+		'url'   => $home_front_page ? get_permalink( $home_front_page ) : '',
 	),
 	array(
-		'key'   => 'donate',
-		'label' => __( 'Donate', 'pfoa-theme' ),
-		'url'   => pfoa_get_homepage_donation_url(),
+		'key'   => 'potholders',
+		'label' => __( 'Pot Holders', 'pfoa-theme' ),
+		'url'   => $potholders_page ? get_permalink( $potholders_page ) : '',
 	),
 	array(
-		'key'   => 'volunteer',
-		'label' => __( 'Volunteer', 'pfoa-theme' ),
-		'url'   => $volunteering_page ? get_permalink( $volunteering_page ) : '',
+		'key'   => 'pet-tidings',
+		'label' => __( 'Pet Tidings', 'pfoa-theme' ),
+		'url'   => $pet_tidings_page ? get_permalink( $pet_tidings_page ) : '',
+	),
+	array(
+		'key'   => 'wishlist',
+		'label' => __( 'Wish List', 'pfoa-theme' ),
+		'url'   => $wishlist_page ? get_permalink( $wishlist_page ) : '',
 	),
 );
 ?>
-<section id="homepage-pathways" class="homepage-section homepage-pathways" aria-labelledby="homepage-pathways-title">
+<section id="homepage-pathways" class="homepage-section homepage-pathways">
 	<div class="content-container">
-		<header class="homepage-section__header homepage-section__header--light">
-			<h2 id="homepage-pathways-title" class="homepage-section__title"><?php esc_html_e( 'Ways to help', 'pfoa-theme' ); ?></h2>
-		</header>
 
 		<ul class="homepage-pathways__grid">
 			<?php foreach ( $pathways as $pathway ) : ?>

@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
-Version: 0.1.12
+Version: 0.1.13
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -1905,11 +1905,13 @@ input[type="file"] {
 .front-page-content .homepage-pathways {
 	background: var(--pfoa-color-brand);
 	color: #ffffff;
+	/* No section heading remains; keep a modest hero-to-cards gap. */
+	padding-block: clamp(1.5rem, 3vw, 2.5rem) var(--pfoa-section-space);
 }
 
 .front-page-content .homepage-pathways__grid {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	grid-template-columns: repeat(5, minmax(0, 1fr));
 	gap: var(--pfoa-space-4);
 	margin: 0;
 	padding: 0;
@@ -1987,6 +1989,7 @@ input[type="file"] {
 	color: #ffffff;
 	font-size: clamp(1.35rem, 2.2vw, 1.85rem);
 	line-height: 1.08;
+	overflow-wrap: break-word;
 }
 
 .front-page-content .homepage-pathway__action {
@@ -2012,28 +2015,34 @@ input[type="file"] {
 	line-height: 1;
 }
 
-.front-page-content .homepage-pathway--adopt .homepage-pathway__media {
+.front-page-content .homepage-pathway--adoptable-cats .homepage-pathway__media {
 	background:
 		radial-gradient(circle at 35% 30%, rgb(255 255 255 / 28%), transparent 24%),
 		linear-gradient(145deg, var(--pfoa-color-brand), var(--pfoa-color-charcoal));
 }
 
-.front-page-content .homepage-pathway--foster .homepage-pathway__media {
+.front-page-content .homepage-pathway--home-front .homepage-pathway__media {
 	background:
 		radial-gradient(circle at 35% 30%, rgb(255 255 255 / 28%), transparent 24%),
 		linear-gradient(145deg, var(--pfoa-color-gold-dark), var(--pfoa-color-brand));
 }
 
-.front-page-content .homepage-pathway--donate .homepage-pathway__media {
+.front-page-content .homepage-pathway--potholders .homepage-pathway__media {
 	background:
 		radial-gradient(circle at 35% 30%, rgb(255 255 255 / 32%), transparent 24%),
 		linear-gradient(145deg, var(--pfoa-color-gold), var(--pfoa-color-brand-dark));
 }
 
-.front-page-content .homepage-pathway--volunteer .homepage-pathway__media {
+.front-page-content .homepage-pathway--pet-tidings .homepage-pathway__media {
 	background:
 		radial-gradient(circle at 35% 30%, rgb(255 255 255 / 28%), transparent 24%),
 		linear-gradient(145deg, var(--pfoa-color-charcoal), var(--pfoa-color-brand));
+}
+
+.front-page-content .homepage-pathway--wishlist .homepage-pathway__media {
+	background:
+		radial-gradient(circle at 35% 30%, rgb(255 255 255 / 32%), transparent 24%),
+		linear-gradient(145deg, var(--pfoa-color-gold-dark), var(--pfoa-color-brand-dark));
 }
 
 .front-page-content .homepage-pathway--unavailable {
