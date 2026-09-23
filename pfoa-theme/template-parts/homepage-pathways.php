@@ -24,6 +24,17 @@ $pathways = pfoa_get_homepage_cards();
 			if ( '' === $pathway_key ) {
 				$pathway_key = 'card-' . ( $index + 1 );
 			}
+			$pathway_image_id = isset( $pathway['image_id'] ) ? absint( $pathway['image_id'] ) : 0;
+			$pathway_image    = $pathway_image_id ? wp_get_attachment_image(
+				$pathway_image_id,
+				'medium',
+				false,
+				array(
+					'class'       => 'homepage-pathway__media-image',
+					'alt'         => '',
+					'aria-hidden' => 'true',
+				)
+			) : '';
 			?>
 				<li class="homepage-pathways__item">
 					<?php if ( $pathway['url'] ) : ?>
@@ -33,7 +44,11 @@ $pathways = pfoa_get_homepage_cards();
 					<?php endif; ?>
 
 						<span class="homepage-pathway__media" aria-hidden="true">
-							<span class="homepage-pathway__media-mark"><?php echo esc_html( $pathway['mark'] ); ?></span>
+							<?php if ( $pathway_image ) : ?>
+								<?php echo $pathway_image; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?>
+							<?php else : ?>
+								<span class="homepage-pathway__media-mark"><?php echo esc_html( $pathway['mark'] ); ?></span>
+							<?php endif; ?>
 						</span>
 						<h3 class="homepage-pathway__title"><?php echo esc_html( $pathway['title'] ); ?></h3>
 						<?php if ( $pathway['url'] ) : ?>

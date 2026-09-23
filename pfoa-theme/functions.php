@@ -370,39 +370,44 @@ function pfoa_get_homepage_card_defaults() {
 
 	return array(
 		array(
-			'key'    => 'adoptable-cats',
-			'title'  => __( 'Adoptable Cats', 'pfoa-theme' ),
-			'mark'   => 'A',
-			'url'    => $adoptable_cats_page ? get_permalink( $adoptable_cats_page ) : '',
-			'button' => __( 'Explore', 'pfoa-theme' ),
+			'key'      => 'adoptable-cats',
+			'title'    => __( 'Adoptable Cats', 'pfoa-theme' ),
+			'mark'     => 'A',
+			'url'      => $adoptable_cats_page ? get_permalink( $adoptable_cats_page ) : '',
+			'button'   => __( 'Explore', 'pfoa-theme' ),
+			'image_id' => 0,
 		),
 		array(
-			'key'    => 'home-front',
-			'title'  => __( 'From the Home Front', 'pfoa-theme' ),
-			'mark'   => 'F',
-			'url'    => $home_front_page ? get_permalink( $home_front_page ) : '',
-			'button' => __( 'Explore', 'pfoa-theme' ),
+			'key'      => 'home-front',
+			'title'    => __( 'From the Home Front', 'pfoa-theme' ),
+			'mark'     => 'F',
+			'url'      => $home_front_page ? get_permalink( $home_front_page ) : '',
+			'button'   => __( 'Explore', 'pfoa-theme' ),
+			'image_id' => 0,
 		),
 		array(
-			'key'    => 'potholders',
-			'title'  => __( 'Pot Holders', 'pfoa-theme' ),
-			'mark'   => 'P',
-			'url'    => $potholders_page ? get_permalink( $potholders_page ) : '',
-			'button' => __( 'Explore', 'pfoa-theme' ),
+			'key'      => 'potholders',
+			'title'    => __( 'Pot Holders', 'pfoa-theme' ),
+			'mark'     => 'P',
+			'url'      => $potholders_page ? get_permalink( $potholders_page ) : '',
+			'button'   => __( 'Explore', 'pfoa-theme' ),
+			'image_id' => 0,
 		),
 		array(
-			'key'    => 'pet-tidings',
-			'title'  => __( 'Pet Tidings', 'pfoa-theme' ),
-			'mark'   => 'P',
-			'url'    => $pet_tidings_page ? get_permalink( $pet_tidings_page ) : '',
-			'button' => __( 'Explore', 'pfoa-theme' ),
+			'key'      => 'pet-tidings',
+			'title'    => __( 'Pet Tidings', 'pfoa-theme' ),
+			'mark'     => 'P',
+			'url'      => $pet_tidings_page ? get_permalink( $pet_tidings_page ) : '',
+			'button'   => __( 'Explore', 'pfoa-theme' ),
+			'image_id' => 0,
 		),
 		array(
-			'key'    => 'wishlist',
-			'title'  => __( 'Wish List', 'pfoa-theme' ),
-			'mark'   => 'W',
-			'url'    => $wishlist_page ? get_permalink( $wishlist_page ) : '',
-			'button' => __( 'Explore', 'pfoa-theme' ),
+			'key'      => 'wishlist',
+			'title'    => __( 'Wish List', 'pfoa-theme' ),
+			'mark'     => 'W',
+			'url'      => $wishlist_page ? get_permalink( $wishlist_page ) : '',
+			'button'   => __( 'Explore', 'pfoa-theme' ),
+			'image_id' => 0,
 		),
 	);
 }
@@ -425,11 +430,12 @@ function pfoa_sanitize_homepage_cards( $value ) {
 			continue;
 		}
 
-		$title  = isset( $card['title'] ) ? sanitize_text_field( $card['title'] ) : '';
-		$mark   = isset( $card['mark'] ) ? sanitize_text_field( $card['mark'] ) : '';
-		$button = isset( $card['button'] ) ? sanitize_text_field( $card['button'] ) : '';
-		$url    = isset( $card['url'] ) ? esc_url_raw( $card['url'] ) : '';
-		$key    = isset( $card['key'] ) ? sanitize_title( $card['key'] ) : '';
+		$title    = isset( $card['title'] ) ? sanitize_text_field( $card['title'] ) : '';
+		$mark     = isset( $card['mark'] ) ? sanitize_text_field( $card['mark'] ) : '';
+		$button   = isset( $card['button'] ) ? sanitize_text_field( $card['button'] ) : '';
+		$url      = isset( $card['url'] ) ? esc_url_raw( $card['url'] ) : '';
+		$key      = isset( $card['key'] ) ? sanitize_title( $card['key'] ) : '';
+		$image_id = isset( $card['image_id'] ) ? absint( $card['image_id'] ) : 0;
 
 		if ( '' === $key ) {
 			$key = sanitize_title( $title );
@@ -450,11 +456,12 @@ function pfoa_sanitize_homepage_cards( $value ) {
 		}
 
 		$cards[] = array(
-			'key'    => $key,
-			'title'  => $title,
-			'mark'   => $mark,
-			'url'    => $url,
-			'button' => '' === $button ? __( 'Explore', 'pfoa-theme' ) : $button,
+			'key'      => $key,
+			'title'    => $title,
+			'mark'     => $mark,
+			'url'      => $url,
+			'button'   => '' === $button ? __( 'Explore', 'pfoa-theme' ) : $button,
+			'image_id' => $image_id,
 		);
 	}
 
@@ -510,6 +517,36 @@ function pfoa_homepage_cards_menu() {
 add_action( 'admin_menu', 'pfoa_homepage_cards_menu' );
 
 /**
+ * Enqueue the Homepage Cards image picker assets.
+ *
+ * Scoped to the Homepage Cards admin page only; the media library is
+ * loaded there and nowhere else.
+ *
+ * @param string $hook Current admin page hook suffix.
+ * @return void
+ */
+function pfoa_homepage_cards_admin_assets( $hook ) {
+	if ( 'appearance_page_pfoa-homepage-cards' !== $hook ) {
+		return;
+	}
+
+	wp_enqueue_media();
+
+	$script = get_template_directory() . '/assets/js/admin-homepage-cards.js';
+
+	if ( file_exists( $script ) ) {
+		wp_enqueue_script(
+			'pfoa-homepage-cards-admin',
+			get_template_directory_uri() . '/assets/js/admin-homepage-cards.js',
+			array( 'jquery' ),
+			(string) filemtime( $script ),
+			true
+		);
+	}
+}
+add_action( 'admin_enqueue_scripts', 'pfoa_homepage_cards_admin_assets' );
+
+/**
  * Handle add/remove/reorder/save submissions for the Homepage Cards page.
  *
  * Plain PHP + submit only: every action posts the full field set back to the
@@ -534,11 +571,12 @@ function pfoa_homepage_cards_handle_post() {
 
 	if ( isset( $_POST['pfoa_cards_add'] ) ) {
 		$cards[] = array(
-			'key'    => '',
-			'title'  => '',
-			'mark'   => '',
-			'url'    => '',
-			'button' => __( 'Explore', 'pfoa-theme' ),
+			'key'      => '',
+			'title'    => '',
+			'mark'     => '',
+			'url'      => '',
+			'button'   => __( 'Explore', 'pfoa-theme' ),
+			'image_id' => 0,
 		);
 	} elseif ( isset( $_POST['pfoa_cards_remove'] ) && is_array( $_POST['pfoa_cards_remove'] ) ) {
 		$keys = array_map( 'absint', array_keys( $_POST['pfoa_cards_remove'] ) );
@@ -601,6 +639,7 @@ function pfoa_homepage_cards_page() {
 						<th scope="col"><?php esc_html_e( 'Order', 'pfoa-theme' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'Title', 'pfoa-theme' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'Mark', 'pfoa-theme' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Image', 'pfoa-theme' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'URL', 'pfoa-theme' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'Button', 'pfoa-theme' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'Actions', 'pfoa-theme' ); ?></th>
@@ -608,6 +647,10 @@ function pfoa_homepage_cards_page() {
 				</thead>
 				<tbody>
 					<?php foreach ( $cards as $index => $card ) : ?>
+					<?php
+					$card_image_id = isset( $card['image_id'] ) ? absint( $card['image_id'] ) : 0;
+					$card_preview  = $card_image_id ? wp_get_attachment_image( $card_image_id, array( 80, 80 ) ) : '';
+					?>
 						<tr>
 							<td><?php echo esc_html( (string) ( $index + 1 ) ); ?></td>
 							<td>
@@ -616,6 +659,12 @@ function pfoa_homepage_cards_page() {
 							</td>
 							<td>
 								<input type="text" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][mark]" value="<?php echo esc_attr( $card['mark'] ); ?>" size="2" maxlength="1" />
+							</td>
+							<td class="pfoa-cards-image-cell">
+								<input type="hidden" class="pfoa-cards-image-id" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][image_id]" value="<?php echo esc_attr( (string) $card_image_id ); ?>" />
+								<span class="pfoa-cards-image-preview"><?php echo $card_preview ? $card_preview : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
+								<button type="button" class="button pfoa-cards-image-select" data-select-label="<?php esc_attr_e( 'Select Image', 'pfoa-theme' ); ?>" data-replace-label="<?php esc_attr_e( 'Replace', 'pfoa-theme' ); ?>"><?php echo $card_preview ? esc_html__( 'Replace', 'pfoa-theme' ) : esc_html__( 'Select Image', 'pfoa-theme' ); ?></button>
+								<button type="button" class="button pfoa-cards-image-remove"<?php echo $card_preview ? '' : ' style="display:none;"'; ?>><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
 							</td>
 							<td>
 								<input type="url" class="regular-text" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][url]" value="<?php echo esc_attr( $card['url'] ); ?>" />
@@ -632,7 +681,7 @@ function pfoa_homepage_cards_page() {
 					<?php endforeach; ?>
 					<?php if ( array() === $cards ) : ?>
 						<tr>
-							<td colspan="6"><?php esc_html_e( 'No cards saved. Add one below or save to restore the defaults.', 'pfoa-theme' ); ?></td>
+							<td colspan="7"><?php esc_html_e( 'No cards saved. Add one below or save to restore the defaults.', 'pfoa-theme' ); ?></td>
 						</tr>
 					<?php endif; ?>
 				</tbody>
