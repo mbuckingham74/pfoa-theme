@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $footer_hours            = get_theme_mod( 'pfoa_footer_hours', '11:00 am–4:00 pm Tuesday–Saturday, by appointment.' );
 $footer_mailing_address  = get_theme_mod( 'pfoa_footer_mailing_address', "P.O. Box 404\nSequim, WA 98382" );
-$footer_physical_address = get_theme_mod( 'pfoa_footer_physical_address', "257509 Highway 101\nPort Angeles, WA" );
+$footer_physical_address = get_theme_mod( 'pfoa_footer_physical_address', "257509 Hwy 101\nPort Angeles, WA" );
 ?>
 	<footer id="colophon" class="site-footer site-footer--compact">
 		<div class="site-footer__inner">

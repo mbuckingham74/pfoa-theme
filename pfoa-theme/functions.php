@@ -171,7 +171,7 @@ function pfoa_customize_register( $wp_customize ) {
 	$wp_customize->add_setting(
 		'pfoa_footer_physical_address',
 		array(
-			'default'           => "257509 Highway 101\nPort Angeles, WA",
+			'default'           => "257509 Hwy 101\nPort Angeles, WA",
 			'sanitize_callback' => 'sanitize_textarea_field',
 			'transport'         => 'refresh',
 		)
