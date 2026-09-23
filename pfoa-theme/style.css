@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
-Version: 0.1.15
+Version: 0.1.16
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -783,13 +783,18 @@ input[type="file"] {
 	max-width: 100%;
 }
 
-/* Fixed-width legacy tables get a local scroll surface. Native Table blocks keep
- * their own wrapper behavior and the normal table display model. */
+/* Legacy content tables keep the table grid so multi-column weekly entries
+ * stay readable. The previous display:block scroll surface destroyed the grid
+ * and collapsed over-declared fixed-layout cells (4x width="50%") into
+ * character-wide columns. Fixed layout with full width distributes those
+ * cells evenly; long entries wrap via the inherited overflow-wrap on the
+ * compat container. Native Table blocks keep their own wrapper behavior and
+ * the normal table display model. */
 .page-content-compatibility .entry-content table:not(.wp-block-table table) {
-	display: block;
+	display: table;
+	table-layout: fixed;
 	width: 100%;
 	max-width: 100%;
-	overflow-x: auto;
 }
 
 .page-content-compatibility .entry-content :where(embed, object)[type="application/pdf"] {

@@ -830,3 +830,106 @@ class PFOA_Navigation_Walker extends Walker_Nav_Menu {
 		$output .= '</button>';
 	}
 }
+
+/**
+ * Compatibility rendering for the legacy Theme Blvd [button] shortcode.
+ *
+ * Historical Page content (e.g. From the Home Front) still carries shortcodes
+ * such as [button link="..." color="purple" target="_blank" align="center"
+ * title="..."]Label[/button] that were rendered by the Theme Blvd Shortcodes
+ * plugin under the previous theme. This theme must not depend on that plugin
+ * or framework; it renders the observed attributes with the theme's own
+ * button visual language (.pfoa-button/.button) so the label never prints raw.
+ *
+ * Only the attributes actually used in content are supported: link, color,
+ * target, align, and title. Unknown attributes are ignored.
+ *
+ * @param array       $atts    Shortcode attributes.
+ * @param string|null $content Enclosed label.
+ * @return string
+ */
+function pfoa_legacy_button_shortcode( $atts, $content = null ) {
+	$atts = shortcode_atts(
+		array(
+			'link'   => '',
+			'color'  => '',
+			'target' => '',
+			'align'  => '',
+			'title'  => '',
+		),
+		$atts,
+		'button'
+	);
+
+	$url = trim( (string) $atts['link'] );
+
+	$label = trim( wp_strip_all_tags( (string) do_shortcode( (string) $content ) ) );
+
+	if ( '' === $label ) {
+		$label = trim( wp_strip_all_tags( (string) $atts['title'] ) );
+	}
+
+	if ( '' === $label ) {
+		return '';
+	}
+
+	$classes = array( 'pfoa-button', 'button', 'pfoa-button-shortcode' );
+
+	$color = sanitize_html_class( (string) $atts['color'] );
+
+	if ( '' !== $color ) {
+		$classes[] = 'pfoa-button--' . $color;
+	}
+
+	$target = strtolower( trim( (string) $atts['target'] ) );
+
+	if ( ! in_array( $target, array( '_blank', '_self', '_parent', '_top' ), true ) ) {
+		$target = '';
+	}
+
+	$title = trim( (string) $atts['title'] );
+
+	if ( '' === $url ) {
+		return '<span class="' . esc_attr( implode( ' ', $classes ) ) . '">' . esc_html( $label ) . '</span>';
+	}
+
+	$anchor = '<a class="' . esc_attr( implode( ' ', $classes ) ) . '" href="' . esc_url( $url ) . '"';
+
+	if ( '' !== $target ) {
+		$anchor .= ' target="' . esc_attr( $target ) . '"';
+
+		if ( '_blank' === $target ) {
+			$anchor .= ' rel="noopener noreferrer"';
+		}
+	}
+
+	if ( '' !== $title ) {
+		$anchor .= ' title="' . esc_attr( $title ) . '"';
+	}
+
+	$anchor .= '>' . esc_html( $label ) . '</a>';
+
+	$align = strtolower( trim( (string) $atts['align'] ) );
+
+	if ( in_array( $align, array( 'left', 'center', 'right' ), true ) ) {
+		return '<div class="pfoa-button-shortcode-align" style="text-align:' . esc_attr( $align ) . ';">' . $anchor . '</div>';
+	}
+
+	return $anchor;
+}
+
+/**
+ * Register legacy content shortcodes without clobbering plugin output.
+ *
+ * When the Theme Blvd Shortcodes plugin (or any other plugin) already
+ * provides [button], its registration wins: this runs on init, after plugins
+ * have registered theirs, and skips any shortcode that already exists.
+ *
+ * @return void
+ */
+function pfoa_register_legacy_shortcodes() {
+	if ( ! shortcode_exists( 'button' ) ) {
+		add_shortcode( 'button', 'pfoa_legacy_button_shortcode' );
+	}
+}
+add_action( 'init', 'pfoa_register_legacy_shortcodes' );
