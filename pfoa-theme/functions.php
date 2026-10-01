@@ -543,14 +543,14 @@ add_action( 'admin_init', 'pfoa_homepage_cards_admin_init' );
 /**
  * Enqueue the Homepage Cards image picker assets.
  *
- * Scoped to the PFOA Site > Homepage screen only (toplevel + submenu hook
- * suffixes); the media library is loaded there and nowhere else.
+ * Scoped to the PFOA Site > Homepage screen only (toplevel hook suffix);
+ * the media library is loaded there and nowhere else.
  *
  * @param string $hook Current admin page hook suffix.
  * @return void
  */
 function pfoa_homepage_cards_admin_assets( $hook ) {
-	if ( ! in_array( $hook, array( 'toplevel_page_pfoa-site', 'pfoa-site_page_pfoa-homepage' ), true ) ) {
+	if ( 'toplevel_page_pfoa-site' !== $hook ) {
 		return;
 	}
 
@@ -916,6 +916,9 @@ function pfoa_homepage_front_id() {
  * it; per-page access is enforced inside the screen and save callbacks with
  * current_user_can( 'edit_page', $front_id ).
  *
+ * The submenu reuses the top-level slug so WordPress replaces the automatic
+ * duplicate entry with the single visible Homepage item.
+ *
  * @return void
  */
 function pfoa_site_admin_menu() {
@@ -934,7 +937,7 @@ function pfoa_site_admin_menu() {
 		esc_html__( 'Homepage', 'pfoa-theme' ),
 		esc_html__( 'Homepage', 'pfoa-theme' ),
 		'edit_pages',
-		'pfoa-homepage',
+		'pfoa-site',
 		'pfoa_site_homepage_page'
 	);
 }
@@ -1106,7 +1109,7 @@ function pfoa_site_homepage_page() {
  * @return void
  */
 function pfoa_hero_admin_assets( $hook ) {
-	if ( ! in_array( $hook, array( 'toplevel_page_pfoa-site', 'pfoa-site_page_pfoa-homepage' ), true ) ) {
+	if ( 'toplevel_page_pfoa-site' !== $hook ) {
 		return;
 	}
 
@@ -1148,7 +1151,7 @@ add_action( 'admin_enqueue_scripts', 'pfoa_hero_admin_assets' );
  */
 function pfoa_homepage_hero_save() {
 	if ( ! isset( $_POST['pfoa_hero_nonce'] ) ) {
-		wp_safe_redirect( admin_url( 'admin.php?page=pfoa-homepage' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=pfoa-site' ) );
 		exit;
 	}
 
@@ -1163,12 +1166,12 @@ function pfoa_homepage_hero_save() {
 	$front_id = pfoa_homepage_front_id();
 
 	if ( ! $front_id ) {
-		wp_safe_redirect( admin_url( 'admin.php?page=pfoa-homepage' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=pfoa-site' ) );
 		exit;
 	}
 
 	if ( 'page' !== get_post_type( $front_id ) ) {
-		wp_safe_redirect( admin_url( 'admin.php?page=pfoa-homepage' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=pfoa-site' ) );
 		exit;
 	}
 
@@ -1180,7 +1183,7 @@ function pfoa_homepage_hero_save() {
 
 	update_post_meta( $front_id, PFOA_HERO_META_KEY, pfoa_sanitize_hero( $raw ) );
 
-	wp_safe_redirect( add_query_arg( 'pfoa-homepage-updated', '1', admin_url( 'admin.php?page=pfoa-homepage' ) ) );
+	wp_safe_redirect( add_query_arg( 'pfoa-homepage-updated', '1', admin_url( 'admin.php?page=pfoa-site' ) ) );
 	exit;
 }
 add_action( 'admin_post_pfoa_homepage_hero_save', 'pfoa_homepage_hero_save' );
