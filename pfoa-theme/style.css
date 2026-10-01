@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.25
+ Version: 0.1.26
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -819,6 +819,50 @@ input[type="file"] {
 	table-layout: fixed;
 	width: 100%;
 	max-width: 100%;
+}
+
+/* Legacy photo-grid tables stay borderless and centered (staff/board/facilities).
+ * Structural only: no th/thead, no explicit border="1", contains images.
+ * Ordinary data tables (border="1", th/thead, wp-block-table) keep generic borders. */
+.page-content .entry-content table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)):has(td img) {
+	width: auto;
+	max-width: 100%;
+	table-layout: auto;
+	margin-inline: auto;
+	border: 0;
+	border-collapse: collapse;
+	background: transparent;
+}
+
+.page-content .entry-content table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)):has(td img) td {
+	border: 0;
+	padding: 4px;
+	background: transparent;
+	vertical-align: top;
+	text-align: center;
+}
+
+.page-content .entry-content table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)):has(td img) img {
+	display: block;
+	margin-inline: auto;
+	height: auto;
+}
+
+/* Caption companion table immediately following a photo-grid (facilities pattern). */
+.page-content .entry-content table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)):has(td img) + table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)) {
+	width: auto;
+	max-width: 100%;
+	margin-inline: auto;
+	border: 0;
+	border-collapse: collapse;
+	background: transparent;
+}
+
+.page-content .entry-content table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)):has(td img) + table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)) td {
+	border: 0;
+	background: transparent;
+	text-align: center;
+	vertical-align: top;
 }
 
 .page-content-compatibility .entry-content :where(embed, object)[type="application/pdf"] {
