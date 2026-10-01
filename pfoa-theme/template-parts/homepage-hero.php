@@ -2,6 +2,13 @@
 /**
  * Homepage hero structure.
  *
+ * Content is editable via the "Hero Section" meta box on the page assigned
+ * as the site homepage (stored as post meta). When nothing has been saved,
+ * the legacy effective content renders: the page featured image (or the
+ * theme fallback banner), the "Homepage" headline, and the Adopt/Volunteer
+ * destinations. The headline and buttons stay fixed while carousel images
+ * change behind them.
+ *
  * @package PFOA
  */
 
@@ -9,27 +16,84 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$has_hero_image    = has_post_thumbnail();
+$hero = pfoa_get_hero( get_the_ID() );
+
+$hero_mode  = ( isset( $hero['mode'] ) && 'carousel' === $hero['mode'] ) ? 'carousel' : 'single';
+$hero_title = ( isset( $hero['headline'] ) && '' !== $hero['headline'] ) ? $hero['headline'] : __( 'Homepage', 'pfoa-theme' );
+$hero_ctas  = ( isset( $hero['ctas'] ) && is_array( $hero['ctas'] ) ) ? $hero['ctas'] : array();
+$hero_image = ( isset( $hero['image_id'] ) && wp_attachment_is_image( absint( $hero['image_id'] ) ) ) ? absint( $hero['image_id'] ) : 0;
+
 $uploads           = wp_get_upload_dir();
 $fallback_hero     = trailingslashit( $uploads['baseurl'] ) . '2026/09/A1KittensBanner.jpg';
 $has_fallback_hero = ! empty( $fallback_hero );
-$hero_classes      = array( 'homepage-section', 'homepage-hero' );
-$hero_title        = get_the_title();
-$hero_title        = $hero_title ? $hero_title : get_bloginfo( 'name' );
-$adoption_page     = pfoa_get_page_by_paths( array( 'adoptablecats2' ) );
-$volunteering_page = pfoa_get_page_by_paths( array( 'volunteering' ) );
-$adoption_url      = $adoption_page ? get_permalink( $adoption_page ) : '';
-$volunteering_url  = $volunteering_page ? get_permalink( $volunteering_page ) : '';
-$hero_primary_url    = $adoption_url ? $adoption_url : $volunteering_url;
-$hero_primary_label  = $adoption_url ? __( 'Adopt', 'pfoa-theme' ) : __( 'Volunteer', 'pfoa-theme' );
-$hero_secondary_url  = $adoption_url ? $volunteering_url : '';
 
-if ( ! $has_hero_image && ! $has_fallback_hero ) {
+$carousel_ids = array();
+
+if ( 'carousel' === $hero_mode && isset( $hero['carousel_ids'] ) && is_array( $hero['carousel_ids'] ) ) {
+	foreach ( $hero['carousel_ids'] as $carousel_id ) {
+		$carousel_id = absint( $carousel_id );
+
+		if ( $carousel_id && wp_attachment_is_image( $carousel_id ) ) {
+			$carousel_ids[] = $carousel_id;
+		}
+	}
+}
+
+$is_carousel = array() !== $carousel_ids;
+
+$has_custom_image   = 0 !== $hero_image;
+$has_featured_image = has_post_thumbnail();
+
+$hero_classes = array( 'homepage-section', 'homepage-hero' );
+
+if ( $is_carousel ) {
+	$hero_classes[] = 'homepage-hero--carousel';
+}
+
+if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fallback_hero ) {
 	$hero_classes[] = 'homepage-hero--no-image';
 }
 ?>
 <section id="homepage-hero" class="<?php echo esc_attr( implode( ' ', $hero_classes ) ); ?>" aria-labelledby="homepage-hero-title">
-	<?php if ( $has_hero_image ) : ?>
+	<?php if ( $is_carousel ) : ?>
+		<div class="homepage-hero__media" id="homepage-hero-media" data-pfoa-hero-carousel>
+			<?php foreach ( $carousel_ids as $slide_index => $slide_id ) : ?>
+				<div class="homepage-hero__slide<?php echo 0 === $slide_index ? ' is-active' : ''; ?>"<?php echo 0 === $slide_index ? '' : ' aria-hidden="true"'; ?>>
+					<?php
+					echo wp_get_attachment_image(
+						$slide_id,
+						'full',
+						false,
+						array(
+							'class'         => 'homepage-hero__image',
+							'loading'       => 0 === $slide_index ? 'eager' : 'lazy',
+							'decoding'      => 'async',
+							'fetchpriority' => 0 === $slide_index ? 'high' : 'low',
+						)
+					);
+					?>
+				</div>
+			<?php endforeach; ?>
+			<span class="homepage-hero__scrim" aria-hidden="true"></span>
+		</div>
+	<?php elseif ( $has_custom_image ) : ?>
+		<div class="homepage-hero__media">
+			<?php
+			echo wp_get_attachment_image(
+				$hero_image,
+				'full',
+				false,
+				array(
+					'class'         => 'homepage-hero__image',
+					'loading'       => 'eager',
+					'decoding'      => 'async',
+					'fetchpriority' => 'high',
+				)
+			);
+			?>
+			<span class="homepage-hero__scrim" aria-hidden="true"></span>
+		</div>
+	<?php elseif ( $has_featured_image ) : ?>
 		<div class="homepage-hero__media">
 			<?php
 				the_post_thumbnail(
@@ -55,19 +119,38 @@ if ( ! $has_hero_image && ! $has_fallback_hero ) {
 			<p class="homepage-hero__site-name"><?php echo esc_html( get_bloginfo( 'name' ) ); ?></p>
 			<h1 id="homepage-hero-title" class="homepage-hero__title"><?php echo esc_html( $hero_title ); ?></h1>
 
-			<?php if ( $hero_primary_url ) : ?>
+			<?php if ( $hero_ctas ) : ?>
 				<div class="homepage-hero__actions">
-					<a class="pfoa-button homepage-hero__primary" href="<?php echo esc_url( $hero_primary_url ); ?>">
-						<?php echo esc_html( $hero_primary_label ); ?>
-					</a>
+					<?php $cta_position = 0; ?>
+					<?php foreach ( $hero_ctas as $hero_cta ) : ?>
+						<?php
+						$cta_label = isset( $hero_cta['label'] ) ? $hero_cta['label'] : '';
+						$cta_url   = isset( $hero_cta['url'] ) ? $hero_cta['url'] : '';
 
-					<?php if ( $hero_secondary_url ) : ?>
-						<a class="pfoa-button homepage-hero__secondary" href="<?php echo esc_url( $hero_secondary_url ); ?>">
-							<?php esc_html_e( 'Volunteer', 'pfoa-theme' ); ?>
+						if ( '' === $cta_label || '' === $cta_url ) {
+							continue;
+						}
+
+						$cta_class = 0 === $cta_position ? 'pfoa-button homepage-hero__primary' : 'pfoa-button homepage-hero__secondary';
+						$cta_position++;
+						?>
+						<a class="<?php echo esc_attr( $cta_class ); ?>" href="<?php echo esc_url( $cta_url ); ?>">
+							<?php echo esc_html( $cta_label ); ?>
 						</a>
-					<?php endif; ?>
+					<?php endforeach; ?>
 				</div>
 			<?php endif; ?>
 		</div>
 	</div>
+
+	<?php if ( $is_carousel ) : ?>
+		<div class="homepage-hero__controls">
+			<button type="button" class="homepage-hero__nav homepage-hero__nav--prev" data-pfoa-hero-prev aria-controls="homepage-hero-media" aria-label="<?php esc_attr_e( 'Previous hero image', 'pfoa-theme' ); ?>">
+				<span aria-hidden="true">&#8249;</span>
+			</button>
+			<button type="button" class="homepage-hero__nav homepage-hero__nav--next" data-pfoa-hero-next aria-controls="homepage-hero-media" aria-label="<?php esc_attr_e( 'Next hero image', 'pfoa-theme' ); ?>">
+				<span aria-hidden="true">&#8250;</span>
+			</button>
+		</div>
+	<?php endif; ?>
 </section>

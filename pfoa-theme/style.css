@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.19
+ Version: 0.1.20
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -1904,6 +1904,55 @@ input[type="file"] {
 	border-color: #ffffff;
 	background: #ffffff;
 	color: var(--pfoa-color-text);
+}
+
+/* Hero carousel. Single-image layout above is unchanged; these rules only
+   apply in carousel mode. The overlay content stays fixed while slides
+   crossfade behind it. */
+.front-page-content .homepage-hero--carousel .homepage-hero__slide {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	transition: opacity 0.6s ease;
+}
+
+.front-page-content .homepage-hero--carousel .homepage-hero__slide.is-active {
+	opacity: 1;
+}
+
+.front-page-content .homepage-hero__controls {
+	position: absolute;
+	z-index: 2;
+	right: var(--pfoa-gutter, 1.5rem);
+	bottom: 1.25rem;
+	display: flex;
+	gap: 0.5rem;
+}
+
+.front-page-content .homepage-hero__nav {
+	width: 2.75rem;
+	height: 2.75rem;
+	padding: 0;
+	border: 1px solid rgb(255 255 255 / 78%);
+	border-radius: 50%;
+	background: rgb(33 30 29 / 40%);
+	color: #ffffff;
+	font-size: 1.5rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.front-page-content .homepage-hero__nav:hover,
+.front-page-content .homepage-hero__nav:focus-visible {
+	border-color: #ffffff;
+	background: #ffffff;
+	color: var(--pfoa-color-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide {
+		transition: none;
+	}
 }
 
 /* Primary pathways */

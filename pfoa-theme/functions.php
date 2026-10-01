@@ -81,6 +81,28 @@ function pfoa_enqueue_assets() {
 			array( 'strategy' => 'defer' )
 		);
 	}
+
+	if ( is_front_page() ) {
+		$front_page_id = (int) get_option( 'page_on_front' );
+
+		if ( $front_page_id ) {
+			$front_hero = pfoa_get_hero( $front_page_id );
+
+			if ( 'carousel' === $front_hero['mode'] && array() !== $front_hero['carousel_ids'] ) {
+				$hero_script = get_template_directory() . '/assets/js/homepage-hero.js';
+
+				if ( file_exists( $hero_script ) ) {
+					wp_enqueue_script(
+						'pfoa-homepage-hero',
+						get_template_directory_uri() . '/assets/js/homepage-hero.js',
+						array(),
+						(string) filemtime( $hero_script ),
+						array( 'strategy' => 'defer' )
+					);
+				}
+			}
+		}
+	}
 }
 add_action( 'wp_enqueue_scripts', 'pfoa_enqueue_assets' );
 
@@ -694,6 +716,440 @@ function pfoa_homepage_cards_page() {
 	</div>
 	<?php
 }
+
+/**
+ * Meta key storing the editable homepage hero as a single array.
+ *
+ * Shape: array(
+ *   'mode'         => 'single' | 'carousel',
+ *   'headline'     => string,
+ *   'image_id'     => int (attachment ID),
+ *   'carousel_ids' => int[] (attachment IDs, display order),
+ *   'ctas'         => array[] of array( 'label' => string, 'url' => string ),
+ * ).
+ *
+ * @var string
+ */
+define( 'PFOA_HERO_META_KEY', '_pfoa_hero' );
+
+/**
+ * Return the default homepage hero values.
+ *
+ * CTA destinations resolve through pfoa_get_page_by_paths() so a fresh
+ * install renders the same Adopt/Volunteer destinations as the previous
+ * hard-coded template without any manual re-entry.
+ *
+ * @return array
+ */
+function pfoa_get_hero_defaults() {
+	$adoption_page     = pfoa_get_page_by_paths( array( 'adoptablecats2' ) );
+	$volunteering_page = pfoa_get_page_by_paths( array( 'volunteering' ) );
+	$adoption_url      = $adoption_page ? get_permalink( $adoption_page ) : '';
+	$volunteering_url  = $volunteering_page ? get_permalink( $volunteering_page ) : '';
+
+	$ctas = array();
+
+	if ( $adoption_url ) {
+		$ctas[] = array(
+			'label' => __( 'Adopt', 'pfoa-theme' ),
+			'url'   => $adoption_url,
+		);
+	}
+
+	if ( $volunteering_url ) {
+		$ctas[] = array(
+			'label' => __( 'Volunteer', 'pfoa-theme' ),
+			'url'   => $volunteering_url,
+		);
+	}
+
+	return array(
+		'mode'         => 'single',
+		'headline'     => __( 'Homepage', 'pfoa-theme' ),
+		'image_id'     => 0,
+		'carousel_ids' => array(),
+		'ctas'         => $ctas,
+	);
+}
+
+/**
+ * Sanitize a homepage hero value. No raw HTML is allowed.
+ *
+ * @param mixed $value Raw submitted value (expected unslashed).
+ * @return array
+ */
+function pfoa_sanitize_hero( $value ) {
+	$hero = array(
+		'mode'         => 'single',
+		'headline'     => '',
+		'image_id'     => 0,
+		'carousel_ids' => array(),
+		'ctas'         => array(),
+	);
+
+	if ( ! is_array( $value ) ) {
+		return $hero;
+	}
+
+	$mode = isset( $value['mode'] ) ? sanitize_key( $value['mode'] ) : 'single';
+	$hero['mode'] = in_array( $mode, array( 'single', 'carousel' ), true ) ? $mode : 'single';
+
+	$hero['headline'] = isset( $value['headline'] ) ? sanitize_text_field( $value['headline'] ) : '';
+
+	$image_id = isset( $value['image_id'] ) ? absint( $value['image_id'] ) : 0;
+	$hero['image_id'] = ( $image_id && wp_attachment_is_image( $image_id ) ) ? $image_id : 0;
+
+	if ( isset( $value['carousel_ids'] ) && is_array( $value['carousel_ids'] ) ) {
+		foreach ( $value['carousel_ids'] as $carousel_id ) {
+			$carousel_id = absint( $carousel_id );
+
+			if ( $carousel_id && wp_attachment_is_image( $carousel_id ) && ! in_array( $carousel_id, $hero['carousel_ids'], true ) ) {
+				$hero['carousel_ids'][] = $carousel_id;
+			}
+		}
+	}
+
+	if ( isset( $value['ctas'] ) && is_array( $value['ctas'] ) ) {
+		foreach ( $value['ctas'] as $cta ) {
+			if ( ! is_array( $cta ) ) {
+				continue;
+			}
+
+			$label = isset( $cta['label'] ) ? sanitize_text_field( $cta['label'] ) : '';
+			$url   = isset( $cta['url'] ) ? esc_url_raw( $cta['url'] ) : '';
+
+			if ( '' === $label && '' === $url ) {
+				continue;
+			}
+
+			$hero['ctas'][] = array(
+				'label' => $label,
+				'url'   => $url,
+			);
+		}
+	}
+
+	return $hero;
+}
+
+/**
+ * Return the effective homepage hero for a page.
+ *
+ * When no hero meta has been saved, the legacy effective content applies:
+ * headline "Homepage" with the default Adopt/Volunteer destinations. Image
+ * resolution (custom image, then featured image, then theme fallback banner)
+ * happens in the template so the hero never renders empty.
+ *
+ * @param int $post_id Page ID.
+ * @return array
+ */
+function pfoa_get_hero( $post_id ) {
+	$defaults = pfoa_get_hero_defaults();
+	$saved    = get_post_meta( $post_id, PFOA_HERO_META_KEY, true );
+
+	if ( ! is_array( $saved ) || array() === $saved ) {
+		return $defaults;
+	}
+
+	$hero = pfoa_sanitize_hero( $saved );
+
+	if ( '' === $hero['headline'] ) {
+		$hero['headline'] = $defaults['headline'];
+	}
+
+	return $hero;
+}
+
+/**
+ * Return the assigned static front page ID, or 0 when none is usable.
+ *
+ * A usable front page is a published page assigned under Settings > Reading.
+ *
+ * @return int
+ */
+function pfoa_homepage_front_id() {
+	$front_id = (int) get_option( 'page_on_front' );
+
+	if ( ! $front_id || 'page' !== get_post_type( $front_id ) || 'publish' !== get_post_status( $front_id ) ) {
+		return 0;
+	}
+
+	return $front_id;
+}
+
+/**
+ * Register the PFOA Site top-level menu and its Homepage screen.
+ *
+ * The menu uses the edit_pages capability so anyone who can edit pages sees
+ * it; per-page access is enforced inside the screen and save callbacks with
+ * current_user_can( 'edit_page', $front_id ).
+ *
+ * @return void
+ */
+function pfoa_site_admin_menu() {
+	add_menu_page(
+		esc_html__( 'PFOA Site', 'pfoa-theme' ),
+		esc_html__( 'PFOA Site', 'pfoa-theme' ),
+		'edit_pages',
+		'pfoa-site',
+		'pfoa_site_homepage_page',
+		'dashicons-admin-home',
+		59
+	);
+
+	add_submenu_page(
+		'pfoa-site',
+		esc_html__( 'Homepage', 'pfoa-theme' ),
+		esc_html__( 'Homepage', 'pfoa-theme' ),
+		'edit_pages',
+		'pfoa-homepage',
+		'pfoa_site_homepage_page'
+	);
+}
+add_action( 'admin_menu', 'pfoa_site_admin_menu' );
+
+/**
+ * Render the PFOA Site > Homepage screen (Hero Section for the static homepage).
+ *
+ * Storage stays exactly where the page meta box kept it: post meta key
+ * _pfoa_hero on the page assigned as the static front page. Nothing is stored
+ * in options and post_content is never touched.
+ *
+ * @return void
+ */
+function pfoa_site_homepage_page() {
+	if ( ! current_user_can( 'edit_pages' ) ) {
+		wp_die( esc_html__( 'You do not have permission to edit the homepage.', 'pfoa-theme' ) );
+	}
+
+	$front_id = pfoa_homepage_front_id();
+
+	if ( isset( $_GET['pfoa-homepage-updated'] ) ) {
+		add_settings_error(
+			'pfoa_homepage_messages',
+			'pfoa_homepage_saved',
+			esc_html__( 'Homepage updated.', 'pfoa-theme' ),
+			'success'
+		);
+	}
+
+	if ( ! $front_id ) {
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Homepage', 'pfoa-theme' ); ?></h1>
+			<?php settings_errors( 'pfoa_homepage_messages' ); ?>
+			<div class="notice notice-warning"><p><?php esc_html_e( 'Set Settings → Reading → static front page to a published page before editing the homepage here.', 'pfoa-theme' ); ?></p></div>
+		</div>
+		<?php
+		return;
+	}
+
+	if ( ! current_user_can( 'edit_page', $front_id ) ) {
+		wp_die( esc_html__( 'You do not have permission to edit the homepage.', 'pfoa-theme' ) );
+	}
+
+	$hero         = pfoa_get_hero( $front_id );
+	$mode         = in_array( $hero['mode'], array( 'single', 'carousel' ), true ) ? $hero['mode'] : 'single';
+	$headline     = isset( $hero['headline'] ) ? $hero['headline'] : '';
+	$image_id     = isset( $hero['image_id'] ) ? absint( $hero['image_id'] ) : 0;
+	$carousel_ids = ( isset( $hero['carousel_ids'] ) && is_array( $hero['carousel_ids'] ) ) ? $hero['carousel_ids'] : array();
+	$ctas         = ( isset( $hero['ctas'] ) && is_array( $hero['ctas'] ) ) ? $hero['ctas'] : array();
+	$preview      = $image_id ? wp_get_attachment_image( $image_id, array( 80, 80 ) ) : '';
+
+	?>
+	<div class="wrap">
+		<h1><?php esc_html_e( 'Homepage', 'pfoa-theme' ); ?></h1>
+		<?php settings_errors( 'pfoa_homepage_messages' ); ?>
+		<p><?php printf( esc_html__( 'Editing the homepage: %s', 'pfoa-theme' ), esc_html( get_the_title( $front_id ) ) ); ?></p>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="pfoa_homepage_hero_save" />
+			<?php wp_nonce_field( 'pfoa_hero_save', 'pfoa_hero_nonce' ); ?>
+			<h2><?php esc_html_e( 'Hero Section', 'pfoa-theme' ); ?></h2>
+			<h3><?php esc_html_e( 'Hero Media', 'pfoa-theme' ); ?></h3>
+	<p><?php esc_html_e( 'Edit the hero section shown at the top of the site homepage. The headline and buttons stay fixed while carousel images change behind them.', 'pfoa-theme' ); ?></p>
+	<table class="form-table" role="presentation">
+		<tr>
+			<th scope="row"><?php esc_html_e( 'Hero media mode', 'pfoa-theme' ); ?></th>
+			<td>
+				<fieldset>
+					<label>
+						<input type="radio" name="pfoa_hero[mode]" value="single"<?php checked( $mode, 'single' ); ?> />
+						<?php esc_html_e( 'Single Image', 'pfoa-theme' ); ?>
+					</label><br />
+					<label>
+						<input type="radio" name="pfoa_hero[mode]" value="carousel"<?php checked( $mode, 'carousel' ); ?> />
+						<?php esc_html_e( 'Carousel', 'pfoa-theme' ); ?>
+					</label>
+				</fieldset>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><?php esc_html_e( 'Single image', 'pfoa-theme' ); ?></th>
+			<td class="pfoa-hero-single-cell">
+				<input type="hidden" class="pfoa-hero-single-id" name="pfoa_hero[image_id]" value="<?php echo esc_attr( (string) $image_id ); ?>" />
+				<span class="pfoa-hero-single-preview"><?php echo $preview ? $preview : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
+				<button type="button" class="button pfoa-hero-single-select"><?php echo $preview ? esc_html__( 'Replace', 'pfoa-theme' ) : esc_html__( 'Select Image', 'pfoa-theme' ); ?></button>
+				<button type="button" class="button pfoa-hero-single-remove"<?php echo $preview ? '' : ' style="display:none;"'; ?>><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+				<p class="description"><?php esc_html_e( 'Shown when Single Image mode is selected. If empty, the page featured image (or the theme fallback banner) is used.', 'pfoa-theme' ); ?></p>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><?php esc_html_e( 'Carousel images', 'pfoa-theme' ); ?></th>
+			<td>
+				<ul class="pfoa-hero-carousel-list">
+					<?php foreach ( $carousel_ids as $carousel_id ) : ?>
+						<?php
+						$carousel_id      = absint( $carousel_id );
+						$carousel_preview = $carousel_id ? wp_get_attachment_image( $carousel_id, array( 80, 80 ) ) : '';
+						?>
+						<?php if ( $carousel_preview ) : ?>
+							<li class="pfoa-hero-carousel-item">
+								<span class="pfoa-hero-carousel-preview"><?php echo $carousel_preview; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
+								<input type="hidden" name="pfoa_hero[carousel_ids][]" value="<?php echo esc_attr( (string) $carousel_id ); ?>" />
+								<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
+								<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
+								<button type="button" class="button pfoa-hero-carousel-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+							</li>
+						<?php endif; ?>
+					<?php endforeach; ?>
+				</ul>
+				<button type="button" class="button pfoa-hero-carousel-add"><?php esc_html_e( 'Add Images', 'pfoa-theme' ); ?></button>
+				<p class="description"><?php esc_html_e( 'Shown in order when Carousel mode is selected. Use Move Up and Move Down to reorder; the headline and buttons stay the same on every image.', 'pfoa-theme' ); ?></p>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><label for="pfoa-hero-headline"><?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?></label></th>
+			<td>
+				<input type="text" id="pfoa-hero-headline" class="regular-text" name="pfoa_hero[headline]" value="<?php echo esc_attr( $headline ); ?>" />
+			</td>
+		</tr>
+	</table>
+	<h4><?php esc_html_e( 'Shortcut buttons', 'pfoa-theme' ); ?></h4>
+	<table class="widefat striped">
+		<thead>
+			<tr>
+				<th scope="col"><?php esc_html_e( 'Label', 'pfoa-theme' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Destination URL', 'pfoa-theme' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Actions', 'pfoa-theme' ); ?></th>
+			</tr>
+		</thead>
+		<tbody class="pfoa-hero-ctas-body" data-next-index="<?php echo esc_attr( (string) count( $ctas ) ); ?>">
+			<?php foreach ( $ctas as $index => $cta ) : ?>
+				<tr class="pfoa-hero-cta-row">
+					<td>
+						<input type="text" class="regular-text" name="pfoa_hero[ctas][<?php echo esc_attr( (string) $index ); ?>][label]" value="<?php echo esc_attr( isset( $cta['label'] ) ? $cta['label'] : '' ); ?>" />
+					</td>
+					<td>
+						<input type="url" class="regular-text" name="pfoa_hero[ctas][<?php echo esc_attr( (string) $index ); ?>][url]" value="<?php echo esc_attr( isset( $cta['url'] ) ? $cta['url'] : '' ); ?>" />
+					</td>
+					<td>
+						<button type="button" class="button pfoa-hero-cta-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
+						<button type="button" class="button pfoa-hero-cta-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
+						<button type="button" class="button pfoa-hero-cta-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+		</tbody>
+	</table>
+	<p>
+		<button type="button" class="button pfoa-hero-cta-add"><?php esc_html_e( 'Add Button', 'pfoa-theme' ); ?></button>
+	</p>
+			<p class="submit">
+				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save Homepage', 'pfoa-theme' ); ?></button>
+			</p>
+		</form>
+	</div>
+	<?php
+}
+
+/**
+ * Enqueue the Hero Section picker assets.
+ *
+ * Scoped to the PFOA Site > Homepage screen only; the media library is loaded
+ * there and nowhere else.
+ *
+ * @param string $hook Current admin page hook suffix.
+ * @return void
+ */
+function pfoa_hero_admin_assets( $hook ) {
+	if ( ! in_array( $hook, array( 'toplevel_page_pfoa-site', 'pfoa-site_page_pfoa-homepage' ), true ) ) {
+		return;
+	}
+
+	wp_enqueue_media();
+
+	$script = get_template_directory() . '/assets/js/admin-homepage-hero.js';
+
+	if ( file_exists( $script ) ) {
+		wp_enqueue_script(
+			'pfoa-hero-admin',
+			get_template_directory_uri() . '/assets/js/admin-homepage-hero.js',
+			array( 'jquery' ),
+			(string) filemtime( $script ),
+			true
+		);
+
+		wp_localize_script(
+			'pfoa-hero-admin',
+			'pfoaHeroAdmin',
+			array(
+				'moveUp'   => __( 'Move Up', 'pfoa-theme' ),
+				'moveDown' => __( 'Move Down', 'pfoa-theme' ),
+				'remove'   => __( 'Remove', 'pfoa-theme' ),
+			)
+		);
+	}
+}
+add_action( 'admin_enqueue_scripts', 'pfoa_hero_admin_assets' );
+
+/**
+ * Save the Hero Section from the PFOA Site > Homepage screen.
+ *
+ * Handles the admin-post submission: same nonce action/field names as before
+ * ('pfoa_hero_save' / 'pfoa_hero_nonce'), same pfoa_hero[...] field names and
+ * sanitizer, stored only as post meta on the assigned static front page.
+ * post_content is never touched.
+ *
+ * @return void
+ */
+function pfoa_homepage_hero_save() {
+	if ( ! isset( $_POST['pfoa_hero_nonce'] ) ) {
+		wp_safe_redirect( admin_url( 'admin.php?page=pfoa-homepage' ) );
+		exit;
+	}
+
+	if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['pfoa_hero_nonce'] ) ), 'pfoa_hero_save' ) ) {
+		wp_die( esc_html__( 'Security check failed. Please try again.', 'pfoa-theme' ) );
+	}
+
+	if ( ! current_user_can( 'edit_pages' ) ) {
+		wp_die( esc_html__( 'You do not have permission to edit the homepage.', 'pfoa-theme' ) );
+	}
+
+	$front_id = pfoa_homepage_front_id();
+
+	if ( ! $front_id ) {
+		wp_safe_redirect( admin_url( 'admin.php?page=pfoa-homepage' ) );
+		exit;
+	}
+
+	if ( 'page' !== get_post_type( $front_id ) ) {
+		wp_safe_redirect( admin_url( 'admin.php?page=pfoa-homepage' ) );
+		exit;
+	}
+
+	if ( ! current_user_can( 'edit_page', $front_id ) ) {
+		wp_die( esc_html__( 'You do not have permission to edit the homepage.', 'pfoa-theme' ) );
+	}
+
+	$raw = isset( $_POST['pfoa_hero'] ) && is_array( $_POST['pfoa_hero'] ) ? wp_unslash( $_POST['pfoa_hero'] ) : array();
+
+	update_post_meta( $front_id, PFOA_HERO_META_KEY, pfoa_sanitize_hero( $raw ) );
+
+	wp_safe_redirect( add_query_arg( 'pfoa-homepage-updated', '1', admin_url( 'admin.php?page=pfoa-homepage' ) ) );
+	exit;
+}
+add_action( 'admin_post_pfoa_homepage_hero_save', 'pfoa_homepage_hero_save' );
 
 /**
  * Render a minimal recovery menu when no Primary Menu has been assigned.
