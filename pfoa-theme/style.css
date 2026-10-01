@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.30
+ Version: 0.1.31
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -2113,8 +2113,8 @@ input[type="file"] {
 
 /* Primary pathways */
 .front-page-content .homepage-pathways {
-	background: var(--pfoa-surface-structural);
-	color: #ffffff;
+	background: var(--pfoa-surface-subtle);
+	color: var(--pfoa-text-primary);
 	/* No section heading remains; keep a modest hero-to-cards gap. */
 	padding-block: clamp(1.5rem, 3vw, 2.5rem) var(--pfoa-section-space);
 }
@@ -2146,23 +2146,23 @@ input[type="file"] {
 	flex-direction: column;
 	align-items: center;
 	height: 100%;
-	border: 1px solid rgb(255 255 255 / 26%);
+	border: 1px solid var(--pfoa-border-default);
 	border-radius: var(--pfoa-radius);
 	padding: clamp(1rem, 2vw, 1.5rem) var(--pfoa-space-4);
-	background: rgb(33 30 29 / 14%);
+	background: var(--pfoa-surface-page);
 	text-align: center;
 }
 
 .front-page-content .homepage-pathway__link {
-	color: #ffffff;
+	color: var(--pfoa-text-primary);
 	text-decoration: none;
 	transition: background-color var(--pfoa-transition), border-color var(--pfoa-transition), box-shadow var(--pfoa-transition), transform var(--pfoa-transition);
 }
 
 .front-page-content .homepage-pathway__link:hover {
-	border-color: var(--pfoa-accent);
-	background: var(--pfoa-action-hover);
-	color: #ffffff;
+	border-color: var(--pfoa-action-primary);
+	background: var(--pfoa-surface-tinted);
+	color: var(--pfoa-text-primary);
 	transform: translateY(-2px);
 	box-shadow: 0 0.75rem 1.5rem rgb(33 30 29 / 16%);
 }
@@ -2170,10 +2170,10 @@ input[type="file"] {
 .front-page-content .homepage-pathway__link:focus-visible {
 	position: relative;
 	z-index: 1;
-	border-color: #ffffff;
-	background: var(--pfoa-action-hover);
-	color: #ffffff;
-	outline-color: #ffffff;
+	border-color: var(--pfoa-action-primary);
+	background: var(--pfoa-surface-tinted);
+	color: var(--pfoa-text-primary);
+	outline-color: var(--pfoa-focus-ring);
 }
 
 .front-page-content .homepage-pathway__media {
@@ -2216,7 +2216,7 @@ input[type="file"] {
 	align-items: flex-start;
 	justify-content: center;
 	min-height: calc(1.08em * 2);
-	color: #ffffff;
+	color: var(--pfoa-text-primary);
 	font-size: clamp(1.2rem, 2vw, 1.6rem);
 	line-height: 1.08;
 	overflow-wrap: break-word;
@@ -2276,8 +2276,8 @@ input[type="file"] {
 }
 
 .front-page-content .homepage-pathway--unavailable {
-	border-color: rgb(255 255 255 / 16%);
-	background: rgb(33 30 29 / 10%);
+	border-color: var(--pfoa-border-default);
+	background: var(--pfoa-surface-subtle);
 }
 
 .front-page-content .homepage-pathway--unavailable .homepage-pathway__media {
@@ -2292,7 +2292,7 @@ input[type="file"] {
 
 .front-page-content .homepage-pathway__status {
 	margin-top: auto;
-	color: rgb(255 255 255 / 82%);
+	color: var(--pfoa-text-muted);
 }
 
 /* Adoption teaser */
