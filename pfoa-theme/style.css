@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.31
+ Version: 0.1.32
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -2985,15 +2985,18 @@ input[type="file"] {
 	}
 
 	.site-header__inner {
+		position: relative;
 		grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr) auto;
 		column-gap: clamp(1.5rem, 2.5vw, 2.5rem);
-		min-height: 6.5rem;
+		min-height: 4.5rem;
 		overflow: visible;
 	}
 
 	.site-branding {
-		position: relative;
-		align-self: center;
+		position: absolute;
+		inset-inline-start: 0;
+		top: 0;
+		width: 17rem;
 		overflow: visible;
 	}
 
