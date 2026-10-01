@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.29
+ Version: 0.1.30
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -2113,7 +2113,7 @@ input[type="file"] {
 
 /* Primary pathways */
 .front-page-content .homepage-pathways {
-	background: var(--pfoa-color-brand);
+	background: var(--pfoa-surface-structural);
 	color: #ffffff;
 	/* No section heading remains; keep a modest hero-to-cards gap. */
 	padding-block: clamp(1.5rem, 3vw, 2.5rem) var(--pfoa-section-space);
@@ -2160,8 +2160,8 @@ input[type="file"] {
 }
 
 .front-page-content .homepage-pathway__link:hover {
-	border-color: var(--pfoa-color-gold);
-	background: var(--pfoa-color-brand-dark);
+	border-color: var(--pfoa-accent);
+	background: var(--pfoa-action-hover);
 	color: #ffffff;
 	transform: translateY(-2px);
 	box-shadow: 0 0.75rem 1.5rem rgb(33 30 29 / 16%);
@@ -2171,7 +2171,7 @@ input[type="file"] {
 	position: relative;
 	z-index: 1;
 	border-color: #ffffff;
-	background: var(--pfoa-color-brand-dark);
+	background: var(--pfoa-action-hover);
 	color: #ffffff;
 	outline-color: #ffffff;
 }
@@ -2181,7 +2181,7 @@ input[type="file"] {
 	width: clamp(5.2rem, 10vw, 7.8rem);
 	aspect-ratio: 1;
 	margin-bottom: var(--pfoa-space-4);
-	border: 2px solid var(--pfoa-color-gold);
+	border: 2px solid var(--pfoa-accent);
 	border-radius: 50%;
 	background:
 		radial-gradient(circle at 35% 30%, rgb(255 255 255 / 24%), transparent 24%),
@@ -2248,31 +2248,31 @@ input[type="file"] {
 .front-page-content .homepage-pathway--adoptable-cats .homepage-pathway__media {
 	background:
 		radial-gradient(circle at 35% 30%, rgb(255 255 255 / 28%), transparent 24%),
-		linear-gradient(145deg, var(--pfoa-color-brand), var(--pfoa-color-charcoal));
+		linear-gradient(145deg, var(--pfoa-action-primary), var(--pfoa-surface-footer));
 }
 
 .front-page-content .homepage-pathway--home-front .homepage-pathway__media {
 	background:
 		radial-gradient(circle at 35% 30%, rgb(255 255 255 / 28%), transparent 24%),
-		linear-gradient(145deg, var(--pfoa-color-gold-dark), var(--pfoa-color-brand));
+		linear-gradient(145deg, var(--pfoa-action-active), var(--pfoa-surface-structural));
 }
 
 .front-page-content .homepage-pathway--potholders .homepage-pathway__media {
 	background:
 		radial-gradient(circle at 35% 30%, rgb(255 255 255 / 32%), transparent 24%),
-		linear-gradient(145deg, var(--pfoa-color-gold), var(--pfoa-color-brand-dark));
+		linear-gradient(145deg, var(--pfoa-surface-structural), var(--pfoa-action-hover));
 }
 
 .front-page-content .homepage-pathway--pet-tidings .homepage-pathway__media {
 	background:
 		radial-gradient(circle at 35% 30%, rgb(255 255 255 / 28%), transparent 24%),
-		linear-gradient(145deg, var(--pfoa-color-charcoal), var(--pfoa-color-brand));
+		linear-gradient(145deg, var(--pfoa-surface-footer), var(--pfoa-action-primary));
 }
 
 .front-page-content .homepage-pathway--wishlist .homepage-pathway__media {
 	background:
 		radial-gradient(circle at 35% 30%, rgb(255 255 255 / 32%), transparent 24%),
-		linear-gradient(145deg, var(--pfoa-color-gold-dark), var(--pfoa-color-brand-dark));
+		linear-gradient(145deg, var(--pfoa-action-hover), var(--pfoa-surface-structural));
 }
 
 .front-page-content .homepage-pathway--unavailable {
