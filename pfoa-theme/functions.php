@@ -910,6 +910,209 @@ function pfoa_homepage_front_id() {
 }
 
 /**
+ * Option name storing the editable site footer.
+ *
+ * Single option. Shape: array(
+ *   'public_hours'     => array( 'heading' => string, 'body' => string ),
+ *   'mailing_address'  => array( 'heading' => string, 'body' => string ),
+ *   'physical_address' => array( 'heading' => string, 'body' => string ),
+ *   'map'              => array( 'heading' => string, 'body' => string ),
+ *   'copyright_text'   => string,
+ * ). Plain text only; the map stays plain text (no iframe/embed).
+ *
+ * @var string
+ */
+define( 'PFOA_FOOTER_OPTION', 'pfoa_footer' );
+
+/**
+ * Return the theme-owned default footer values.
+ *
+ * Defaults reproduce the 0.1.22 hard-coded footer exactly so a fresh
+ * install renders identical content without any save.
+ *
+ * @return array
+ */
+function pfoa_get_footer_defaults() {
+	return array(
+		'public_hours'     => array(
+			'heading' => __( 'Public Hours', 'pfoa-theme' ),
+			'body'    => __( '11:00 am–4:00 pm Tuesday–Saturday, by appointment.', 'pfoa-theme' ),
+		),
+		'mailing_address'  => array(
+			'heading' => __( 'Mailing Address', 'pfoa-theme' ),
+			'body'    => __( "P.O. Box 404\nSequim, WA 98382", 'pfoa-theme' ),
+		),
+		'physical_address' => array(
+			'heading' => __( 'Physical Address', 'pfoa-theme' ),
+			'body'    => __( "257509 Hwy 101\nPort Angeles, WA", 'pfoa-theme' ),
+		),
+		'map'              => array(
+			'heading' => __( 'Map', 'pfoa-theme' ),
+			'body'    => __( 'Map pending.', 'pfoa-theme' ),
+		),
+		'copyright_text'   => __( 'Peninsula Friends of Animals. All Rights Reserved.', 'pfoa-theme' ),
+	);
+}
+
+/**
+ * Sanitize the footer option value. No raw HTML is allowed.
+ *
+ * @param mixed $value Raw submitted value (expected unslashed).
+ * @return array
+ */
+function pfoa_sanitize_footer( $value ) {
+	$defaults = pfoa_get_footer_defaults();
+	$footer   = $defaults;
+
+	if ( ! is_array( $value ) ) {
+		return $footer;
+	}
+
+	foreach ( array( 'public_hours', 'mailing_address', 'physical_address', 'map' ) as $key ) {
+		if ( isset( $value[ $key ] ) && is_array( $value[ $key ] ) ) {
+			$heading = isset( $value[ $key ]['heading'] ) ? sanitize_text_field( $value[ $key ]['heading'] ) : '';
+			$body    = isset( $value[ $key ]['body'] ) ? sanitize_textarea_field( $value[ $key ]['body'] ) : '';
+
+			$footer[ $key ] = array(
+				'heading' => '' === trim( $heading ) ? $defaults[ $key ]['heading'] : trim( $heading ),
+				'body'    => trim( $body ),
+			);
+		}
+	}
+
+	$copyright = isset( $value['copyright_text'] ) ? sanitize_text_field( $value['copyright_text'] ) : '';
+	$footer['copyright_text'] = '' === trim( $copyright ) ? $defaults['copyright_text'] : trim( $copyright );
+
+	return $footer;
+}
+
+/**
+ * Return the effective footer: saved option merged over defaults.
+ *
+ * Missing keys fall back to defaults so partial saves never render empty.
+ *
+ * @return array
+ */
+function pfoa_get_footer() {
+	$defaults = pfoa_get_footer_defaults();
+	$saved    = get_option( PFOA_FOOTER_OPTION, array() );
+
+	if ( ! is_array( $saved ) || array() === $saved ) {
+		return $defaults;
+	}
+
+	return pfoa_sanitize_footer( $saved );
+}
+
+/**
+ * Register the footer setting.
+ *
+ * @return void
+ */
+function pfoa_footer_admin_init() {
+	register_setting(
+		'pfoa_footer_group',
+		PFOA_FOOTER_OPTION,
+		array(
+			'sanitize_callback' => 'pfoa_sanitize_footer',
+			'default'           => array(),
+		)
+	);
+}
+add_action( 'admin_init', 'pfoa_footer_admin_init' );
+
+/**
+ * Handle save submissions for the PFOA Site > Footer screen.
+ *
+ * Plain PHP + submit only: the form posts the full field set back to the
+ * same page, the sanitized result is stored with update_option().
+ *
+ * @return void
+ */
+function pfoa_footer_handle_post() {
+	if ( ! isset( $_POST['pfoa_footer_nonce'] ) ) {
+		return;
+	}
+
+	if ( ! current_user_can( 'edit_theme_options' ) && ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	check_admin_referer( 'pfoa_footer_save', 'pfoa_footer_nonce' );
+
+	$raw    = isset( $_POST[ PFOA_FOOTER_OPTION ] ) && is_array( $_POST[ PFOA_FOOTER_OPTION ] ) ? wp_unslash( $_POST[ PFOA_FOOTER_OPTION ] ) : array();
+	$footer = pfoa_sanitize_footer( $raw );
+
+	update_option( PFOA_FOOTER_OPTION, $footer );
+
+	add_settings_error(
+		'pfoa_footer_messages',
+		'pfoa_footer_saved',
+		esc_html__( 'Footer updated.', 'pfoa-theme' ),
+		'success'
+	);
+}
+
+/**
+ * Render the PFOA Site > Footer screen.
+ *
+ * Straightforward fields: text inputs for headings + copyright text,
+ * textareas for bodies. Plain text only; multiline bodies support line
+ * breaks.
+ *
+ * Menu access requires edit_pages; saving requires edit_theme_options or
+ * manage_options (same boundary as the Homepage Cards section).
+ *
+ * @return void
+ */
+function pfoa_site_footer_page() {
+	if ( ! current_user_can( 'edit_pages' ) ) {
+		wp_die( esc_html__( 'You do not have permission to edit the footer.', 'pfoa-theme' ) );
+	}
+
+	pfoa_footer_handle_post();
+
+	$footer = pfoa_get_footer();
+	$groups = array(
+		'public_hours'     => __( 'Public Hours', 'pfoa-theme' ),
+		'mailing_address'  => __( 'Mailing Address', 'pfoa-theme' ),
+		'physical_address' => __( 'Physical Address', 'pfoa-theme' ),
+		'map'              => __( 'Map', 'pfoa-theme' ),
+	);
+	?>
+	<div class="wrap">
+		<h1><?php esc_html_e( 'Footer', 'pfoa-theme' ); ?></h1>
+		<p><?php esc_html_e( 'Edit the site footer content. Plain text only.', 'pfoa-theme' ); ?></p>
+		<?php settings_errors( 'pfoa_footer_messages' ); ?>
+		<form method="post" action="">
+			<?php wp_nonce_field( 'pfoa_footer_save', 'pfoa_footer_nonce' ); ?>
+			<table class="form-table" role="presentation">
+				<tbody>
+					<?php foreach ( $groups as $key => $label ) : ?>
+						<tr>
+							<th scope="row"><label for="<?php echo esc_attr( 'pfoa-footer-' . $key . '-heading' ); ?>"><?php echo esc_html( sprintf( __( '%s heading', 'pfoa-theme' ), $label ) ); ?></label></th>
+							<td><input type="text" id="<?php echo esc_attr( 'pfoa-footer-' . $key . '-heading' ); ?>" class="regular-text" name="<?php echo esc_attr( PFOA_FOOTER_OPTION ); ?>[<?php echo esc_attr( $key ); ?>][heading]" value="<?php echo esc_attr( $footer[ $key ]['heading'] ); ?>" /></td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="<?php echo esc_attr( 'pfoa-footer-' . $key . '-body' ); ?>"><?php echo esc_html( sprintf( __( '%s text', 'pfoa-theme' ), $label ) ); ?></label></th>
+							<td><textarea id="<?php echo esc_attr( 'pfoa-footer-' . $key . '-body' ); ?>" class="large-text" rows="3" name="<?php echo esc_attr( PFOA_FOOTER_OPTION ); ?>[<?php echo esc_attr( $key ); ?>][body]"><?php echo esc_textarea( $footer[ $key ]['body'] ); ?></textarea></td>
+						</tr>
+					<?php endforeach; ?>
+					<tr>
+						<th scope="row"><label for="pfoa-footer-copyright"><?php esc_html_e( 'Copyright text', 'pfoa-theme' ); ?></label></th>
+						<td><input type="text" id="pfoa-footer-copyright" class="regular-text" name="<?php echo esc_attr( PFOA_FOOTER_OPTION ); ?>[copyright_text]" value="<?php echo esc_attr( $footer['copyright_text'] ); ?>" /></td>
+					</tr>
+				</tbody>
+			</table>
+			<p class="submit">
+				<button type="submit" class="button button-primary" name="pfoa_footer_save" value="1"><?php esc_html_e( 'Save', 'pfoa-theme' ); ?></button>
+			</p>
+		</form>
+	</div>
+	<?php
+}
+
+/**
  * Register the PFOA Site top-level menu and its Homepage screen.
  *
  * The menu uses the edit_pages capability so anyone who can edit pages sees
@@ -939,6 +1142,15 @@ function pfoa_site_admin_menu() {
 		'edit_pages',
 		'pfoa-site',
 		'pfoa_site_homepage_page'
+	);
+
+	add_submenu_page(
+		'pfoa-site',
+		esc_html__( 'Footer', 'pfoa-theme' ),
+		esc_html__( 'Footer', 'pfoa-theme' ),
+		'edit_pages',
+		'pfoa-site-footer',
+		'pfoa_site_footer_page'
 	);
 }
 add_action( 'admin_menu', 'pfoa_site_admin_menu' );
