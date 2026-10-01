@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.27
+ Version: 0.1.28
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -819,6 +819,28 @@ input[type="file"] {
 	table-layout: fixed;
 	width: 100%;
 	max-width: 100%;
+}
+
+/* Legacy bordered index tables (Pet Tidings Past Issues pattern).
+ * Structural only: border="1", no th/thead, no images, width-declared cells.
+ * Excludes consistent data tables (Events Calendar: border="1" but no
+ * td[width]), photo-grids (no border="1", contains images), and Home Front
+ * (border="0"). Fixed layout collapses these because the first row declares
+ * fewer cells than later rows; auto layout restores the intended columns
+ * while staying inside the content shell. */
+.page-content-compatibility .entry-content table[border="1"]:not(:has(th)):not(:has(thead)):not(:has(td img)):has(td[width]) {
+	width: auto;
+	max-width: 100%;
+	margin-inline: auto;
+	table-layout: auto;
+}
+.page-content-compatibility .entry-content table[border="1"]:not(:has(th)):not(:has(thead)):not(:has(td img)):has(td[width]) td {
+	width: auto;
+	overflow-wrap: normal;
+	word-break: normal;
+}
+.page-content-compatibility .entry-content table[border="1"]:not(:has(th)):not(:has(thead)):not(:has(td img)):has(td[width]) td:first-child {
+	white-space: nowrap;
 }
 
 /* Legacy photo-grid tables stay borderless and centered (staff/board/facilities).
