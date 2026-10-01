@@ -55,6 +55,21 @@
           "color": "#e5e0da",
           "name": "Rule",
           "slug": "border"
+        },
+        {
+          "color": "#FBFCFA",
+          "name": "Surface page",
+          "slug": "surface-page"
+        },
+        {
+          "color": "#434EBE",
+          "name": "Action primary",
+          "slug": "action-primary"
+        },
+        {
+          "color": "#FFFFFF",
+          "name": "Text on action",
+          "slug": "text-on-action"
         }
       ]
     },
@@ -160,20 +175,20 @@
   },
   "styles": {
     "color": {
-      "background": "var:preset|color|background",
+      "background": "var:preset|color|surface-page",
       "text": "var:preset|color|text"
     },
     "elements": {
       "button": {
         "border": {
-          "color": "var:preset|color|text",
+          "color": "var:preset|color|action-primary",
           "radius": "5px",
           "style": "solid",
           "width": "1px"
         },
         "color": {
-          "background": "var:preset|color|gold",
-          "text": "var:preset|color|text"
+          "background": "var:preset|color|action-primary",
+          "text": "var:preset|color|text-on-action"
         },
         "typography": {
           "fontFamily": "var:preset|font-family|display",
@@ -189,7 +204,7 @@
       },
       "link": {
         "color": {
-          "text": "var:preset|color|brand"
+          "text": "var:preset|color|action-primary"
         },
         "typography": {
           "textDecoration": "underline"
