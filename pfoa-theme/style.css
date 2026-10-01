@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.26
+ Version: 0.1.27
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -859,6 +859,42 @@ input[type="file"] {
 }
 
 .page-content .entry-content table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)):has(td img) + table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)) td {
+	border: 0;
+	background: transparent;
+	text-align: center;
+	vertical-align: top;
+}
+
+/* Legacy text-menu tables (Home Front Week-NNN pattern) + singleton video containment.
+ * Structural only: border="0", no th/thead, no images. Data tables
+ * (border="1", th/thead) and photo-grids (td img) are explicitly excluded. */
+.page-content-compatibility .entry-content table[border="0"]:not(:has(th)):not(:has(thead)):not(:has(td img)):not(:has(iframe)) {
+	width: auto;
+	max-width: 100%;
+	margin-inline: auto;
+	table-layout: auto;
+	border: 0;
+	border-collapse: collapse;
+	background: transparent;
+}
+.page-content-compatibility .entry-content table[border="0"]:not(:has(th)):not(:has(thead)):not(:has(td img)):not(:has(iframe)) td {
+	width: auto;
+	border: 0;
+	padding: var(--pfoa-space-1) var(--pfoa-space-3);
+	background: transparent;
+	text-align: center;
+	vertical-align: top;
+}
+.page-content-compatibility .entry-content table[border="0"]:not(:has(th)):not(:has(thead)):not(:has(td img)):has(iframe) {
+	width: min(100%, 35rem);
+	max-width: 100%;
+	margin-inline: auto;
+	table-layout: auto;
+	border: 0;
+	border-collapse: collapse;
+	background: transparent;
+}
+.page-content-compatibility .entry-content table[border="0"]:not(:has(th)):not(:has(thead)):not(:has(td img)):has(iframe) td {
 	border: 0;
 	background: transparent;
 	text-align: center;
