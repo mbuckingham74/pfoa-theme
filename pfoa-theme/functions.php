@@ -523,32 +523,34 @@ function pfoa_homepage_cards_admin_init() {
 add_action( 'admin_init', 'pfoa_homepage_cards_admin_init' );
 
 /**
- * Add the Homepage Cards page under Appearance.
+ * Homepage Cards admin location (consolidated 0.1.21).
+ *
+ * The standalone Appearance > Homepage Cards screen was removed. Cards are
+ * now edited in the single authoritative location PFOA Site > Homepage via
+ * pfoa_homepage_cards_section(). No add_theme_page/add_submenu_page
+ * registration remains here on purpose; stored option data is untouched.
+ *
+ * Capability note: cards still require edit_theme_options (same check as
+ * before, enforced in pfoa_homepage_cards_handle_post() and the section
+ * renderer). PFOA Site > Homepage itself requires edit_pages, so editors who
+ * can edit pages but not theme options see the Hero Section only. This keeps
+ * the previous security boundary instead of widening card editing to all
+ * page editors.
  *
  * @return void
  */
-function pfoa_homepage_cards_menu() {
-	add_theme_page(
-		esc_html__( 'Homepage Cards', 'pfoa-theme' ),
-		esc_html__( 'Homepage Cards', 'pfoa-theme' ),
-		'edit_theme_options',
-		'pfoa-homepage-cards',
-		'pfoa_homepage_cards_page'
-	);
-}
-add_action( 'admin_menu', 'pfoa_homepage_cards_menu' );
 
 /**
  * Enqueue the Homepage Cards image picker assets.
  *
- * Scoped to the Homepage Cards admin page only; the media library is
- * loaded there and nowhere else.
+ * Scoped to the PFOA Site > Homepage screen only (toplevel + submenu hook
+ * suffixes); the media library is loaded there and nowhere else.
  *
  * @param string $hook Current admin page hook suffix.
  * @return void
  */
 function pfoa_homepage_cards_admin_assets( $hook ) {
-	if ( 'appearance_page_pfoa-homepage-cards' !== $hook ) {
+	if ( ! in_array( $hook, array( 'toplevel_page_pfoa-site', 'pfoa-site_page_pfoa-homepage' ), true ) ) {
 		return;
 	}
 
@@ -636,11 +638,21 @@ function pfoa_homepage_cards_handle_post() {
 }
 
 /**
- * Render the Homepage Cards admin page.
+ * Render the Homepage Cards section (PFOA Site > Homepage, below Hero).
+ *
+ * Same fields and behavior as the former standalone Appearance page: field
+ * names pfoa_homepage_cards[N][key/title/mark/image_id/url/button], actions
+ * pfoa_cards_add/save/up/down/remove, nonce pfoa_homepage_cards_save /
+ * pfoa_homepage_cards_nonce, storage via update_option() in
+ * pfoa_homepage_cards_handle_post(). Separate save form from the Hero
+ * Section is intentional.
+ *
+ * Capability is still edit_theme_options, so page editors without that cap
+ * simply do not see this section (see consolidated-location note above).
  *
  * @return void
  */
-function pfoa_homepage_cards_page() {
+function pfoa_homepage_cards_section() {
 	if ( ! current_user_can( 'edit_theme_options' ) ) {
 		return;
 	}
@@ -649,8 +661,7 @@ function pfoa_homepage_cards_page() {
 
 	$cards = pfoa_get_homepage_cards();
 	?>
-	<div class="wrap">
-		<h1><?php esc_html_e( 'Homepage Cards', 'pfoa-theme' ); ?></h1>
+		<h2><?php esc_html_e( 'Homepage Cards', 'pfoa-theme' ); ?></h2>
 		<p><?php esc_html_e( 'Edit the cards shown in the homepage pathways section, in display order. Leave the list empty and save to restore the five default cards.', 'pfoa-theme' ); ?></p>
 		<?php settings_errors( 'pfoa_homepage_cards_messages' ); ?>
 		<form method="post" action="">
@@ -713,6 +724,27 @@ function pfoa_homepage_cards_page() {
 				<button type="submit" class="button button-primary" name="pfoa_cards_save" value="1"><?php esc_html_e( 'Save', 'pfoa-theme' ); ?></button>
 			</p>
 		</form>
+	<?php
+}
+
+/**
+ * Backward-compatibility wrapper for the former Appearance page callback.
+ *
+ * No menu registers this anymore; kept so any direct call still renders the
+ * same cards UI. New code should rely on pfoa_homepage_cards_section() inside
+ * PFOA Site > Homepage.
+ *
+ * @return void
+ */
+function pfoa_homepage_cards_page() {
+	if ( ! current_user_can( 'edit_theme_options' ) ) {
+		return;
+	}
+
+	?>
+	<div class="wrap">
+		<h1><?php esc_html_e( 'Homepage Cards', 'pfoa-theme' ); ?></h1>
+		<?php pfoa_homepage_cards_section(); ?>
 	</div>
 	<?php
 }
@@ -909,11 +941,16 @@ function pfoa_site_admin_menu() {
 add_action( 'admin_menu', 'pfoa_site_admin_menu' );
 
 /**
- * Render the PFOA Site > Homepage screen (Hero Section for the static homepage).
+ * Render the PFOA Site > Homepage screen (Hero Section + Homepage Cards).
  *
- * Storage stays exactly where the page meta box kept it: post meta key
- * _pfoa_hero on the page assigned as the static front page. Nothing is stored
- * in options and post_content is never touched.
+ * Section (1) Hero: unchanged form posting to admin-post.php action
+ * pfoa_homepage_hero_save. Storage stays exactly where the page meta box
+ * kept it: post meta key _pfoa_hero on the page assigned as the static front
+ * page. Nothing is stored in options and post_content is never touched.
+ *
+ * Section (2) Homepage Cards: rendered below the hero via
+ * pfoa_homepage_cards_section() with its own separate save form. Storage
+ * stays in option pfoa_homepage_cards via update_option()/get_option().
  *
  * @return void
  */
@@ -933,22 +970,13 @@ function pfoa_site_homepage_page() {
 		);
 	}
 
-	if ( ! $front_id ) {
-		?>
-		<div class="wrap">
-			<h1><?php esc_html_e( 'Homepage', 'pfoa-theme' ); ?></h1>
-			<?php settings_errors( 'pfoa_homepage_messages' ); ?>
-			<div class="notice notice-warning"><p><?php esc_html_e( 'Set Settings → Reading → static front page to a published page before editing the homepage here.', 'pfoa-theme' ); ?></p></div>
-		</div>
-		<?php
-		return;
-	}
+	$can_edit_hero = $front_id && current_user_can( 'edit_page', $front_id );
 
-	if ( ! current_user_can( 'edit_page', $front_id ) ) {
+	if ( $front_id && ! current_user_can( 'edit_page', $front_id ) ) {
 		wp_die( esc_html__( 'You do not have permission to edit the homepage.', 'pfoa-theme' ) );
 	}
 
-	$hero         = pfoa_get_hero( $front_id );
+	$hero         = $front_id ? pfoa_get_hero( $front_id ) : pfoa_get_hero_defaults();
 	$mode         = in_array( $hero['mode'], array( 'single', 'carousel' ), true ) ? $hero['mode'] : 'single';
 	$headline     = isset( $hero['headline'] ) ? $hero['headline'] : '';
 	$image_id     = isset( $hero['image_id'] ) ? absint( $hero['image_id'] ) : 0;
@@ -960,6 +988,9 @@ function pfoa_site_homepage_page() {
 	<div class="wrap">
 		<h1><?php esc_html_e( 'Homepage', 'pfoa-theme' ); ?></h1>
 		<?php settings_errors( 'pfoa_homepage_messages' ); ?>
+		<?php if ( ! $front_id ) : ?>
+			<div class="notice notice-warning"><p><?php esc_html_e( 'Set Settings → Reading → static front page to a published page before editing the hero here. Homepage cards below can still be edited.', 'pfoa-theme' ); ?></p></div>
+		<?php elseif ( $can_edit_hero ) : ?>
 		<p><?php printf( esc_html__( 'Editing the homepage: %s', 'pfoa-theme' ), esc_html( get_the_title( $front_id ) ) ); ?></p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="pfoa_homepage_hero_save" />
@@ -1058,6 +1089,9 @@ function pfoa_site_homepage_page() {
 				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save Homepage', 'pfoa-theme' ); ?></button>
 			</p>
 		</form>
+		<?php endif; ?>
+		<hr />
+		<?php pfoa_homepage_cards_section(); ?>
 	</div>
 	<?php
 }
