@@ -50,8 +50,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 				?>
 			</nav>
 
-			<a class="site-header__donate" href="<?php echo esc_url( pfoa_get_donation_url() ); ?>">
-				<?php esc_html_e( 'Donate', 'pfoa-theme' ); ?>
+			<?php
+			$pfoa_header_donate_label = __( 'Donate', 'pfoa-theme' );
+			$pfoa_header_donate_url   = pfoa_get_donation_url();
+
+			if ( function_exists( 'pfoa_get_header' ) ) {
+				$pfoa_header_settings = pfoa_get_header();
+
+				if ( isset( $pfoa_header_settings['donate']['label'] ) && '' !== trim( (string) $pfoa_header_settings['donate']['label'] ) ) {
+					$pfoa_header_donate_label = $pfoa_header_settings['donate']['label'];
+				}
+
+				if ( isset( $pfoa_header_settings['donate']['url'] ) && '' !== trim( (string) $pfoa_header_settings['donate']['url'] ) ) {
+					$pfoa_header_donate_url = $pfoa_header_settings['donate']['url'];
+				}
+			}
+			?>
+			<a class="site-header__donate" href="<?php echo esc_url( $pfoa_header_donate_url ); ?>">
+				<?php echo esc_html( $pfoa_header_donate_label ); ?>
 			</a>
 
 			<button class="menu-toggle" type="button" aria-controls="site-navigation" aria-expanded="false" data-open-label="<?php esc_attr_e( 'Open primary menu', 'pfoa-theme' ); ?>" data-close-label="<?php esc_attr_e( 'Close primary menu', 'pfoa-theme' ); ?>">

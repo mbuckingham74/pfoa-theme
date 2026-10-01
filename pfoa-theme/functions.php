@@ -1112,6 +1112,522 @@ function pfoa_site_footer_page() {
 	<?php
 }
 
+if ( ! defined( 'PFOA_HEADER_OPTION' ) ) {
+	define( 'PFOA_HEADER_OPTION', 'pfoa_header' );
+}
+
+/**
+ * Return the theme-owned default header values.
+ *
+ * Defaults reproduce the 0.1.23 hard-coded header exactly so a fresh
+ * install renders identical content without any save: Donate label and the
+ * effective donation destination helper.
+ *
+ * @return array
+ */
+function pfoa_get_header_defaults() {
+	return array(
+		'donate' => array(
+			'label' => __( 'Donate', 'pfoa-theme' ),
+			'url'   => pfoa_get_donation_url(),
+		),
+	);
+}
+
+/**
+ * Sanitize the header option value. Only the Donate label + URL are stored
+ * here; logo lives in theme_mod custom_logo and nav lives in the assigned
+ * primary menu.
+ *
+ * @param mixed $value Raw submitted value (expected unslashed).
+ * @return array
+ */
+function pfoa_sanitize_header( $value ) {
+	$defaults = pfoa_get_header_defaults();
+	$header   = $defaults;
+
+	if ( ! is_array( $value ) ) {
+		return $header;
+	}
+
+	$donate = isset( $value['donate'] ) && is_array( $value['donate'] ) ? $value['donate'] : array();
+
+	$label = isset( $donate['label'] ) ? sanitize_text_field( $donate['label'] ) : '';
+	$header['donate']['label'] = '' === trim( $label ) ? $defaults['donate']['label'] : trim( $label );
+
+	$url = isset( $donate['url'] ) ? esc_url_raw( trim( $donate['url'] ) ) : '';
+	$header['donate']['url'] = '' === $url ? $defaults['donate']['url'] : $url;
+
+	return $header;
+}
+
+/**
+ * Return the effective header: saved option merged over defaults.
+ *
+ * Missing keys fall back to defaults so partial saves never render empty.
+ *
+ * @return array
+ */
+function pfoa_get_header() {
+	$defaults = pfoa_get_header_defaults();
+	$saved    = get_option( PFOA_HEADER_OPTION, array() );
+
+	if ( ! is_array( $saved ) || array() === $saved ) {
+		return $defaults;
+	}
+
+	return pfoa_sanitize_header( $saved );
+}
+
+/**
+ * Register the header setting.
+ *
+ * @return void
+ */
+function pfoa_header_admin_init() {
+	register_setting(
+		'pfoa_header_group',
+		PFOA_HEADER_OPTION,
+		array(
+			'sanitize_callback' => 'pfoa_sanitize_header',
+			'default'           => array(),
+		)
+	);
+}
+add_action( 'admin_init', 'pfoa_header_admin_init' );
+
+/**
+ * Return the menu ID assigned to the primary location, or 0 when none.
+ *
+ * @return int
+ */
+function pfoa_header_primary_menu_id() {
+	$locations = get_nav_menu_locations();
+
+	if ( empty( $locations['primary'] ) ) {
+		return 0;
+	}
+
+	$menu_id = absint( $locations['primary'] );
+
+	if ( ! $menu_id || ! wp_get_nav_menu_object( $menu_id ) ) {
+		return 0;
+	}
+
+	return $menu_id;
+}
+
+/**
+ * Handle save submissions for the PFOA Site > Header screen.
+ *
+ * Plain PHP + submit only: the form posts back to the same page. Donate
+ * fields are stored in option pfoa_header; the logo is stored in theme_mod
+ * custom_logo; navigation edits apply to the existing primary menu.
+ *
+ * @return void
+ */
+function pfoa_header_handle_post() {
+	if ( ! isset( $_POST['pfoa_header_nonce'] ) ) {
+		return;
+	}
+
+	if ( ! current_user_can( 'edit_theme_options' ) && ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	check_admin_referer( 'pfoa_header_save', 'pfoa_header_nonce' );
+
+	$raw    = isset( $_POST[ PFOA_HEADER_OPTION ] ) && is_array( $_POST[ PFOA_HEADER_OPTION ] ) ? wp_unslash( $_POST[ PFOA_HEADER_OPTION ] ) : array();
+	$header = pfoa_sanitize_header( $raw );
+
+	update_option( PFOA_HEADER_OPTION, $header );
+
+	if ( isset( $_POST['pfoa_header_logo_remove'] ) && '1' === (string) $_POST['pfoa_header_logo_remove'] ) {
+		remove_theme_mod( 'custom_logo' );
+	} elseif ( isset( $_POST['pfoa_header_logo_id'] ) ) {
+		$logo_id = absint( $_POST['pfoa_header_logo_id'] );
+
+		if ( $logo_id > 0 ) {
+			set_theme_mod( 'custom_logo', $logo_id );
+		} else {
+			remove_theme_mod( 'custom_logo' );
+		}
+	}
+
+	$menu_id = pfoa_header_primary_menu_id();
+
+	if ( $menu_id ) {
+		$posted_nav = isset( $_POST['pfoa_header_nav'] ) && is_array( $_POST['pfoa_header_nav'] ) ? wp_unslash( $_POST['pfoa_header_nav'] ) : array();
+		$delete_ids = isset( $_POST['pfoa_header_nav_delete'] ) && is_array( $_POST['pfoa_header_nav_delete'] ) ? array_map( 'absint', wp_unslash( $_POST['pfoa_header_nav_delete'] ) ) : array();
+
+		foreach ( $delete_ids as $delete_id ) {
+			if ( ! $delete_id ) {
+				continue;
+			}
+
+			$item = get_post( $delete_id );
+
+			if ( $item && 'nav_menu_item' === $item->post_type ) {
+				wp_delete_post( $delete_id, true );
+			}
+		}
+
+		$position = 1;
+
+		foreach ( $posted_nav as $item_id => $fields ) {
+			$item_id = absint( $item_id );
+
+			if ( ! $item_id || in_array( $item_id, $delete_ids, true ) ) {
+				continue;
+			}
+
+			$item = get_post( $item_id );
+
+			if ( ! $item || 'nav_menu_item' !== $item->post_type ) {
+				continue;
+			}
+
+			if ( ! is_array( $fields ) ) {
+				$position++;
+				continue;
+			}
+
+			$parent_id = isset( $fields['parent'] ) ? absint( $fields['parent'] ) : (int) get_post_meta( $item_id, '_menu_item_menu_item_parent', true );
+
+			if ( $parent_id === $item_id ) {
+				$parent_id = 0;
+			}
+
+			$args = array(
+				'menu-item-parent-id' => $parent_id,
+				'menu-item-position'  => $position,
+			);
+
+			$label = isset( $fields['label'] ) ? trim( sanitize_text_field( $fields['label'] ) ) : '';
+
+			if ( '' !== $label ) {
+				$args['menu-item-title'] = $label;
+			}
+
+			$url = isset( $fields['url'] ) ? esc_url_raw( trim( $fields['url'] ) ) : '';
+
+			if ( '' !== $url ) {
+				$args['menu-item-url'] = $url;
+			}
+
+			wp_update_nav_menu_item( $menu_id, $item_id, $args );
+
+			$position++;
+		}
+
+		$new_item = isset( $_POST['pfoa_header_nav_new'] ) && is_array( $_POST['pfoa_header_nav_new'] ) ? wp_unslash( $_POST['pfoa_header_nav_new'] ) : array();
+		$new_label = isset( $new_item['label'] ) ? trim( sanitize_text_field( $new_item['label'] ) ) : '';
+		$new_url   = isset( $new_item['url'] ) ? esc_url_raw( trim( $new_item['url'] ) ) : '';
+
+		if ( '' !== $new_label && '' !== $new_url ) {
+			wp_update_nav_menu_item(
+				$menu_id,
+				0,
+				array(
+					'menu-item-title'  => $new_label,
+					'menu-item-url'    => $new_url,
+					'menu-item-status' => 'publish',
+					'menu-item-type'   => 'custom',
+				)
+			);
+		}
+	}
+
+	add_settings_error(
+		'pfoa_header_messages',
+		'pfoa_header_saved',
+		esc_html__( 'Header updated.', 'pfoa-theme' ),
+		'success'
+	);
+}
+
+/**
+ * Enqueue media scripts only on the PFOA Site > Header screen.
+ *
+ * @param string $hook_suffix Current admin page hook suffix.
+ * @return void
+ */
+function pfoa_header_admin_assets( $hook_suffix ) {
+	if ( ! isset( $_GET['page'] ) || 'pfoa-site-header' !== (string) $_GET['page'] ) {
+		return;
+	}
+
+	if ( ! current_user_can( 'edit_pages' ) ) {
+		return;
+	}
+
+	wp_enqueue_media();
+}
+add_action( 'admin_enqueue_scripts', 'pfoa_header_admin_assets' );
+
+/**
+ * Render the PFOA Site > Header screen.
+ *
+ * Sections: Site Logo (custom_logo preview + Choose/Replace/Remove),
+ * Navigation (ordered rows for the existing primary menu), Donate Button
+ * (label + destination). Plain POST to the same page.
+ *
+ * Menu access requires edit_pages; saving requires edit_theme_options or
+ * manage_options (same boundary as the Footer screen).
+ *
+ * @return void
+ */
+function pfoa_site_header_page() {
+	if ( ! current_user_can( 'edit_pages' ) ) {
+		wp_die( esc_html__( 'You do not have permission to edit the header.', 'pfoa-theme' ) );
+	}
+
+	pfoa_header_handle_post();
+
+	$header    = pfoa_get_header();
+	$logo_id   = absint( get_theme_mod( 'custom_logo', 0 ) );
+	$menu_id   = pfoa_header_primary_menu_id();
+	$menu_items = $menu_id ? wp_get_nav_menu_items( $menu_id, array( 'orderby' => 'menu_order', 'order' => 'ASC' ) ) : false;
+
+	if ( is_array( $menu_items ) ) {
+		usort(
+			$menu_items,
+			function ( $a, $b ) {
+				return (int) $a->menu_order - (int) $b->menu_order;
+			}
+		);
+	}
+
+	$items_by_parent = array();
+
+	if ( is_array( $menu_items ) ) {
+		foreach ( $menu_items as $menu_item ) {
+			$parent = (int) get_post_meta( $menu_item->ID, '_menu_item_menu_item_parent', true );
+			$items_by_parent[ $parent ][] = $menu_item;
+		}
+	}
+
+	$ordered_items = array();
+	$render_branch = null;
+	$render_branch = function ( $parent_id, $depth ) use ( &$render_branch, &$ordered_items, $items_by_parent ) {
+		if ( empty( $items_by_parent[ $parent_id ] ) ) {
+			return;
+		}
+
+		foreach ( $items_by_parent[ $parent_id ] as $menu_item ) {
+			$ordered_items[] = array(
+				'item'  => $menu_item,
+				'depth' => $depth,
+			);
+			$render_branch( (int) $menu_item->ID, $depth + 1 );
+		}
+	};
+	$render_branch( 0, 0 );
+	?>
+	<div class="wrap">
+		<h1><?php esc_html_e( 'Header', 'pfoa-theme' ); ?></h1>
+		<p><?php esc_html_e( 'Edit the site logo, navigation, and donate button. No layout or styling settings here.', 'pfoa-theme' ); ?></p>
+		<?php settings_errors( 'pfoa_header_messages' ); ?>
+		<form method="post" action="" id="pfoa-header-form">
+			<?php wp_nonce_field( 'pfoa_header_save', 'pfoa_header_nonce' ); ?>
+			<h2><?php esc_html_e( 'Site Logo', 'pfoa-theme' ); ?></h2>
+			<div id="pfoa-header-logo-preview">
+				<?php
+				if ( $logo_id ) {
+					echo wp_get_attachment_image( $logo_id, 'medium' );
+				} else {
+					echo '<p>' . esc_html__( 'No logo set. The site title is shown instead.', 'pfoa-theme' ) . '</p>';
+				}
+				?>
+			</div>
+			<p>
+				<input type="hidden" id="pfoa-header-logo-id" name="pfoa_header_logo_id" value="<?php echo esc_attr( (string) $logo_id ); ?>" />
+				<input type="hidden" id="pfoa-header-logo-remove" name="pfoa_header_logo_remove" value="0" />
+				<button type="button" class="button" id="pfoa-header-logo-choose"><?php $logo_id ? esc_html_e( 'Replace logo', 'pfoa-theme' ) : esc_html_e( 'Choose logo', 'pfoa-theme' ); ?></button>
+				<?php if ( $logo_id ) : ?>
+					<button type="button" class="button" id="pfoa-header-logo-clear"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+				<?php endif; ?>
+			</p>
+			<h2><?php esc_html_e( 'Navigation', 'pfoa-theme' ); ?></h2>
+			<?php if ( ! $menu_id || ! is_array( $menu_items ) ) : ?>
+				<div class="notice notice-warning inline"><p><?php esc_html_e( 'No menu is assigned to the Primary location, so the theme currently shows a fallback Home link. Assign a menu under Appearance → Menus to edit navigation here.', 'pfoa-theme' ); ?></p></div>
+			<?php elseif ( array() === $ordered_items ) : ?>
+				<p><?php esc_html_e( 'The primary menu has no items yet.', 'pfoa-theme' ); ?></p>
+			<?php else : ?>
+				<table class="widefat striped" id="pfoa-header-nav-table">
+					<thead>
+						<tr>
+							<th scope="col"><?php esc_html_e( 'Label', 'pfoa-theme' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Destination', 'pfoa-theme' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Actions', 'pfoa-theme' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $ordered_items as $entry ) : ?>
+							<?php
+							$nav_item  = $entry['item'];
+							$nav_depth = (int) $entry['depth'];
+							$nav_parent = (int) get_post_meta( $nav_item->ID, '_menu_item_menu_item_parent', true );
+							$nav_url = $nav_item->url ? $nav_item->url : get_post_meta( $nav_item->ID, '_menu_item_url', true );
+							?>
+							<tr data-item-id="<?php echo esc_attr( (string) $nav_item->ID ); ?>">
+								<td>
+									<?php echo str_repeat( '&mdash; ', $nav_depth ); ?>
+									<label class="screen-reader-text" for="<?php echo esc_attr( 'pfoa-header-nav-label-' . $nav_item->ID ); ?>"><?php esc_html_e( 'Label', 'pfoa-theme' ); ?></label>
+									<input type="text" id="<?php echo esc_attr( 'pfoa-header-nav-label-' . $nav_item->ID ); ?>" class="regular-text" name="pfoa_header_nav[<?php echo esc_attr( (string) $nav_item->ID ); ?>][label]" value="<?php echo esc_attr( $nav_item->title ); ?>" />
+									<input type="hidden" name="pfoa_header_nav[<?php echo esc_attr( (string) $nav_item->ID ); ?>][parent]" value="<?php echo esc_attr( (string) $nav_parent ); ?>" />
+								</td>
+								<td>
+									<label class="screen-reader-text" for="<?php echo esc_attr( 'pfoa-header-nav-url-' . $nav_item->ID ); ?>"><?php esc_html_e( 'Destination', 'pfoa-theme' ); ?></label>
+									<input type="url" id="<?php echo esc_attr( 'pfoa-header-nav-url-' . $nav_item->ID ); ?>" class="regular-text" name="pfoa_header_nav[<?php echo esc_attr( (string) $nav_item->ID ); ?>][url]" value="<?php echo esc_attr( $nav_url ); ?>" />
+								</td>
+								<td>
+									<button type="button" class="button pfoa-header-nav-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
+									<button type="button" class="button pfoa-header-nav-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
+									<button type="button" class="button pfoa-header-nav-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+			<div id="pfoa-header-nav-delete-wrap"></div>
+			<h3><?php esc_html_e( 'Add Navigation Item', 'pfoa-theme' ); ?></h3>
+			<p>
+				<label for="pfoa-header-nav-new-label"><?php esc_html_e( 'Label', 'pfoa-theme' ); ?></label>
+				<input type="text" id="pfoa-header-nav-new-label" class="regular-text" name="pfoa_header_nav_new[label]" value="" />
+			</p>
+			<p>
+				<label for="pfoa-header-nav-new-url"><?php esc_html_e( 'Destination', 'pfoa-theme' ); ?></label>
+				<input type="url" id="pfoa-header-nav-new-url" class="regular-text" name="pfoa_header_nav_new[url]" value="" placeholder="https://" />
+			</p>
+			<h2><?php esc_html_e( 'Donate Button', 'pfoa-theme' ); ?></h2>
+			<table class="form-table" role="presentation">
+				<tbody>
+					<tr>
+						<th scope="row"><label for="pfoa-header-donate-label"><?php esc_html_e( 'Label', 'pfoa-theme' ); ?></label></th>
+						<td><input type="text" id="pfoa-header-donate-label" class="regular-text" name="<?php echo esc_attr( PFOA_HEADER_OPTION ); ?>[donate][label]" value="<?php echo esc_attr( $header['donate']['label'] ); ?>" /></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="pfoa-header-donate-url"><?php esc_html_e( 'Destination', 'pfoa-theme' ); ?></label></th>
+						<td><input type="url" id="pfoa-header-donate-url" class="regular-text" name="<?php echo esc_attr( PFOA_HEADER_OPTION ); ?>[donate][url]" value="<?php echo esc_attr( $header['donate']['url'] ); ?>" /></td>
+					</tr>
+				</tbody>
+			</table>
+			<p class="submit">
+				<button type="submit" class="button button-primary" name="pfoa_header_save" value="1"><?php esc_html_e( 'Save Header', 'pfoa-theme' ); ?></button>
+			</p>
+		</form>
+		<script type="text/javascript">
+		(function() {
+			var logoChoose = document.getElementById( 'pfoa-header-logo-choose' );
+			var logoClear = document.getElementById( 'pfoa-header-logo-clear' );
+			var logoId = document.getElementById( 'pfoa-header-logo-id' );
+			var logoRemove = document.getElementById( 'pfoa-header-logo-remove' );
+			var logoPreview = document.getElementById( 'pfoa-header-logo-preview' );
+			var frame = null;
+
+			if ( logoChoose && logoId && window.wp && window.wp.media ) {
+				logoChoose.addEventListener( 'click', function() {
+					if ( frame ) {
+						frame.open();
+						return;
+					}
+
+					frame = window.wp.media( {
+						title: '<?php echo esc_js( __( 'Choose site logo', 'pfoa-theme' ) ); ?>',
+						button: { text: '<?php echo esc_js( __( 'Use as logo', 'pfoa-theme' ) ); ?>' },
+						library: { type: 'image' },
+						multiple: false
+					} );
+
+					frame.on( 'select', function() {
+						var attachment = frame.state().get( 'selection' ).first().toJSON();
+
+						if ( ! attachment || ! attachment.id ) {
+							return;
+						}
+
+						logoId.value = String( attachment.id );
+
+						if ( logoRemove ) {
+							logoRemove.value = '0';
+						}
+
+						if ( logoPreview ) {
+							var previewUrl = ( attachment.sizes && attachment.sizes.medium && attachment.sizes.medium.url ) ? attachment.sizes.medium.url : attachment.url;
+							logoPreview.innerHTML = '<img src="' + previewUrl + '" alt="" style="max-width:300px;height:auto;" />';
+						}
+					} );
+
+					frame.open();
+				} );
+			}
+
+			if ( logoClear && logoId && logoPreview ) {
+				logoClear.addEventListener( 'click', function() {
+					logoId.value = '0';
+
+					if ( logoRemove ) {
+						logoRemove.value = '1';
+					}
+
+					logoPreview.innerHTML = '<p><?php echo esc_js( __( 'Logo will be removed on save. The site title is shown instead.', 'pfoa-theme' ) ); ?></p>';
+				} );
+			}
+
+			var table = document.getElementById( 'pfoa-header-nav-table' );
+
+			if ( table ) {
+				var tbody = table.querySelector( 'tbody' );
+				var deleteWrap = document.getElementById( 'pfoa-header-nav-delete-wrap' );
+
+				tbody.addEventListener( 'click', function( event ) {
+					var button = event.target.closest( 'button' );
+
+					if ( ! button ) {
+						return;
+					}
+
+					var row = event.target.closest( 'tr' );
+
+					if ( ! row ) {
+						return;
+					}
+
+					if ( button.classList.contains( 'pfoa-header-nav-up' ) ) {
+						var prev = row.previousElementSibling;
+
+						if ( prev ) {
+							tbody.insertBefore( row, prev );
+						}
+					} else if ( button.classList.contains( 'pfoa-header-nav-down' ) ) {
+						var next = row.nextElementSibling;
+
+						if ( next ) {
+							tbody.insertBefore( next, row );
+						}
+					} else if ( button.classList.contains( 'pfoa-header-nav-remove' ) ) {
+						var itemId = row.getAttribute( 'data-item-id' );
+
+						if ( itemId && deleteWrap ) {
+							var input = document.createElement( 'input' );
+							input.type = 'hidden';
+							input.name = 'pfoa_header_nav_delete[]';
+							input.value = itemId;
+							deleteWrap.appendChild( input );
+						}
+
+						row.remove();
+					}
+				} );
+			}
+		})();
+		</script>
+	</div>
+	<?php
+}
+
 /**
  * Register the PFOA Site top-level menu and its Homepage screen.
  *
@@ -1142,6 +1658,15 @@ function pfoa_site_admin_menu() {
 		'edit_pages',
 		'pfoa-site',
 		'pfoa_site_homepage_page'
+	);
+
+	add_submenu_page(
+		'pfoa-site',
+		esc_html__( 'Header', 'pfoa-theme' ),
+		esc_html__( 'Header', 'pfoa-theme' ),
+		'edit_pages',
+		'pfoa-site-header',
+		'pfoa_site_header_page'
 	);
 
 	add_submenu_page(
