@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+export COPYFILE_DISABLE=1
+
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_dir="$(dirname -- "$script_dir")"
 theme_dir="$repo_dir/pfoa-theme"
@@ -46,7 +48,7 @@ if ! command -v unzip >/dev/null 2>&1; then
 	exit 1
 fi
 
-version="$(sed -nE 's/^Version:[[:space:]]*//p' "$theme_dir/style.css" | head -n 1 | tr -d '\r')"
+version="$(sed -nE 's/^[[:space:]]*Version:[[:space:]]*//p' "$theme_dir/style.css" | head -n 1 | tr -d '\r')"
 if [[ -z "$version" ]]; then
 	echo "Error: could not read a Version value from style.css." >&2
 	exit 1
@@ -64,8 +66,12 @@ while IFS= read -r -d '' source_file; do
 	relative_file="${source_file#"$theme_dir/"}"
 
 	case "$relative_file" in
+		# macOS metadata / resource forks must never ship in the theme zip.
+		._*|*/._*|__MACOSX|__MACOSX/*|*/__MACOSX/*|.DS_Store|*/.DS_Store)
+			continue
+			;;
 		# Repository, environment, editor, and local development metadata.
-		.DS_Store|*/.DS_Store|.git|*/.git|.git/*|*/.git/*|.gitignore|*/.gitignore|.env|*/.env|.env.*|*/.env.*|.idea/*|*/.idea/*|.vscode/*|*/.vscode/*|.settings/*|*/.settings/*|.github/*|*/.github/*|.gitlab/*|*/.gitlab/*|docs/*|*/docs/*|*.sublime-*|*.code-workspace|Dockerfile|*/Dockerfile|docker-compose*|*/docker-compose*|Makefile|*/Makefile)
+		.git|*/.git|.git/*|*/.git/*|.gitignore|*/.gitignore|.env|*/.env|.env.*|*/.env.*|.idea/*|*/.idea/*|.vscode/*|*/.vscode/*|.settings/*|*/.settings/*|.github/*|*/.github/*|.gitlab/*|*/.gitlab/*|docs/*|*/docs/*|*.sublime-*|*.code-workspace|Dockerfile|*/Dockerfile|docker-compose*|*/docker-compose*|Makefile|*/Makefile)
 			continue
 			;;
 		# Database dumps, temporary files, backups, and development logs.

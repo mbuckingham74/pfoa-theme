@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
-Version: 0.1.18
+ Version: 0.1.19
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -1914,6 +1914,14 @@ input[type="file"] {
 	padding-block: clamp(1.5rem, 3vw, 2.5rem) var(--pfoa-section-space);
 }
 
+/* PFOA 0.1.19 — Card row shares the header/footer structural gutters so its
+   edges align with header/footer content (scoped; other .content-container
+   sections are unaffected). */
+.front-page-content .homepage-pathways .content-container {
+	width: calc(100% - (2 * var(--pfoa-structural-gutter)));
+	max-width: none;
+}
+
 .front-page-content .homepage-pathways__grid {
 	display: grid;
 	grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1998,11 +2006,11 @@ input[type="file"] {
 }
 
 .front-page-content .homepage-pathway__title {
-	margin: 0;
+	margin: 0 0 var(--pfoa-space-3);
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: center;
-	min-height: 2.2em;
+	min-height: calc(1.08em * 2);
 	color: #ffffff;
 	font-size: clamp(1.2rem, 2vw, 1.6rem);
 	line-height: 1.08;
