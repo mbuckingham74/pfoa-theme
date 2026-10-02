@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.38
+ Version: 0.1.39
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3228,5 +3228,103 @@ input[type="file"] {
 	.front-page-content .homepage-pathway__link:hover,
 	.front-page-content .homepage-pathway__link:focus-visible {
 		border-color: var(--pfoa-cta-primary);
+	}
+}
+
+/* PFOA 0.1.39 — Adoptable Cats card grid modernization (visual only, CSS-only, DEV scope).
+ * Scoped strictly to existing Cat Profiles markup (div.pfoa-cat-cards and descendants).
+ * Does not alter markup, data attributes, dialog hooks, bonded-pair model, or lifecycle behavior.
+ * Tokens reused: --pfoa-color-background, --pfoa-color-border, --pfoa-color-muted,
+ * --pfoa-action-primary/hover, --pfoa-focus-ring, --pfoa-radius, --pfoa-space-*, --pfoa-transition.
+ * Breakpoints reused from theme system: 1319px / 720px / 480px. Content max-width untouched.
+ * Reduced motion is covered by the theme's existing global prefers-reduced-motion rule.
+ */
+div.pfoa-cat-cards {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: var(--pfoa-space-5);
+}
+
+div.pfoa-cat-cards article.pfoa-cat-card {
+	min-width: 0;
+	margin: 0;
+	border: 1px solid var(--pfoa-color-border);
+	border-radius: var(--pfoa-radius);
+	padding: var(--pfoa-space-3);
+	background: var(--pfoa-color-background);
+	box-shadow: 0 1px 2px rgb(33 30 29 / 6%);
+	transition: box-shadow var(--pfoa-transition), transform var(--pfoa-transition);
+}
+
+div.pfoa-cat-cards a.pfoa-cat-card-media {
+	display: block;
+	border-radius: calc(var(--pfoa-radius) - 1px);
+	overflow: hidden;
+}
+
+div.pfoa-cat-cards img.pfoa-cat-card-thumb {
+	display: block;
+	width: 100%;
+	aspect-ratio: 1 / 1;
+	object-fit: cover;
+	border-radius: calc(var(--pfoa-radius) - 1px);
+}
+
+div.pfoa-cat-cards h3.pfoa-cat-card-title {
+	margin: var(--pfoa-space-3) 0 0.25rem;
+	color: var(--pfoa-action-primary);
+	font-style: normal;
+	font-weight: 700;
+	font-size: 1.05rem;
+	line-height: 1.3;
+	overflow-wrap: break-word;
+}
+
+div.pfoa-cat-cards p.pfoa-cat-card-status,
+div.pfoa-cat-cards p.pfoa-cat-card-note {
+	margin: 0.25rem 0 0;
+	color: var(--pfoa-color-muted);
+	font-size: 0.875rem;
+	line-height: 1.5;
+	overflow-wrap: break-word;
+}
+
+div.pfoa-cat-cards .pfoa-cat-pair-left,
+div.pfoa-cat-cards .pfoa-cat-pair-right {
+	min-width: 0;
+	overflow-wrap: break-word;
+}
+
+div.pfoa-cat-cards article.pfoa-cat-card-incomplete {
+	background: var(--pfoa-color-background);
+	opacity: 1;
+}
+
+div.pfoa-cat-cards article.pfoa-cat-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 16px rgb(33 30 29 / 10%);
+}
+
+div.pfoa-cat-cards a.pfoa-cat-card-media:focus-visible {
+	outline: 3px solid var(--pfoa-focus-ring);
+	outline-offset: 3px;
+}
+
+@media (max-width: 1319px) {
+	div.pfoa-cat-cards {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 720px) {
+	div.pfoa-cat-cards {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--pfoa-space-4);
+	}
+}
+
+@media (max-width: 480px) {
+	div.pfoa-cat-cards {
+		grid-template-columns: 1fr;
 	}
 }
