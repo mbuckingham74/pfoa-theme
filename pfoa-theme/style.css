@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.37
+ Version: 0.1.38
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -1358,6 +1358,58 @@ input[type="file"] {
 	transform: translateY(-1px);
 }
 
+/* Header utility navigation: transparent, secondary, above the main header row. */
+.site-header__utility {
+	background: transparent;
+}
+
+.site-header__utility .header-utility-navigation {
+	width: calc(100% - (2 * var(--pfoa-structural-gutter)));
+	max-width: none;
+	margin-inline: auto;
+}
+
+.utility-menu {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 0.25rem 1rem;
+	margin: 0;
+	padding: 0.45rem 0 0;
+	background: transparent;
+	list-style: none;
+}
+
+.utility-menu .menu-item {
+	margin: 0;
+}
+
+.utility-menu a {
+	display: inline-block;
+	padding: 0.25rem 0;
+	color: var(--pfoa-action-primary);
+	font-family: Georgia, "Times New Roman", serif;
+	font-size: 0.68rem;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	line-height: 1.4;
+	text-transform: uppercase;
+	text-decoration: none;
+}
+
+.utility-menu a:hover,
+.utility-menu a:focus-visible,
+.utility-menu .current-menu-item > a {
+	color: var(--pfoa-action-hover);
+	text-decoration: underline;
+	text-underline-offset: 0.16em;
+}
+
+.site-header__utility--mobile {
+	display: none;
+	background: transparent;
+}
+
 .menu-toggle {
 	display: none;
 	grid-column: 4;
@@ -1717,6 +1769,31 @@ input[type="file"] {
 
 	body.js .main-navigation[hidden] {
 		display: none;
+	}
+
+	.site-header__utility {
+		display: none;
+	}
+
+	.site-header__utility--mobile {
+		display: block;
+		border-top: 1px solid rgb(255 255 255 / 22%);
+		margin-top: var(--pfoa-space-2);
+		padding-top: var(--pfoa-space-2);
+	}
+
+	.site-header__utility--mobile .utility-menu {
+		flex-direction: column;
+		align-items: stretch;
+		justify-content: flex-start;
+		gap: 0;
+		padding: 0;
+	}
+
+	.site-header__utility--mobile .utility-menu a {
+		display: block;
+		min-height: 2.75rem;
+		padding: 0.7rem 1rem;
 	}
 
 	.primary-menu {

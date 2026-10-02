@@ -48,6 +48,7 @@ function pfoa_setup() {
 	register_nav_menus(
 		array(
 			'primary'        => esc_html__( 'Primary Menu', 'pfoa-theme' ),
+			'header_utility' => esc_html__( 'Header Utility', 'pfoa-theme' ),
 			'footer'         => esc_html__( 'Footer Menu — Explore PFOA', 'pfoa-theme' ),
 			'footer_support' => esc_html__( 'Footer Menu — Ways to Help', 'pfoa-theme' ),
 			'footer_legal'   => esc_html__( 'Footer Legal Menu', 'pfoa-theme' ),

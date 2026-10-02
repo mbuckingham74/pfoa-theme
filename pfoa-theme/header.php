@@ -20,6 +20,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 <a class="skip-link" href="#primary"><?php esc_html_e( 'Skip to content', 'pfoa-theme' ); ?></a>
 <div id="page" class="site">
 	<header id="masthead" class="site-header">
+		<?php if ( has_nav_menu( 'header_utility' ) ) : ?>
+		<div class="site-header__utility">
+			<nav class="header-utility-navigation" aria-label="<?php esc_attr_e( 'Utility menu', 'pfoa-theme' ); ?>">
+				<?php
+				wp_nav_menu(
+					array(
+						'theme_location' => 'header_utility',
+						'menu_id'        => 'header-utility-menu',
+						'menu_class'     => 'utility-menu',
+						'container'      => false,
+						'fallback_cb'    => false,
+						'depth'          => 1,
+					)
+				);
+				?>
+			</nav>
+		</div>
+		<?php endif; ?>
 		<div class="site-header__inner">
 			<div class="site-branding">
 				<?php
@@ -48,6 +66,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 					)
 				);
 				?>
+				<?php if ( has_nav_menu( 'header_utility' ) ) : ?>
+				<div class="site-header__utility--mobile">
+					<nav class="header-utility-navigation" aria-label="<?php esc_attr_e( 'Utility menu', 'pfoa-theme' ); ?>">
+						<?php
+						wp_nav_menu(
+							array(
+								'theme_location' => 'header_utility',
+								'menu_id'        => 'header-utility-menu-mobile',
+								'menu_class'     => 'utility-menu',
+								'container'      => false,
+								'fallback_cb'    => false,
+								'depth'          => 1,
+							)
+						);
+						?>
+					</nav>
+				</div>
+				<?php endif; ?>
 			</nav>
 
 			<?php
