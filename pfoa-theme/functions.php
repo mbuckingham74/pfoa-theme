@@ -2299,7 +2299,30 @@ function pfoa_present_bonded_pairs( $content ) {
 			continue;
 		}
 
-		$left_dialog = trim( (string) $left->getAttribute( 'data-pfoa-cat-dialog' ) );
+		// Dialog slug lives on descendant links, not on the pair article itself.
+		$left_dialog = '';
+
+		$left_media_dialog_list = $xpath->query( './/a[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-media ")][@data-pfoa-cat-dialog]', $left );
+
+		if ( $left_media_dialog_list instanceof DOMNodeList && 0 < $left_media_dialog_list->length ) {
+			$left_media_dialog_node = $left_media_dialog_list->item( 0 );
+
+			if ( $left_media_dialog_node instanceof DOMElement ) {
+				$left_dialog = trim( (string) $left_media_dialog_node->getAttribute( 'data-pfoa-cat-dialog' ) );
+			}
+		}
+
+		if ( '' === $left_dialog ) {
+			$left_title_dialog_list = $xpath->query( './/h3[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-title ")]//a[@data-pfoa-cat-dialog]', $left );
+
+			if ( $left_title_dialog_list instanceof DOMNodeList && 0 < $left_title_dialog_list->length ) {
+				$left_title_dialog_node = $left_title_dialog_list->item( 0 );
+
+				if ( $left_title_dialog_node instanceof DOMElement ) {
+					$left_dialog = trim( (string) $left_title_dialog_node->getAttribute( 'data-pfoa-cat-dialog' ) );
+				}
+			}
+		}
 
 		if ( '' === $left_dialog ) {
 			continue;
@@ -2326,7 +2349,29 @@ function pfoa_present_bonded_pairs( $content ) {
 			continue;
 		}
 
-		$right_dialog = trim( (string) $right->getAttribute( 'data-pfoa-cat-dialog' ) );
+		$right_dialog = '';
+
+		$right_media_dialog_list = $xpath->query( './/a[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-media ")][@data-pfoa-cat-dialog]', $right );
+
+		if ( $right_media_dialog_list instanceof DOMNodeList && 0 < $right_media_dialog_list->length ) {
+			$right_media_dialog_node = $right_media_dialog_list->item( 0 );
+
+			if ( $right_media_dialog_node instanceof DOMElement ) {
+				$right_dialog = trim( (string) $right_media_dialog_node->getAttribute( 'data-pfoa-cat-dialog' ) );
+			}
+		}
+
+		if ( '' === $right_dialog ) {
+			$right_title_dialog_list = $xpath->query( './/h3[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-title ")]//a[@data-pfoa-cat-dialog]', $right );
+
+			if ( $right_title_dialog_list instanceof DOMNodeList && 0 < $right_title_dialog_list->length ) {
+				$right_title_dialog_node = $right_title_dialog_list->item( 0 );
+
+				if ( $right_title_dialog_node instanceof DOMElement ) {
+					$right_dialog = trim( (string) $right_title_dialog_node->getAttribute( 'data-pfoa-cat-dialog' ) );
+				}
+			}
+		}
 
 		if ( '' === $right_dialog || $right_dialog !== $left_dialog ) {
 			continue;
