@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.36
+ Version: 0.1.37
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -25,15 +25,15 @@ Text Domain: pfoa-theme
 	--pfoa-color-focus: #005fcc;
 
 	/* Semantic color foundation (meaning-based roles). */
-	--pfoa-surface-structural: #242B5E;
-	--pfoa-surface-footer: #171C3F;
+	--pfoa-surface-structural: #D3D3FF;
+	--pfoa-surface-footer: #D3D3FF;
 	--pfoa-surface-tinted: #E3E5FA;
 	--pfoa-surface-subtle: #F0F1FB;
 	--pfoa-surface-page: #FBFCFA;
 	--pfoa-text-primary: #302D2B;
 	--pfoa-text-muted: #525873;
-	--pfoa-text-on-structural: #FFFFFF;
-	--pfoa-text-on-structural-strong: #FFFFFF;
+	--pfoa-text-on-structural: #302D2B;
+	--pfoa-text-on-structural-strong: #302D2B;
 	--pfoa-text-on-action: #FFFFFF;
 	--pfoa-action-primary: #434EBE;
 	--pfoa-action-hover: #303873;
