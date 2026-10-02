@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.39
+ Version: 0.1.40
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3326,5 +3326,99 @@ div.pfoa-cat-cards a.pfoa-cat-card-media:focus-visible {
 @media (max-width: 480px) {
 	div.pfoa-cat-cards {
 		grid-template-columns: 1fr;
+	}
+}
+
+/* PFOA 0.1.40 — Bonded-pair combined card (presentation only).
+ * Scoped strictly to incoming bonded markup (article.pfoa-cat-bonded-card and
+ * descendants .pfoa-cat-bonded-photos, .pfoa-cat-bonded-footer) inside
+ * div.pfoa-cat-cards. Presentation only: single white object, two side-by-side
+ * square photos, centered shared name + relationship line. Reuses 0.1.39 tokens
+ * and interaction treatment. Reduced motion relies on the existing global rule.
+ */
+div.pfoa-cat-cards > article.pfoa-cat-bonded-card {
+	grid-column: span 2;
+}
+
+div.pfoa-cat-cards article.pfoa-cat-bonded-card {
+	min-width: 0;
+	margin: 0;
+	border: 1px solid var(--pfoa-color-border);
+	border-radius: var(--pfoa-radius);
+	padding: var(--pfoa-space-3);
+	background: var(--pfoa-color-background);
+	box-shadow: 0 1px 2px rgb(33 30 29 / 6%);
+	transition: box-shadow var(--pfoa-transition), transform var(--pfoa-transition);
+}
+
+div.pfoa-cat-cards .pfoa-cat-bonded-photos {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--pfoa-space-3);
+}
+
+div.pfoa-cat-cards .pfoa-cat-bonded-photos a,
+div.pfoa-cat-cards .pfoa-cat-bonded-photos a.pfoa-cat-card-media {
+	display: block;
+	min-width: 0;
+	border-radius: calc(var(--pfoa-radius) - 1px);
+	overflow: hidden;
+}
+
+div.pfoa-cat-cards .pfoa-cat-bonded-photos img,
+div.pfoa-cat-cards .pfoa-cat-bonded-photos img.pfoa-cat-card-thumb {
+	display: block;
+	width: 100%;
+	aspect-ratio: 1 / 1;
+	object-fit: cover;
+	border-radius: calc(var(--pfoa-radius) - 1px);
+}
+
+div.pfoa-cat-cards .pfoa-cat-bonded-footer {
+	text-align: center;
+}
+
+div.pfoa-cat-cards h3.pfoa-cat-bonded-title,
+div.pfoa-cat-cards .pfoa-cat-bonded-footer h3 {
+	margin: var(--pfoa-space-3) 0 0.25rem;
+	color: var(--pfoa-action-primary);
+	font-style: normal;
+	font-weight: 700;
+	font-size: 1.05rem;
+	line-height: 1.3;
+	text-align: center;
+	overflow-wrap: break-word;
+}
+
+div.pfoa-cat-cards .pfoa-cat-bonded-title a,
+div.pfoa-cat-cards .pfoa-cat-bonded-footer h3 a {
+	color: inherit;
+}
+
+div.pfoa-cat-cards p.pfoa-cat-bonded-relationship,
+div.pfoa-cat-cards .pfoa-cat-bonded-footer p {
+	margin: 0.25rem 0 0;
+	color: var(--pfoa-color-muted);
+	font-style: normal;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	text-align: center;
+	overflow-wrap: break-word;
+}
+
+div.pfoa-cat-cards article.pfoa-cat-bonded-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 16px rgb(33 30 29 / 10%);
+}
+
+div.pfoa-cat-cards .pfoa-cat-bonded-photos a:focus-visible,
+div.pfoa-cat-cards .pfoa-cat-bonded-footer a:focus-visible {
+	outline: 3px solid var(--pfoa-focus-ring);
+	outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+	div.pfoa-cat-cards > article.pfoa-cat-bonded-card {
+		grid-column: span 1;
 	}
 }

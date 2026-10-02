@@ -2164,3 +2164,335 @@ function pfoa_register_legacy_shortcodes() {
 	}
 }
 add_action( 'init', 'pfoa_register_legacy_shortcodes' );
+
+/**
+ * IMPLEMENTATION A: present bonded cat pairs as a single card (presentation only).
+ *
+ * Frontend-only transform for the main page content of page 20323 / slug
+ * adoptablecats2. Runs late on the_content so existing Cat Profiles
+ * content/lifecycle filters have already run. Filter output only; never
+ * modifies post_content, queries Cat Profiles metadata, duplicates business
+ * logic, or changes JS.
+ *
+ * Runtime bonded markup (from Cat Profiles plugin) is adjacent siblings:
+ * article.pfoa-cat-card.pfoa-cat-pair-left immediately followed by
+ * article.pfoa-cat-card.pfoa-cat-pair-right with the same non-empty
+ * data-pfoa-cat-dialog slug.
+ *
+ * @param string $content Filtered post content.
+ * @return string Unchanged content unless a valid pair is detected.
+ */
+function pfoa_present_bonded_pairs( $content ) {
+	if ( function_exists( 'is_admin' ) && is_admin() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_feed' ) && is_feed() ) {
+		return $content;
+	}
+
+	if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+		return $content;
+	}
+
+	if ( ! is_string( $content ) || '' === $content ) {
+		return $content;
+	}
+
+	if ( false === strpos( $content, 'pfoa-cat-pair-left' ) ) {
+		return $content;
+	}
+
+	if ( function_exists( 'in_the_loop' ) && ! in_the_loop() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_main_query' ) && ! is_main_query() ) {
+		return $content;
+	}
+
+	$is_target_page = false;
+
+	if ( function_exists( 'is_page' ) && ( is_page( 20323 ) || is_page( 'adoptablecats2' ) ) ) {
+		$is_target_page = true;
+	} else {
+		$post = get_post();
+
+		if ( $post instanceof WP_Post ) {
+			if ( 20323 === (int) $post->ID ) {
+				$is_target_page = true;
+			} elseif ( isset( $post->post_name ) && 'adoptablecats2' === $post->post_name ) {
+				$is_target_page = true;
+			}
+		}
+	}
+
+	if ( ! $is_target_page ) {
+		return $content;
+	}
+
+	if ( ! class_exists( 'DOMDocument' ) || ! class_exists( 'DOMXPath' ) ) {
+		return $content;
+	}
+
+	$prev_libxml = libxml_use_internal_errors( true );
+
+	$dom = new DOMDocument( '1.0', 'UTF-8' );
+
+	if ( function_exists( 'mb_encode_numericentity' ) ) {
+		$fragment = mb_encode_numericentity( $content, array( 0x80, 0x10FFFF, 0, 0x1FFFFF ), 'UTF-8' );
+	} else {
+		$fragment = $content;
+	}
+
+	$loaded = $dom->loadHTML(
+		'<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body><div id="pfoa-bonded-wrapper">' . $fragment . '</div></body></html>'
+	);
+
+	if ( ! $loaded ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$xpath = new DOMXPath( $dom );
+
+	$wrapper_list = $xpath->query( '//div[@id="pfoa-bonded-wrapper"]' );
+
+	if ( ! $wrapper_list instanceof DOMNodeList || 0 === $wrapper_list->length ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$wrapper = $wrapper_list->item( 0 );
+
+	$left_list = $xpath->query(
+		'.//article[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-pair-left ")]',
+		$wrapper
+	);
+
+	if ( ! $left_list instanceof DOMNodeList || 0 === $left_list->length ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	// Snapshot NodeList into an array to avoid live-list mutation issues.
+	$left_nodes = array();
+
+	foreach ( $left_list as $left_node ) {
+		if ( $left_node instanceof DOMElement ) {
+			$left_nodes[] = $left_node;
+		}
+	}
+
+	$changed = false;
+
+	foreach ( $left_nodes as $left ) {
+		// Skip nodes already detached by an earlier replacement.
+		if ( null === $left->parentNode ) {
+			continue;
+		}
+
+		if ( 'article' !== strtolower( $left->nodeName ) ) {
+			continue;
+		}
+
+		$left_dialog = trim( (string) $left->getAttribute( 'data-pfoa-cat-dialog' ) );
+
+		if ( '' === $left_dialog ) {
+			continue;
+		}
+
+		// Adjacent siblings only: next *element* sibling must be the right half.
+		$right = $left->nextSibling;
+
+		while ( $right && XML_ELEMENT_NODE !== $right->nodeType ) {
+			$right = $right->nextSibling;
+		}
+
+		if ( ! $right instanceof DOMElement ) {
+			continue;
+		}
+
+		if ( 'article' !== strtolower( $right->nodeName ) ) {
+			continue;
+		}
+
+		$right_class = ' ' . preg_replace( '/\s+/', ' ', (string) $right->getAttribute( 'class' ) ) . ' ';
+
+		if ( false === strpos( $right_class, ' pfoa-cat-pair-right ' ) ) {
+			continue;
+		}
+
+		$right_dialog = trim( (string) $right->getAttribute( 'data-pfoa-cat-dialog' ) );
+
+		if ( '' === $right_dialog || $right_dialog !== $left_dialog ) {
+			continue;
+		}
+
+		$left_media_list  = $xpath->query( './/a[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-media ")]', $left );
+		$right_media_list = $xpath->query( './/a[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-media ")]', $right );
+		$left_title_list  = $xpath->query( './/h3[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-title ")]', $left );
+		$right_title_list = $xpath->query( './/h3[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-title ")]', $right );
+
+		if ( ! $left_media_list instanceof DOMNodeList || 0 === $left_media_list->length ) {
+			continue;
+		}
+
+		if ( ! $right_media_list instanceof DOMNodeList || 0 === $right_media_list->length ) {
+			continue;
+		}
+
+		if ( ! $left_title_list instanceof DOMNodeList || 0 === $left_title_list->length ) {
+			continue;
+		}
+
+		if ( ! $right_title_list instanceof DOMNodeList || 0 === $right_title_list->length ) {
+			continue;
+		}
+
+		$left_media  = $left_media_list->item( 0 );
+		$right_media = $right_media_list->item( 0 );
+		$left_title  = $left_title_list->item( 0 );
+		$right_title = $right_title_list->item( 0 );
+
+		if ( ! $left_media instanceof DOMElement || ! $right_media instanceof DOMElement ) {
+			continue;
+		}
+
+		if ( ! $left_title instanceof DOMElement || ! $right_title instanceof DOMElement ) {
+			continue;
+		}
+
+		$left_img_list  = $xpath->query( './/img', $left_media );
+		$right_img_list = $xpath->query( './/img', $right_media );
+
+		if ( ! $left_img_list instanceof DOMNodeList || 0 === $left_img_list->length ) {
+			continue;
+		}
+
+		if ( ! $right_img_list instanceof DOMNodeList || 0 === $right_img_list->length ) {
+			continue;
+		}
+
+		// Visible rendered text only.
+		$raw_name         = trim( (string) $left_title->textContent );
+		$relationship     = trim( (string) $right_title->textContent );
+		$shared_name      = preg_replace( '/[\s\x{00A0}]*[-\x{2013}\x{2014}][\s\x{00A0}]*$/u', '', $raw_name );
+		$shared_name      = trim( (string) $shared_name );
+
+		if ( '' === $shared_name || '' === $relationship ) {
+			continue;
+		}
+
+		// Shared profile link prefers left-half values (halves should match).
+		$shared_href = trim( (string) $left_media->getAttribute( 'href' ) );
+
+		if ( '' === $shared_href ) {
+			$shared_href = trim( (string) $right_media->getAttribute( 'href' ) );
+		}
+
+		if ( '' === $shared_href ) {
+			continue;
+		}
+
+		$shared_profile_id = trim( (string) $left_media->getAttribute( 'data-pfoa-profile-id' ) );
+
+		if ( '' === $shared_profile_id ) {
+			$shared_profile_id = trim( (string) $right_media->getAttribute( 'data-pfoa-profile-id' ) );
+		}
+
+		// Build replacement via DOM methods so text/attributes stay escaped.
+		$bonded = $dom->createElement( 'article' );
+		$bonded->setAttribute( 'class', 'pfoa-cat-card pfoa-cat-bonded-card' );
+		$bonded->setAttribute( 'data-pfoa-cat-dialog', $left_dialog );
+
+		if ( '' !== $shared_profile_id ) {
+			$bonded->setAttribute( 'data-pfoa-profile-id', $shared_profile_id );
+		}
+
+		$photos = $dom->createElement( 'div' );
+		$photos->setAttribute( 'class', 'pfoa-cat-bonded-photos' );
+		$bonded->appendChild( $photos );
+
+		// Preserve both member media links (href + dialog + profile-id) and
+		// images (src/srcset/sizes/alt) in original member order.
+		$media_nodes = array( $left_media, $right_media );
+
+		foreach ( $media_nodes as $media_node ) {
+			$media_clone = $media_node->cloneNode( true );
+
+			$existing_media_class = trim( (string) $media_clone->getAttribute( 'class' ) );
+
+			if ( false === strpos( ' ' . $existing_media_class . ' ', ' pfoa-cat-bonded-photo ' ) ) {
+				$media_clone->setAttribute( 'class', trim( $existing_media_class . ' pfoa-cat-bonded-photo' ) );
+			}
+
+			// Import into the current document context (same $dom, but keeps
+			// ownership explicit if parsing context ever changes).
+			$photos->appendChild( $media_clone );
+		}
+
+		$footer = $dom->createElement( 'div' );
+		$footer->setAttribute( 'class', 'pfoa-cat-bonded-footer' );
+		$bonded->appendChild( $footer );
+
+		$name_heading = $dom->createElement( 'h3' );
+		$name_heading->setAttribute( 'class', 'pfoa-cat-bonded-title' );
+		$footer->appendChild( $name_heading );
+
+		$name_link = $dom->createElement( 'a' );
+		$name_link->setAttribute( 'href', $shared_href );
+		$name_link->setAttribute( 'data-pfoa-cat-dialog', $left_dialog );
+
+		if ( '' !== $shared_profile_id ) {
+			$name_link->setAttribute( 'data-pfoa-profile-id', $shared_profile_id );
+		}
+
+		$name_link->textContent = $shared_name;
+		$name_heading->appendChild( $name_link );
+
+		$relationship_el = $dom->createElement( 'p' );
+		$relationship_el->setAttribute( 'class', 'pfoa-cat-bonded-relationship' );
+		$relationship_el->textContent = $relationship;
+		$footer->appendChild( $relationship_el );
+
+		$parent = $left->parentNode;
+
+		if ( ! $parent ) {
+			continue;
+		}
+
+		// Both halves must share the same parent (true adjacent siblings).
+		if ( $right->parentNode !== $parent ) {
+			continue;
+		}
+
+		$parent->insertBefore( $bonded, $left );
+		$parent->removeChild( $left );
+		$parent->removeChild( $right );
+
+		$changed = true;
+	}
+
+	if ( ! $changed ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$output = '';
+
+	foreach ( $wrapper->childNodes as $child ) {
+		$output .= $dom->saveHTML( $child );
+	}
+
+	libxml_clear_errors();
+	libxml_use_internal_errors( $prev_libxml );
+
+	return $output;
+}
+
+add_filter( 'the_content', 'pfoa_present_bonded_pairs', 999 );
