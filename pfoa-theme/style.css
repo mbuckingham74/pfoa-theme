@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.34
+ Version: 0.1.35
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3087,4 +3087,68 @@ input[type="file"] {
 
 .site-footer--compact .site-footer__legal-row {
 	margin-top: var(--pfoa-space-5);
+}
+
+/* PFOA 0.1.35 — Compact desktop homepage pathway tiles (wide-desktop only, CSS-only). */
+@media (min-width: 1320px) {
+	.front-page-content .homepage-pathway {
+		display: grid;
+		grid-template-columns: 4.5rem minmax(0, 1fr);
+		grid-template-rows: auto auto;
+		align-items: center;
+		column-gap: var(--pfoa-space-3);
+		row-gap: 0.25rem;
+		padding: 0.75rem 1rem;
+		text-align: left;
+	}
+
+	.front-page-content .homepage-pathway__media {
+		grid-column: 1;
+		grid-row: 1 / span 2;
+		width: 4.5rem;
+		height: 3.75rem;
+		aspect-ratio: auto;
+		margin: 0;
+		border: 2px solid var(--pfoa-accent);
+		border-radius: var(--pfoa-radius);
+		box-shadow: none;
+	}
+
+	.front-page-content .homepage-pathway__media-image {
+		width: 100%;
+		height: 100%;
+		border-radius: calc(var(--pfoa-radius) - 1px);
+		object-fit: contain;
+	}
+
+	.front-page-content .homepage-pathway__title {
+		grid-column: 2;
+		grid-row: 1;
+		align-items: center;
+		justify-content: flex-start;
+		min-height: 0;
+		margin: 0;
+		font-size: 1.1rem;
+		line-height: 1.15;
+		text-align: left;
+	}
+
+	.front-page-content .homepage-pathway__action {
+		grid-column: 2;
+		grid-row: 2;
+		justify-content: flex-start;
+		min-height: 0;
+		margin: 0;
+		border: 0;
+		padding: 0;
+		background: transparent;
+		color: var(--pfoa-cta-primary);
+		font-size: 0.875rem;
+		line-height: 1.2;
+	}
+
+	.front-page-content .homepage-pathway__link:hover,
+	.front-page-content .homepage-pathway__link:focus-visible {
+		border-color: var(--pfoa-cta-primary);
+	}
 }
