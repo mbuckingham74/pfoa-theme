@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.35
+ Version: 0.1.36
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3093,9 +3093,10 @@ input[type="file"] {
 @media (min-width: 1320px) {
 	.front-page-content .homepage-pathway {
 		display: grid;
-		grid-template-columns: 4.5rem minmax(0, 1fr);
+		grid-template-columns: 4.5rem minmax(0, min(8rem, calc(100% - 5.5rem)));
 		grid-template-rows: auto auto;
 		align-items: center;
+		justify-content: center;
 		column-gap: var(--pfoa-space-3);
 		row-gap: 0.25rem;
 		padding: 0.75rem 1rem;
