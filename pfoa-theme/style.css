@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.45
+ Version: 0.1.46
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -1358,6 +1358,15 @@ input[type="file"] {
 	transform: translateY(-1px);
 }
 
+/* Givebutter header widget: layout-only wrapper. Button styling comes from the plugin. */
+.site-header__donate-widget {
+	grid-column: 3;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-inline-start: var(--pfoa-space-2);
+}
+
 /* Header utility navigation: transparent, secondary, above the main header row. */
 .site-header__utility {
 	background: transparent;
@@ -1756,6 +1765,12 @@ input[type="file"] {
 	}
 
 	.site-header__donate {
+		grid-column: 2;
+		grid-row: 1;
+		margin-inline-start: 0;
+	}
+
+	.site-header__donate-widget {
 		grid-column: 2;
 		grid-row: 1;
 		margin-inline-start: 0;
