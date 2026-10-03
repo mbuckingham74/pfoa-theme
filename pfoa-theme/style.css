@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.43
+ Version: 0.1.44
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3428,5 +3428,43 @@ div.pfoa-cat-cards .pfoa-cat-bonded-footer a:focus-visible {
 @media (max-width: 480px) {
 	div.pfoa-cat-cards > article.pfoa-cat-bonded-card {
 		grid-column: span 1;
+	}
+}
+
+/* PFOA 0.1.44 — Native Page media/text split */
+.page-content .entry-content .pfoa-media-text {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 19rem);
+	gap: var(--pfoa-space-5);
+	align-items: start;
+}
+
+.page-content .entry-content .pfoa-media-text__text {
+	min-width: 0;
+}
+
+.page-content .entry-content .pfoa-media-text__media {
+	max-width: 19rem;
+	justify-self: center;
+}
+
+.page-content .entry-content .pfoa-media-text__media img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+@media (max-width: 720px) {
+	.page-content .entry-content .pfoa-media-text {
+		grid-template-columns: 1fr;
+	}
+
+	.page-content .entry-content .pfoa-media-text__text {
+		order: -1;
+	}
+
+	.page-content .entry-content .pfoa-media-text__media {
+		margin-inline: auto;
+		max-width: min(100%, 22rem);
 	}
 }
