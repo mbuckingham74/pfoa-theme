@@ -2199,7 +2199,10 @@ function pfoa_present_bonded_pairs( $content ) {
 		return $content;
 	}
 
-	if ( false === strpos( $content, 'pfoa-cat-pair-left' ) ) {
+	$has_legacy_marker     = false !== strpos( $content, 'pfoa-cat-pair-left' );
+	$has_structured_marker = false !== strpos( $content, 'data-pfoa-profile-id' );
+
+	if ( ! $has_legacy_marker && ! $has_structured_marker ) {
 		return $content;
 	}
 
@@ -2272,18 +2275,16 @@ function pfoa_present_bonded_pairs( $content ) {
 		$wrapper
 	);
 
-	if ( ! $left_list instanceof DOMNodeList || 0 === $left_list->length ) {
-		libxml_clear_errors();
-		libxml_use_internal_errors( $prev_libxml );
-		return $content;
-	}
-
 	// Snapshot NodeList into an array to avoid live-list mutation issues.
+	// An empty legacy set is not an early return: structured bonded-pair
+	// grouping below may still apply.
 	$left_nodes = array();
 
-	foreach ( $left_list as $left_node ) {
-		if ( $left_node instanceof DOMElement ) {
-			$left_nodes[] = $left_node;
+	if ( $left_list instanceof DOMNodeList && 0 < $left_list->length ) {
+		foreach ( $left_list as $left_node ) {
+			if ( $left_node instanceof DOMElement ) {
+				$left_nodes[] = $left_node;
+			}
 		}
 	}
 
@@ -2520,6 +2521,341 @@ function pfoa_present_bonded_pairs( $content ) {
 		$parent->removeChild( $right );
 
 		$changed = true;
+	}
+
+	// Structured bonded-pair grouping: combine plain individual cards whose
+	// profiles form a canonical bonded pair per the Cat Profiles API. The
+	// legacy halves above are untouched; this only touches plain individual
+	// cards. Never fatals and never fails the whole page: any unusable pair
+	// leaves its individuals unchanged.
+	$structured_consumed = array();
+
+	if ( function_exists( 'pfoa_cat_get_bonded_pair' ) ) {
+		$structured_list = $xpath->query(
+			'.//article[descendant::a[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-media ")][@data-pfoa-profile-id] or @data-pfoa-profile-id]',
+			$wrapper
+		);
+
+		$structured_candidates = array();
+
+		if ( $structured_list instanceof DOMNodeList && 0 < $structured_list->length ) {
+			foreach ( $structured_list as $structured_node ) {
+				if ( ! $structured_node instanceof DOMElement ) {
+					continue;
+				}
+
+				if ( 'article' !== strtolower( $structured_node->nodeName ) ) {
+					continue;
+				}
+
+				$structured_class = ' ' . preg_replace( '/\s+/', ' ', (string) $structured_node->getAttribute( 'class' ) ) . ' ';
+
+				if ( false !== strpos( $structured_class, ' pfoa-cat-pair-left ' ) ) {
+					continue;
+				}
+
+				if ( false !== strpos( $structured_class, ' pfoa-cat-pair-right ' ) ) {
+					continue;
+				}
+
+				if ( false !== strpos( $structured_class, ' pfoa-cat-bonded-card ' ) ) {
+					continue;
+				}
+
+				$structured_candidates[] = $structured_node;
+			}
+		}
+
+		// Map profile ID -> card article element by scanning candidates. The
+		// ID lives on the descendant media anchor primarily, falling back to
+		// the article itself.
+		$profile_to_card = array();
+
+		foreach ( $structured_candidates as $candidate ) {
+			if ( null === $candidate->parentNode ) {
+				continue;
+			}
+
+			$candidate_profile_id = '';
+
+			$candidate_media_list = $xpath->query(
+				'.//a[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-media ")][@data-pfoa-profile-id]',
+				$candidate
+			);
+
+			if ( $candidate_media_list instanceof DOMNodeList && 0 < $candidate_media_list->length ) {
+				$candidate_media_node = $candidate_media_list->item( 0 );
+
+				if ( $candidate_media_node instanceof DOMElement ) {
+					$candidate_profile_id = trim( (string) $candidate_media_node->getAttribute( 'data-pfoa-profile-id' ) );
+				}
+			}
+
+			if ( '' === $candidate_profile_id ) {
+				$candidate_profile_id = trim( (string) $candidate->getAttribute( 'data-pfoa-profile-id' ) );
+			}
+
+			if ( '' === $candidate_profile_id || ! ctype_digit( $candidate_profile_id ) ) {
+				continue;
+			}
+
+			$candidate_id = (int) $candidate_profile_id;
+
+			if ( 0 >= $candidate_id ) {
+				continue;
+			}
+
+			if ( ! isset( $profile_to_card[ $candidate_id ] ) ) {
+				$profile_to_card[ $candidate_id ] = $candidate;
+			}
+		}
+
+		$structured_ids = array_keys( $profile_to_card );
+
+		foreach ( $structured_ids as $structured_id ) {
+			$structured_id = (int) $structured_id;
+
+			if ( isset( $structured_consumed[ $structured_id ] ) ) {
+				continue;
+			}
+
+			if ( ! isset( $profile_to_card[ $structured_id ] ) ) {
+				continue;
+			}
+
+			$pair_raw = pfoa_cat_get_bonded_pair( $structured_id );
+
+			if ( ! is_array( $pair_raw ) ) {
+				continue;
+			}
+
+			// Normalize defensively: entries may be ints/numeric strings,
+			// WP_Post objects, or arrays/objects with ID keys.
+			$pair_ids = array();
+
+			foreach ( $pair_raw as $pair_entry ) {
+				$pair_entry_id = 0;
+
+				if ( is_numeric( $pair_entry ) ) {
+					$pair_entry_id = (int) $pair_entry;
+				} elseif ( $pair_entry instanceof WP_Post ) {
+					$pair_entry_id = (int) $pair_entry->ID;
+				} elseif ( is_array( $pair_entry ) ) {
+					foreach ( array( 'ID', 'id', 'post_id', 'postId', 'postID' ) as $pair_key ) {
+						if ( isset( $pair_entry[ $pair_key ] ) && is_numeric( $pair_entry[ $pair_key ] ) ) {
+							$pair_entry_id = (int) $pair_entry[ $pair_key ];
+							break;
+						}
+					}
+				} elseif ( is_object( $pair_entry ) ) {
+					foreach ( array( 'ID', 'id', 'post_id', 'postId', 'postID' ) as $pair_key ) {
+						if ( isset( $pair_entry->{$pair_key} ) && is_numeric( $pair_entry->{$pair_key} ) ) {
+							$pair_entry_id = (int) $pair_entry->{$pair_key};
+							break;
+						}
+					}
+				}
+
+				if ( 0 < $pair_entry_id ) {
+					$pair_ids[] = $pair_entry_id;
+				}
+			}
+
+			$pair_ids = array_values( array_unique( $pair_ids ) );
+
+			if ( 2 !== count( $pair_ids ) ) {
+				continue;
+			}
+
+			if ( ! in_array( $structured_id, $pair_ids, true ) ) {
+				continue;
+			}
+
+			// Canonical deterministic order comes from the API response.
+			$first_id  = $pair_ids[0];
+			$second_id = $pair_ids[1];
+
+			if ( isset( $structured_consumed[ $first_id ] ) || isset( $structured_consumed[ $second_id ] ) ) {
+				continue;
+			}
+
+			if ( ! isset( $profile_to_card[ $first_id ] ) || ! isset( $profile_to_card[ $second_id ] ) ) {
+				continue;
+			}
+
+			$first_card  = $profile_to_card[ $first_id ];
+			$second_card = $profile_to_card[ $second_id ];
+
+			if ( null === $first_card->parentNode || null === $second_card->parentNode ) {
+				continue;
+			}
+
+			if ( $first_card->parentNode !== $second_card->parentNode ) {
+				continue;
+			}
+
+			$first_media_list   = $xpath->query( './/a[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-media ")]', $first_card );
+			$second_media_list  = $xpath->query( './/a[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-media ")]', $second_card );
+			$first_title_list   = $xpath->query( './/h3[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-title ")]', $first_card );
+			$second_title_list  = $xpath->query( './/h3[contains(concat(" ", normalize-space(@class), " "), " pfoa-cat-card-title ")]', $second_card );
+
+			if ( ! $first_media_list instanceof DOMNodeList || 0 === $first_media_list->length ) {
+				continue;
+			}
+
+			if ( ! $second_media_list instanceof DOMNodeList || 0 === $second_media_list->length ) {
+				continue;
+			}
+
+			if ( ! $first_title_list instanceof DOMNodeList || 0 === $first_title_list->length ) {
+				continue;
+			}
+
+			if ( ! $second_title_list instanceof DOMNodeList || 0 === $second_title_list->length ) {
+				continue;
+			}
+
+			$first_media  = $first_media_list->item( 0 );
+			$second_media = $second_media_list->item( 0 );
+			$first_title  = $first_title_list->item( 0 );
+			$second_title = $second_title_list->item( 0 );
+
+			if ( ! $first_media instanceof DOMElement || ! $second_media instanceof DOMElement ) {
+				continue;
+			}
+
+			if ( ! $first_title instanceof DOMElement || ! $second_title instanceof DOMElement ) {
+				continue;
+			}
+
+			$first_img_list  = $xpath->query( './/img', $first_media );
+			$second_img_list = $xpath->query( './/img', $second_media );
+
+			if ( ! $first_img_list instanceof DOMNodeList || 0 === $first_img_list->length ) {
+				continue;
+			}
+
+			if ( ! $second_img_list instanceof DOMNodeList || 0 === $second_img_list->length ) {
+				continue;
+			}
+
+			// Full member titles (no trailing-dash stripping for structured cards).
+			$first_name  = trim( (string) $first_title->textContent );
+			$second_name = trim( (string) $second_title->textContent );
+
+			if ( '' === $first_name || '' === $second_name ) {
+				continue;
+			}
+
+			// Canonical first member provides the title link + article attrs.
+			$first_href         = trim( (string) $first_media->getAttribute( 'href' ) );
+			$first_dialog       = trim( (string) $first_media->getAttribute( 'data-pfoa-cat-dialog' ) );
+			$first_profile_attr = trim( (string) $first_media->getAttribute( 'data-pfoa-profile-id' ) );
+
+			if ( '' === $first_href || '' === $first_dialog || '' === $first_profile_attr ) {
+				$first_title_link_list = $xpath->query( './/a[@href]', $first_title );
+
+				if ( $first_title_link_list instanceof DOMNodeList && 0 < $first_title_link_list->length ) {
+					$first_title_link = $first_title_link_list->item( 0 );
+
+					if ( $first_title_link instanceof DOMElement ) {
+						if ( '' === $first_href ) {
+							$first_href = trim( (string) $first_title_link->getAttribute( 'href' ) );
+						}
+
+						if ( '' === $first_dialog ) {
+							$first_dialog = trim( (string) $first_title_link->getAttribute( 'data-pfoa-cat-dialog' ) );
+						}
+
+						if ( '' === $first_profile_attr ) {
+							$first_profile_attr = trim( (string) $first_title_link->getAttribute( 'data-pfoa-profile-id' ) );
+						}
+					}
+				}
+			}
+
+			if ( '' === $first_profile_attr ) {
+				$first_profile_attr = (string) $first_id;
+			}
+
+			if ( '' === $first_href ) {
+				continue;
+			}
+
+			// Build replacement via DOM methods so text/attributes stay escaped.
+			$structured_bonded = $dom->createElement( 'article' );
+			$structured_bonded->setAttribute( 'class', 'pfoa-cat-card pfoa-cat-bonded-card' );
+
+			if ( '' !== $first_dialog ) {
+				$structured_bonded->setAttribute( 'data-pfoa-cat-dialog', $first_dialog );
+			}
+
+			$structured_bonded->setAttribute( 'data-pfoa-profile-id', $first_profile_attr );
+
+			$structured_photos = $dom->createElement( 'div' );
+			$structured_photos->setAttribute( 'class', 'pfoa-cat-bonded-photos' );
+			$structured_bonded->appendChild( $structured_photos );
+
+			// Preserve both member media links (href + dialog + profile-id) and
+			// images (src/srcset/sizes/alt) in canonical member order.
+			$structured_media_nodes = array( $first_media, $second_media );
+
+			foreach ( $structured_media_nodes as $structured_media_node ) {
+				$structured_media_clone = $structured_media_node->cloneNode( true );
+
+				$structured_media_class = trim( (string) $structured_media_clone->getAttribute( 'class' ) );
+
+				if ( false === strpos( ' ' . $structured_media_class . ' ', ' pfoa-cat-bonded-photo ' ) ) {
+					$structured_media_clone->setAttribute( 'class', trim( $structured_media_class . ' pfoa-cat-bonded-photo' ) );
+				}
+
+				$structured_photos->appendChild( $structured_media_clone );
+			}
+
+			$structured_footer = $dom->createElement( 'div' );
+			$structured_footer->setAttribute( 'class', 'pfoa-cat-bonded-footer' );
+			$structured_bonded->appendChild( $structured_footer );
+
+			$structured_heading = $dom->createElement( 'h3' );
+			$structured_heading->setAttribute( 'class', 'pfoa-cat-bonded-title' );
+			$structured_footer->appendChild( $structured_heading );
+
+			$structured_link = $dom->createElement( 'a' );
+			$structured_link->setAttribute( 'href', $first_href );
+
+			if ( '' !== $first_dialog ) {
+				$structured_link->setAttribute( 'data-pfoa-cat-dialog', $first_dialog );
+			}
+
+			$structured_link->setAttribute( 'data-pfoa-profile-id', $first_profile_attr );
+
+			$structured_link->textContent = $first_name . ' & ' . $second_name;
+			$structured_heading->appendChild( $structured_link );
+
+			$structured_relationship = $dom->createElement( 'p' );
+			$structured_relationship->setAttribute( 'class', 'pfoa-cat-bonded-relationship' );
+			$structured_relationship->textContent = 'Bonded pair';
+			$structured_footer->appendChild( $structured_relationship );
+
+			$structured_parent = $first_card->parentNode;
+
+			if ( ! $structured_parent ) {
+				continue;
+			}
+
+			if ( $second_card->parentNode !== $structured_parent ) {
+				continue;
+			}
+
+			$structured_parent->insertBefore( $structured_bonded, $first_card );
+			$structured_parent->removeChild( $first_card );
+			$structured_parent->removeChild( $second_card );
+
+			$structured_consumed[ $first_id ]  = true;
+			$structured_consumed[ $second_id ] = true;
+
+			$changed = true;
+		}
 	}
 
 	if ( ! $changed ) {
