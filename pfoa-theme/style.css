@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.49
+ Version: 0.1.50
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -743,6 +743,73 @@ body.page-id-22514 .entry-content .gallery-icon img {
 	aspect-ratio: 1 / 1;
 	object-fit: cover;
 	object-position: center;
+}
+
+/* Adopted 2026 (page 22514) presentation. */
+body.page-id-22514 .entry-content > h1:first-child {
+	font-size: clamp(1.5rem, 2.5vw + 1rem, 2rem);
+	line-height: 1.25;
+	margin-top: 0;
+	margin-bottom: var(--pfoa-space-3);
+}
+
+body.page-id-22514 .entry-content > p {
+	max-width: 65ch;
+	margin-top: 0;
+	margin-bottom: var(--pfoa-space-3);
+}
+
+body.page-id-22514 .entry-content .gallery {
+	max-width: 100%;
+	grid-template-columns: repeat(6, minmax(0, 1fr));
+	gap: var(--pfoa-space-2);
+}
+
+body.page-id-22514 .entry-content .gallery-item {
+	min-width: 0;
+	max-width: 100%;
+	padding: var(--pfoa-space-2);
+	background: var(--pfoa-surface-page);
+	border: 1px solid var(--pfoa-border-default);
+	border-radius: var(--pfoa-radius);
+}
+
+body.page-id-22514 .entry-content .gallery-icon {
+	margin-bottom: var(--pfoa-space-2);
+}
+
+body.page-id-22514 .entry-content .gallery-icon img {
+	display: block;
+	width: 100%;
+	aspect-ratio: 1 / 1;
+	object-fit: cover;
+	object-position: center;
+	border-radius: calc(var(--pfoa-radius) - 1px);
+}
+
+body.page-id-22514 .entry-content .gallery-caption {
+	text-align: center;
+	font-size: 0.8rem;
+	line-height: 1.4;
+	color: var(--pfoa-text-muted);
+}
+
+@media (max-width: 1319px) {
+	body.page-id-22514 .entry-content .gallery {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 720px) {
+	body.page-id-22514 .entry-content .gallery {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 480px) {
+	body.page-id-22514 .entry-content .gallery {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }
 
 .entry-content .gallery-caption {
