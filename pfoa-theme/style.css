@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.53
+ Version: 0.1.54
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3632,12 +3632,45 @@ body.page-id-22514 .pfoa-adopted-bonded-group .gallery-item .gallery-caption {
 	text-align: center;
 }
 
-/* PFOA 0.1.52 — Bonded-pair first-caption prefix (presentation only, CSS-only).
- * Visually prepends "Bonded Pair — " to the first member caption only.
- * Scoped strictly to body.page-id-22514; stored captions unchanged.
+/* PFOA 0.1.54 — Bonded-pair shared footer (presentation only, CSS-only).
+ * Replaces the 0.1.52 first-caption prefix: member captions are visually
+ * hidden but remain in the DOM (accessible-only, no display:none, no
+ * :focus reveal); one shared footer spans both columns with the combined
+ * title and relationship line. Scoped strictly to body.page-id-22514;
+ * stored captions unchanged.
  */
-body.page-id-22514 .pfoa-adopted-bonded-group > .gallery-item:first-child .gallery-caption::before {
-	content: "Bonded Pair — ";
+body.page-id-22514 .pfoa-adopted-bonded-group .pfoa-adopted-bonded-member-caption {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+body.page-id-22514 .pfoa-adopted-bonded-footer {
+	grid-column: 1 / -1;
+	text-align: center;
+}
+
+body.page-id-22514 .pfoa-adopted-bonded-title {
+	margin: var(--pfoa-space-2) 0 .25rem;
+	color: var(--pfoa-action-primary);
+	font-weight: 700;
+	font-size: 1.05rem;
+	line-height: 1.3;
+	text-align: center;
+}
+
+body.page-id-22514 .pfoa-adopted-bonded-relationship {
+	margin: .25rem 0 0;
+	color: var(--pfoa-text-muted);
+	font-size: .875rem;
+	line-height: 1.5;
+	text-align: center;
 }
 
 @media (max-width: 1319px) {

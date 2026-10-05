@@ -3350,6 +3350,88 @@ function pfoa_present_adopted_bonded_pairs( $content ) {
 		$group->appendChild( $first_node );
 		$group->appendChild( $second_node );
 
+		// Step 5b: shared footer (presentation only, 0.1.54). Read the two
+		// existing individual caption texts ONLY from their current
+		// .gallery-caption elements in rendered pair order; never from
+		// profile titles, attachment titles, filenames, or alt text. If
+		// both are non-empty after trim, append one shared footer after
+		// the figures and mark the member captions accessible-only. Any
+		// blank caption or DOM failure leaves the group as-is.
+		$footer_figures     = array( $first_node, $second_node );
+		$footer_captions    = array();
+		$footer_caption_els = array();
+		$footer_ok          = true;
+
+		foreach ( $footer_figures as $footer_figure ) {
+			if ( ! $footer_figure instanceof DOMElement ) {
+				$footer_ok = false;
+				break;
+			}
+
+			$caption_match = $xpath->query(
+				'.//*[contains(concat(" ", normalize-space(@class), " "), " gallery-caption ")]',
+				$footer_figure
+			);
+
+			if ( ! $caption_match instanceof DOMNodeList || 0 === $caption_match->length ) {
+				$footer_ok = false;
+				break;
+			}
+
+			$caption_el = $caption_match->item( 0 );
+
+			if ( ! $caption_el instanceof DOMElement ) {
+				$footer_ok = false;
+				break;
+			}
+
+			$caption_text = trim( (string) $caption_el->textContent );
+
+			if ( '' === $caption_text ) {
+				$footer_ok = false;
+				break;
+			}
+
+			$footer_captions[]    = $caption_text;
+			$footer_caption_els[] = $caption_el;
+		}
+
+		if ( $footer_ok && 2 === count( $footer_captions ) && 2 === count( $footer_caption_els ) ) {
+			$footer_node = $dom->createElement( 'div' );
+
+			if ( $footer_node instanceof DOMElement ) {
+				$footer_node->setAttribute( 'class', 'pfoa-adopted-bonded-footer' );
+
+				$title_node = $dom->createElement( 'p' );
+
+				if ( $title_node instanceof DOMElement ) {
+					$title_node->setAttribute( 'class', 'pfoa-adopted-bonded-title' );
+					$title_node->appendChild( $dom->createTextNode( $footer_captions[0] . ' & ' . $footer_captions[1] ) );
+					$footer_node->appendChild( $title_node );
+				}
+
+				$rel_node = $dom->createElement( 'p' );
+
+				if ( $rel_node instanceof DOMElement ) {
+					$rel_node->setAttribute( 'class', 'pfoa-adopted-bonded-relationship' );
+					$rel_node->appendChild( $dom->createTextNode( 'Bonded pair' ) );
+					$footer_node->appendChild( $rel_node );
+				}
+
+				if ( 2 === $footer_node->childNodes->length ) {
+					$group->appendChild( $footer_node );
+
+					foreach ( $footer_caption_els as $footer_caption_el ) {
+						$existing_classes = $footer_caption_el->getAttribute( 'class' );
+
+						if ( false === strpos( ' ' . $existing_classes . ' ', ' pfoa-adopted-bonded-member-caption ' ) ) {
+							$footer_caption_el->setAttribute( 'class', trim( $existing_classes . ' pfoa-adopted-bonded-member-caption' ) );
+						}
+					}
+				}
+			}
+		}
+
 		$consumed[ $att_a ] = true;
 		$consumed[ $att_b ] = true;
 
