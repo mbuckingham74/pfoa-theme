@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.59
+ Version: 0.1.60
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -21,7 +21,7 @@ Text Domain: pfoa-theme
 	--pfoa-color-brand-dark: #713033;
 	--pfoa-color-gold: #e9ad4e;
 	--pfoa-color-gold-dark: #d29435;
-	--pfoa-color-border: #d2cbc0;
+	--pfoa-color-border: #c8c0b5;
 	--pfoa-color-focus: #005fcc;
 
 	/* Semantic color foundation (meaning-based roles). */
@@ -771,7 +771,7 @@ body.page-id-22514 .entry-content .gallery-item {
 	max-width: 100%;
 	padding: var(--pfoa-space-2);
 	background: var(--pfoa-surface-page);
-	border: 1px solid #b8bdd6;
+	border: 1.5px solid #aeb4cd;
 	border-radius: var(--pfoa-radius);
 }
 
@@ -3366,7 +3366,7 @@ div.pfoa-cat-cards {
 div.pfoa-cat-cards article.pfoa-cat-card {
 	min-width: 0;
 	margin: 0;
-	border: 1px solid var(--pfoa-color-border);
+	border: 1.5px solid var(--pfoa-color-border);
 	border-radius: var(--pfoa-radius);
 	padding: var(--pfoa-space-3);
 	background: var(--pfoa-color-background);
@@ -3466,7 +3466,7 @@ div.pfoa-cat-cards > article.pfoa-cat-bonded-card {
 div.pfoa-cat-cards article.pfoa-cat-bonded-card {
 	min-width: 0;
 	margin: 0;
-	border: 1px solid var(--pfoa-color-border);
+	border: 1.5px solid var(--pfoa-color-border);
 	border-radius: var(--pfoa-radius);
 	padding: var(--pfoa-space-3);
 	background: var(--pfoa-color-background);
@@ -3622,7 +3622,7 @@ body.page-id-22514 .pfoa-adopted-bonded-group {
 	min-width: 0;
 	max-width: 100%;
 	margin: 0;
-	border: 1px solid #b8bdd6;
+	border: 1.5px solid #aeb4cd;
 	border-radius: var(--pfoa-radius);
 	padding: var(--pfoa-space-2);
 	background: var(--pfoa-surface-page);
