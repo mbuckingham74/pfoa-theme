@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.57
+ Version: 0.1.58
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -800,7 +800,7 @@ body.page-id-22514 .entry-content .gallery-caption {
  * captions inside div.pfoa-adopted-bonded-group. Scoped to body.page-id-22514.
  */
 body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
-	margin: var(--pfoa-space-2) 0 0;
+	margin: var(--pfoa-space-3) 0 0;
 	color: var(--pfoa-action-primary);
 	font-style: normal;
 	font-weight: 700;
@@ -3360,6 +3360,7 @@ div.pfoa-cat-cards {
 	display: grid;
 	grid-template-columns: repeat(4, minmax(0, 1fr));
 	gap: var(--pfoa-space-5);
+	align-items: start;
 }
 
 div.pfoa-cat-cards article.pfoa-cat-card {
@@ -3388,7 +3389,7 @@ div.pfoa-cat-cards img.pfoa-cat-card-thumb {
 }
 
 div.pfoa-cat-cards h3.pfoa-cat-card-title {
-	margin: var(--pfoa-space-3) 0 0.25rem;
+	margin: var(--pfoa-space-3) 0 0;
 	color: var(--pfoa-action-primary);
 	font-style: normal;
 	font-weight: 700;
@@ -3438,6 +3439,11 @@ div.pfoa-cat-cards a.pfoa-cat-card-media:focus-visible {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: var(--pfoa-space-4);
 	}
+
+	/* PFOA 0.1.58 — Host gap drops to 24px here: 24+17+17 = 58px. */
+	div.pfoa-cat-cards .pfoa-cat-bonded-photos {
+		column-gap: calc(var(--pfoa-space-4) + 2 * (var(--pfoa-space-3) + 1px)); /* 24+17+17 = 58px */
+	}
 }
 
 @media (max-width: 480px) {
@@ -3471,7 +3477,13 @@ div.pfoa-cat-cards article.pfoa-cat-bonded-card {
 div.pfoa-cat-cards .pfoa-cat-bonded-photos {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: var(--pfoa-space-3);
+	/* PFOA 0.1.58 — Track-align bonded member images with single-card tracks.
+	 * Bonded card spans 2 host columns: internal column gap = host gap (32px)
+	 * + 2 x card inset (16px padding + 1px border = 17px each) = 32+17+17 = 66px.
+	 * Row gap stays 16px. No hard-coded image widths; squares derive from grid.
+	 */
+	row-gap: var(--pfoa-space-3);
+	column-gap: calc(var(--pfoa-space-5) + 2 * (var(--pfoa-space-3) + 1px)); /* 32+17+17 = 66px */
 }
 
 div.pfoa-cat-cards .pfoa-cat-bonded-photos a,
@@ -3497,7 +3509,7 @@ div.pfoa-cat-cards .pfoa-cat-bonded-footer {
 
 div.pfoa-cat-cards h3.pfoa-cat-bonded-title,
 div.pfoa-cat-cards .pfoa-cat-bonded-footer h3 {
-	margin: var(--pfoa-space-3) 0 0.25rem;
+	margin: var(--pfoa-space-3) 0 0;
 	color: var(--pfoa-action-primary);
 	font-style: normal;
 	font-weight: 700;
@@ -3537,6 +3549,13 @@ div.pfoa-cat-cards .pfoa-cat-bonded-footer a:focus-visible {
 @media (max-width: 480px) {
 	div.pfoa-cat-cards > article.pfoa-cat-bonded-card {
 		grid-column: span 1;
+	}
+
+	/* PFOA 0.1.58 — Single-column span: retain deliberate compact two-photo
+	 * presentation; cross-column formula does not apply.
+	 */
+	div.pfoa-cat-cards .pfoa-cat-bonded-photos {
+		column-gap: var(--pfoa-space-3);
 	}
 }
 
@@ -3592,7 +3611,14 @@ body.page-id-22514 .pfoa-adopted-bonded-group {
 	grid-column: span 2;
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: var(--pfoa-space-2);
+	/* PFOA 0.1.58 — Track-align bonded member slots with single-card tracks.
+	 * Internal COLUMN gap = host gap (12px) + 2 x card inset (12px padding +
+	 * 1px border = 13px each) = 12+13+13 = 38px. Row gap stays 12px so
+	 * image-to-shared-title = 12px row gap + 4px title top margin = 16px.
+	 * No hard-coded image widths; slot widths derive from grid geometry.
+	 */
+	row-gap: var(--pfoa-space-2);
+	column-gap: calc(var(--pfoa-space-2) + 2 * (var(--pfoa-space-2) + 1px)); /* 12+13+13 = 38px */
 	min-width: 0;
 	max-width: 100%;
 	margin: 0;
@@ -3617,7 +3643,7 @@ body.page-id-22514 .pfoa-adopted-bonded-group .gallery-item {
 }
 
 body.page-id-22514 .pfoa-adopted-bonded-group .gallery-item .gallery-icon {
-	margin: 0 0 var(--pfoa-space-2);
+	margin: 0;
 }
 
 body.page-id-22514 .pfoa-adopted-bonded-group .gallery-item .gallery-icon a {
@@ -3673,7 +3699,7 @@ body.page-id-22514 .pfoa-adopted-bonded-footer {
 }
 
 body.page-id-22514 .pfoa-adopted-bonded-title {
-	margin: var(--pfoa-space-1) 0 .125rem;
+	margin: 0.25rem 0 0;
 	color: var(--pfoa-action-primary);
 	font-weight: 700;
 	font-size: 1.05rem;
@@ -3682,10 +3708,10 @@ body.page-id-22514 .pfoa-adopted-bonded-title {
 }
 
 body.page-id-22514 .pfoa-adopted-bonded-relationship {
-	margin: .125rem 0 0;
+	margin: 0.25rem 0 0;
 	color: var(--pfoa-text-muted);
-	font-size: .8rem;
-	line-height: 1.4;
+	font-size: 0.875rem;
+	line-height: 1.5;
 	text-align: center;
 }
 
