@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.51
+ Version: 0.1.52
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3626,6 +3626,14 @@ body.page-id-22514 .pfoa-adopted-bonded-group .gallery-item .gallery-caption {
 	font-size: 0.8rem;
 	line-height: 1.4;
 	text-align: center;
+}
+
+/* PFOA 0.1.52 — Bonded-pair first-caption prefix (presentation only, CSS-only).
+ * Visually prepends "Bonded Pair — " to the first member caption only.
+ * Scoped strictly to body.page-id-22514; stored captions unchanged.
+ */
+body.page-id-22514 .pfoa-adopted-bonded-group > .gallery-item:first-child .gallery-caption::before {
+	content: "Bonded Pair — ";
 }
 
 @media (max-width: 1319px) {
