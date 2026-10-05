@@ -2774,3 +2774,604 @@ function pfoa_present_bonded_pairs( $content ) {
 }
 
 add_filter( 'the_content', 'pfoa_present_bonded_pairs', 999 );
+
+/**
+ * Adopted 2026 gallery: group workflow-managed bonded pairs.
+ *
+ * Page-specific (page 22514 / adopted2026) companion to
+ * pfoa_present_bonded_pairs(). Parses the rendered core gallery, maps each
+ * rendered attachment to exactly one workflow-managed pfoa_cat row
+ * (_pfoa_aw_adopted2026_image_id + managed id + inserted flag), validates the
+ * canonical bonded pair via pfoa_cat_get_bonded_pair() symmetrically on both
+ * sides, and wraps currently-adjacent figure pairs in a
+ * div.pfoa-adopted-bonded-group. Moves existing nodes only; never clones IDs,
+ * never re-sorts, never repairs, never uses raw bonded meta. Returns $content
+ * unchanged on any failure and never throws/fatals.
+ *
+ * @param string $content Post content.
+ * @return string Possibly-grouped content.
+ */
+function pfoa_present_adopted_bonded_pairs( $content ) {
+	if ( function_exists( 'is_admin' ) && is_admin() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_feed' ) && is_feed() ) {
+		return $content;
+	}
+
+	if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+		return $content;
+	}
+
+	if ( ! is_string( $content ) || '' === $content ) {
+		return $content;
+	}
+
+	if ( false === strpos( $content, 'gallery-item' ) ) {
+		return $content;
+	}
+
+	if ( function_exists( 'in_the_loop' ) && ! in_the_loop() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_main_query' ) && ! is_main_query() ) {
+		return $content;
+	}
+
+	$is_target_page = false;
+
+	if ( function_exists( 'is_page' ) && ( is_page( 22514 ) || is_page( 'adopted2026' ) ) ) {
+		$is_target_page = true;
+	} elseif ( function_exists( 'get_post' ) ) {
+		$post = get_post();
+
+		if ( $post instanceof WP_Post ) {
+			if ( 22514 === (int) $post->ID ) {
+				$is_target_page = true;
+			} elseif ( isset( $post->post_name ) && 'adopted2026' === $post->post_name ) {
+				$is_target_page = true;
+			}
+		}
+	}
+
+	if ( ! $is_target_page ) {
+		return $content;
+	}
+
+	if ( ! class_exists( 'DOMDocument' ) || ! class_exists( 'DOMXPath' ) ) {
+		return $content;
+	}
+
+	if ( ! function_exists( 'pfoa_cat_get_bonded_pair' ) ) {
+		return $content;
+	}
+
+	if ( ! function_exists( 'get_posts' ) || ! function_exists( 'get_post_meta' ) ) {
+		return $content;
+	}
+
+	$prev_libxml = libxml_use_internal_errors( true );
+
+	$dom = new DOMDocument( '1.0', 'UTF-8' );
+
+	if ( function_exists( 'mb_encode_numericentity' ) ) {
+		$fragment = mb_encode_numericentity( $content, array( 0x80, 0x10FFFF, 0, 0x1FFFFF ), 'UTF-8' );
+	} else {
+		$fragment = $content;
+	}
+
+	$loaded = $dom->loadHTML(
+		'<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body><div id="pfoa-adopted-wrapper">' . $fragment . '</div></body></html>'
+	);
+
+	if ( ! $loaded ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$xpath = new DOMXPath( $dom );
+
+	$wrapper_list = $xpath->query( '//div[@id="pfoa-adopted-wrapper"]' );
+
+	if ( ! $wrapper_list instanceof DOMNodeList || 0 === $wrapper_list->length ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$wrapper = $wrapper_list->item( 0 );
+
+	// Step 1: attachment discovery. Map attachment ID => figure.gallery-item
+	// node for figures that are direct children of a .gallery container. The
+	// ID comes only from figcaption[id="gallery-<instance>-<ID>"] and/or
+	// img[aria-describedby="gallery-<instance>-<ID>"]; never from filename,
+	// caption text, position, or parent. A classic dl.gallery-item / dd
+	// caption fallback is accepted with the same ID rules.
+	$item_list = $xpath->query(
+		'.//*[contains(concat(" ", normalize-space(@class), " "), " gallery-item ")]',
+		$wrapper
+	);
+
+	if ( ! $item_list instanceof DOMNodeList || 0 === $item_list->length ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$attachment_to_figure = array();
+	$ambiguous_ids        = array();
+	$ordered_items        = array();
+
+	foreach ( $item_list as $item_node ) {
+		if ( ! $item_node instanceof DOMElement ) {
+			continue;
+		}
+
+		$tag = strtolower( $item_node->nodeName );
+
+		if ( 'figure' !== $tag && 'dl' !== $tag ) {
+			continue;
+		}
+
+		$parent = $item_node->parentNode;
+
+		if ( ! $parent instanceof DOMElement ) {
+			continue;
+		}
+
+		$parent_class = ' ' . preg_replace( '/\s+/', ' ', (string) $parent->getAttribute( 'class' ) ) . ' ';
+
+		if ( false === strpos( $parent_class, ' gallery ' ) ) {
+			continue;
+		}
+
+		$from_caption = 0;
+		$from_img     = 0;
+
+		$caption_list = $xpath->query( './/*[self::figcaption or self::dd][@id]', $item_node );
+
+		if ( $caption_list instanceof DOMNodeList && 0 < $caption_list->length ) {
+			foreach ( $caption_list as $caption_node ) {
+				if ( ! $caption_node instanceof DOMElement ) {
+					continue;
+				}
+
+				$caption_id = trim( (string) $caption_node->getAttribute( 'id' ) );
+
+				if ( 1 === preg_match( '/^gallery-\d+-(\d+)$/', $caption_id, $caption_matches ) ) {
+					$from_caption = (int) $caption_matches[1];
+					break;
+				}
+			}
+		}
+
+		$img_list = $xpath->query( './/img[@aria-describedby]', $item_node );
+
+		if ( $img_list instanceof DOMNodeList && 0 < $img_list->length ) {
+			foreach ( $img_list as $img_node ) {
+				if ( ! $img_node instanceof DOMElement ) {
+					continue;
+				}
+
+				$describedby = trim( (string) $img_node->getAttribute( 'aria-describedby' ) );
+
+				if ( 1 === preg_match( '/^gallery-\d+-(\d+)$/', $describedby, $img_matches ) ) {
+					$from_img = (int) $img_matches[1];
+					break;
+				}
+			}
+		}
+
+		// Both signals present but disagreeing means ambiguous: skip.
+		if ( 0 < $from_caption && 0 < $from_img && $from_caption !== $from_img ) {
+			continue;
+		}
+
+		$attachment_id = 0 < $from_caption ? $from_caption : $from_img;
+
+		if ( 0 >= $attachment_id ) {
+			continue;
+		}
+
+		if ( isset( $ambiguous_ids[ $attachment_id ] ) ) {
+			continue;
+		}
+
+		if ( isset( $attachment_to_figure[ $attachment_id ] ) ) {
+			// Rendered twice: attachment no longer maps 1:1, exclude it.
+			unset( $attachment_to_figure[ $attachment_id ] );
+			$ambiguous_ids[ $attachment_id ] = true;
+			continue;
+		}
+
+		$attachment_to_figure[ $attachment_id ] = $item_node;
+		$ordered_items[]                         = array(
+			'att'  => $attachment_id,
+			'node' => $item_node,
+		);
+	}
+
+	if ( ! empty( $ambiguous_ids ) ) {
+		$ordered_items = array_values(
+			array_filter(
+				$ordered_items,
+				function ( $ordered_item ) use ( $ambiguous_ids ) {
+					return ! isset( $ambiguous_ids[ $ordered_item['att'] ] );
+				}
+			)
+		);
+	}
+
+	if ( empty( $attachment_to_figure ) || empty( $ordered_items ) ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	// Step 2: workflow -> cat mapping with a single bounded lookup. Each
+	// rendered attachment must be claimed by exactly one pfoa_cat row whose
+	// image id, managed id, and inserted flag all verify; anything else
+	// (historical, manual, pre-existing) is left untouched.
+	$gallery_ids = array_keys( $attachment_to_figure );
+
+	$cat_rows = get_posts(
+		array(
+			'post_type'      => 'pfoa_cat',
+			'post_status'    => 'any',
+			'posts_per_page' => count( $gallery_ids ),
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+			'meta_query'     => array(
+				array(
+					'key'     => '_pfoa_aw_adopted2026_image_id',
+					'value'   => $gallery_ids,
+					'compare' => 'IN',
+				),
+			),
+		)
+	);
+
+	if ( ! is_array( $cat_rows ) || empty( $cat_rows ) ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$managed_meta_keys  = array( '_pfoa_aw_adopted2026_managed_id', '_pfoa_aw_adopted2026_managed_image_id' );
+	$inserted_meta_keys = array( '_pfoa_aw_adopted2026_inserted', '_pfoa_aw_adopted2026_is_inserted' );
+
+	$claims = array();
+
+	foreach ( $cat_rows as $cat_row ) {
+		$cat_id = (int) $cat_row;
+
+		if ( 0 >= $cat_id ) {
+			continue;
+		}
+
+		$image_id_raw = get_post_meta( $cat_id, '_pfoa_aw_adopted2026_image_id', true );
+
+		if ( ! is_numeric( $image_id_raw ) ) {
+			continue;
+		}
+
+		$claimed_att = (int) $image_id_raw;
+
+		if ( ! isset( $attachment_to_figure[ $claimed_att ] ) ) {
+			continue;
+		}
+
+		$inserted_ok = false;
+
+		foreach ( $inserted_meta_keys as $inserted_key ) {
+			$inserted_raw = get_post_meta( $cat_id, $inserted_key, true );
+
+			if ( '' === $inserted_raw && ! is_numeric( $inserted_raw ) ) {
+				continue;
+			}
+
+			if ( '1' === (string) $inserted_raw ) {
+				$inserted_ok = true;
+				break;
+			}
+
+			// A present-but-not-'1' inserted flag disqualifies this row.
+			$inserted_ok = false;
+			break;
+		}
+
+		if ( ! $inserted_ok ) {
+			continue;
+		}
+
+		$managed_seen = false;
+		$managed_ok   = false;
+
+		foreach ( $managed_meta_keys as $managed_key ) {
+			$managed_raw = get_post_meta( $cat_id, $managed_key, true );
+
+			if ( '' === $managed_raw && ! is_numeric( $managed_raw ) ) {
+				continue;
+			}
+
+			$managed_seen = true;
+
+			if ( is_numeric( $managed_raw ) && (int) $managed_raw === $claimed_att ) {
+				$managed_ok = true;
+				break;
+			}
+
+			// A present-but-mismatched managed id disqualifies this row.
+			$managed_ok = false;
+			break;
+		}
+
+		// No separate managed key stored: the workflow image id itself is
+		// the managed id (already matched to the attachment above).
+		if ( ! $managed_seen ) {
+			$managed_ok = true;
+		}
+
+		if ( ! $managed_ok ) {
+			continue;
+		}
+
+		if ( ! isset( $claims[ $claimed_att ] ) ) {
+			$claims[ $claimed_att ] = array();
+		}
+
+		$claims[ $claimed_att ][] = $cat_id;
+	}
+
+	$attachment_to_cat = array();
+	$cat_to_attachment = array();
+
+	foreach ( $claims as $claimed_att => $claiming_cats ) {
+		$claiming_cats = array_values( array_unique( array_map( 'intval', (array) $claiming_cats ) ) );
+
+		if ( 1 !== count( $claiming_cats ) ) {
+			continue;
+		}
+
+		$single_cat = (int) $claiming_cats[0];
+
+		if ( 0 >= $single_cat ) {
+			continue;
+		}
+
+		if ( isset( $cat_to_attachment[ $single_cat ] ) ) {
+			// One cat claiming two attachments: ambiguous, drop both.
+			$other_att = $cat_to_attachment[ $single_cat ];
+			unset( $attachment_to_cat[ $other_att ] );
+			unset( $cat_to_attachment[ $single_cat ] );
+			$ambiguous_ids[ $claimed_att ] = true;
+			$ambiguous_ids[ $other_att ]   = true;
+			continue;
+		}
+
+		$attachment_to_cat[ $claimed_att ] = $single_cat;
+		$cat_to_attachment[ $single_cat ]  = $claimed_att;
+	}
+
+	if ( empty( $attachment_to_cat ) ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	// Normalizes a pfoa_cat_get_bonded_pair() return value (ints, numeric
+	// strings, WP_Post objects, or arrays/objects with ID keys) into a
+	// sorted list of unique positive IDs for set comparison.
+	$normalize_pair = function ( $pair_raw ) {
+		if ( ! is_array( $pair_raw ) ) {
+			return array();
+		}
+
+		$pair_ids = array();
+
+		foreach ( $pair_raw as $pair_entry ) {
+			$pair_entry_id = 0;
+
+			if ( is_numeric( $pair_entry ) ) {
+				$pair_entry_id = (int) $pair_entry;
+			} elseif ( $pair_entry instanceof WP_Post ) {
+				$pair_entry_id = (int) $pair_entry->ID;
+			} elseif ( is_array( $pair_entry ) ) {
+				foreach ( array( 'ID', 'id', 'post_id', 'postId', 'postID' ) as $pair_key ) {
+					if ( isset( $pair_entry[ $pair_key ] ) && is_numeric( $pair_entry[ $pair_key ] ) ) {
+						$pair_entry_id = (int) $pair_entry[ $pair_key ];
+						break;
+					}
+				}
+			} elseif ( is_object( $pair_entry ) ) {
+				foreach ( array( 'ID', 'id', 'post_id', 'postId', 'postID' ) as $pair_key ) {
+					if ( isset( $pair_entry->{$pair_key} ) && is_numeric( $pair_entry->{$pair_key} ) ) {
+						$pair_entry_id = (int) $pair_entry->{$pair_key};
+						break;
+					}
+				}
+			}
+
+			if ( 0 < $pair_entry_id ) {
+				$pair_ids[] = $pair_entry_id;
+			}
+		}
+
+		$pair_ids = array_values( array_unique( $pair_ids ) );
+		sort( $pair_ids );
+
+		return $pair_ids;
+	};
+
+	// Steps 3-5: canonical validation, adjacency safety, wrapper grouping.
+	$consumed = array();
+	$changed  = false;
+
+	foreach ( $ordered_items as $ordered_item ) {
+		$att_a = (int) $ordered_item['att'];
+
+		if ( isset( $consumed[ $att_a ] ) || isset( $ambiguous_ids[ $att_a ] ) ) {
+			continue;
+		}
+
+		if ( ! isset( $attachment_to_cat[ $att_a ] ) || ! isset( $attachment_to_figure[ $att_a ] ) ) {
+			continue;
+		}
+
+		$node_a = $attachment_to_figure[ $att_a ];
+		$cat_a  = (int) $attachment_to_cat[ $att_a ];
+
+		if ( null === $node_a->parentNode ) {
+			continue;
+		}
+
+		// Step 3: canonical validation. Cat-domain first (the API speaks cat
+		// IDs): the pair for cat A must be exactly two unique IDs containing
+		// A, the partner cat must map independently to another rendered
+		// attachment, and its pair must be the same set. An attachment-domain
+		// fallback applies the identical symmetric proof. Raw bonded meta is
+		// never consulted, adjacency never implies pairing, nothing is
+		// repaired.
+		$att_b = 0;
+
+		$pair_cats = $normalize_pair( pfoa_cat_get_bonded_pair( $cat_a ) );
+
+		if ( 2 === count( $pair_cats ) && in_array( $cat_a, $pair_cats, true ) ) {
+			$other_cat = (int) ( (int) $pair_cats[0] === $cat_a ? $pair_cats[1] : $pair_cats[0] );
+
+			if ( 0 < $other_cat && $other_cat !== $cat_a && isset( $cat_to_attachment[ $other_cat ] ) ) {
+				$candidate_b = (int) $cat_to_attachment[ $other_cat ];
+
+				if ( 0 < $candidate_b && $candidate_b !== $att_a && isset( $attachment_to_figure[ $candidate_b ] ) && ! isset( $ambiguous_ids[ $candidate_b ] ) ) {
+					$mirror_cats = $normalize_pair( pfoa_cat_get_bonded_pair( $other_cat ) );
+
+					if ( $mirror_cats === $pair_cats ) {
+						$att_b = $candidate_b;
+					}
+				}
+			}
+		} else {
+			$pair_atts = $normalize_pair( pfoa_cat_get_bonded_pair( $att_a ) );
+
+			if ( 2 === count( $pair_atts ) && in_array( $att_a, $pair_atts, true ) ) {
+				$candidate_b = (int) ( (int) $pair_atts[0] === $att_a ? $pair_atts[1] : $pair_atts[0] );
+
+				if ( 0 < $candidate_b && $candidate_b !== $att_a && isset( $attachment_to_figure[ $candidate_b ] ) && ! isset( $ambiguous_ids[ $candidate_b ] ) ) {
+					if ( isset( $attachment_to_cat[ $candidate_b ] ) ) {
+						$cat_b = (int) $attachment_to_cat[ $candidate_b ];
+
+						if ( 0 < $cat_b && $cat_b !== $cat_a ) {
+							$mirror_atts = $normalize_pair( pfoa_cat_get_bonded_pair( $candidate_b ) );
+
+							if ( $mirror_atts === $pair_atts ) {
+								$att_b = $candidate_b;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if ( 0 >= $att_b ) {
+			continue;
+		}
+
+		if ( isset( $consumed[ $att_b ] ) ) {
+			continue;
+		}
+
+		if ( ! isset( $attachment_to_figure[ $att_b ] ) ) {
+			continue;
+		}
+
+		$node_b = $attachment_to_figure[ $att_b ];
+
+		if ( null === $node_b->parentNode ) {
+			continue;
+		}
+
+		if ( $node_a->parentNode !== $node_b->parentNode ) {
+			continue;
+		}
+
+		// Step 4: adjacency safety. The two figures must currently be
+		// adjacent direct siblings (nearest element sibling either side).
+		// Current DOM order is preserved; nothing is re-sorted.
+		$first_node  = null;
+		$second_node = null;
+
+		$next = $node_a->nextSibling;
+
+		while ( $next && XML_ELEMENT_NODE !== $next->nodeType ) {
+			$next = $next->nextSibling;
+		}
+
+		if ( $next === $node_b ) {
+			$first_node  = $node_a;
+			$second_node = $node_b;
+		} else {
+			$prev = $node_a->previousSibling;
+
+			while ( $prev && XML_ELEMENT_NODE !== $prev->nodeType ) {
+				$prev = $prev->previousSibling;
+			}
+
+			if ( $prev === $node_b ) {
+				$first_node  = $node_b;
+				$second_node = $node_a;
+			} else {
+				continue;
+			}
+		}
+
+		$gallery_parent = $first_node->parentNode;
+
+		if ( ! $gallery_parent instanceof DOMElement ) {
+			continue;
+		}
+
+		if ( $second_node->parentNode !== $gallery_parent ) {
+			continue;
+		}
+
+		// Step 5: wrapper. One div.pfoa-adopted-bonded-group as a direct
+		// child of the .gallery at the first figure's position, holding the
+		// two existing figure nodes in current order. Nodes are moved, never
+		// cloned, so IDs/handlers/inner markup stay exactly as rendered.
+		$group = $dom->createElement( 'div' );
+		$group->setAttribute( 'class', 'pfoa-adopted-bonded-group' );
+		$group->setAttribute( 'role', 'group' );
+		$group->setAttribute( 'aria-label', 'Bonded pair' );
+
+		$gallery_parent->insertBefore( $group, $first_node );
+		$group->appendChild( $first_node );
+		$group->appendChild( $second_node );
+
+		$consumed[ $att_a ] = true;
+		$consumed[ $att_b ] = true;
+
+		$changed = true;
+	}
+
+	if ( ! $changed ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$output = '';
+
+	foreach ( $wrapper->childNodes as $child ) {
+		$output .= $dom->saveHTML( $child );
+	}
+
+	libxml_clear_errors();
+	libxml_use_internal_errors( $prev_libxml );
+
+	return $output;
+}
+
+add_filter( 'the_content', 'pfoa_present_adopted_bonded_pairs', 1000 );

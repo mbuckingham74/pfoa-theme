@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.50
+ Version: 0.1.51
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3560,5 +3560,92 @@ div.pfoa-cat-cards .pfoa-cat-bonded-footer a:focus-visible {
 	.page-content .entry-content .pfoa-media-text__media {
 		margin-inline: auto;
 		max-width: min(100%, 22rem);
+	}
+}
+
+/* PFOA 0.1.51 — Adopted bonded-pair unified card (presentation only, CSS-only).
+ * Scoped strictly beneath body.page-id-22514 to the incoming bonded wrapper
+ * (div.pfoa-adopted-bonded-group, one direct child of .gallery) and its two
+ * nested figure.gallery-item children. Reuses adopted-gallery tokens/visual
+ * recipes only (--pfoa-surface-page, --pfoa-border-default, --pfoa-radius,
+ * --pfoa-space-2, --pfoa-text-muted); does not reuse .pfoa-cat-card or
+ * .pfoa-cat-bonded-* selectors. No heavy shadow, no hover lift/transform, no
+ * profile-card affordance, no combined title styles, no visible "Bonded pair"
+ * text styling (aria-label stays accessible-only).
+ */
+body.page-id-22514 .pfoa-adopted-bonded-group {
+	grid-column: span 2;
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--pfoa-space-2);
+	min-width: 0;
+	max-width: 100%;
+	margin: 0;
+	border: 1px solid var(--pfoa-border-default);
+	border-radius: var(--pfoa-radius);
+	padding: var(--pfoa-space-2);
+	background: var(--pfoa-surface-page);
+	box-shadow: none;
+	transform: none;
+	box-sizing: border-box;
+}
+
+body.page-id-22514 .pfoa-adopted-bonded-group .gallery-item {
+	min-width: 0;
+	max-width: 100%;
+	margin: 0;
+	border: 0;
+	padding: 0;
+	background: transparent;
+	box-shadow: none;
+	text-align: center;
+}
+
+body.page-id-22514 .pfoa-adopted-bonded-group .gallery-item .gallery-icon {
+	margin: 0 0 var(--pfoa-space-2);
+}
+
+body.page-id-22514 .pfoa-adopted-bonded-group .gallery-item .gallery-icon a {
+	display: block;
+	max-width: 100%;
+}
+
+body.page-id-22514 .pfoa-adopted-bonded-group .gallery-item .gallery-icon img {
+	display: block;
+	width: 100%;
+	max-width: 100%;
+	aspect-ratio: 1 / 1;
+	object-fit: cover;
+	object-position: center;
+	border-radius: calc(var(--pfoa-radius) - 1px);
+}
+
+body.page-id-22514 .pfoa-adopted-bonded-group .gallery-item .gallery-caption {
+	margin-top: 0;
+	color: var(--pfoa-text-muted);
+	font-size: 0.8rem;
+	line-height: 1.4;
+	text-align: center;
+}
+
+@media (max-width: 1319px) {
+	body.page-id-22514 .pfoa-adopted-bonded-group {
+		grid-column: span 2;
+		max-width: 100%;
+	}
+}
+
+@media (max-width: 720px) {
+	body.page-id-22514 .pfoa-adopted-bonded-group {
+		grid-column: span 2;
+		max-width: 100%;
+	}
+}
+
+@media (max-width: 480px) {
+	body.page-id-22514 .pfoa-adopted-bonded-group {
+		grid-column: 1 / -1;
+		grid-template-columns: 1fr 1fr;
+		max-width: 100%;
 	}
 }
