@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.63
+ Version: 0.1.64
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3774,4 +3774,55 @@ body.page-id-22514 .pfoa-adopted-bonded-relationship {
 
 .front-page-content .homepage-hero--carousel .homepage-hero__slide.is-active .homepage-hero__media-link {
 	pointer-events: auto;
+}
+
+/* PFOA 0.1.64 — Homepage pathway card polish (CSS-only, DEV scope).
+ * Equal-height 5-card row, consistent 2-line title allowance, bottom-aligned
+ * Explore links, modest padding/thumbnail lift. Scoped strictly to
+ * .front-page-content .homepage-pathways and descendants. No markup, text,
+ * link, image, order, color, typography, or responsive-structure changes.
+ * Base centered-card rules already provide flex-column equal height,
+ * margin-top:auto link pinning, and 2-line title min-height; this block only
+ * guarantees item stretch, lifts padding/thumbnail, and carries the same
+ * alignment guarantees into the >=1320px compact tile override.
+ */
+.front-page-content .homepage-pathways__item {
+	display: flex;
+	align-self: stretch;
+}
+
+.front-page-content .homepage-pathway {
+	flex: 1 1 auto;
+	width: 100%;
+}
+
+@media (min-width: 721px) and (max-width: 1319px) {
+	.front-page-content .homepage-pathway {
+		padding: clamp(1.25rem, 2.4vw, 1.75rem) var(--pfoa-space-4);
+	}
+
+	.front-page-content .homepage-pathway__media {
+		width: clamp(5.75rem, 11vw, 8.5rem);
+	}
+}
+
+@media (min-width: 1320px) {
+	.front-page-content .homepage-pathway {
+		grid-template-columns: 4.75rem minmax(0, min(8rem, calc(100% - 5.75rem)));
+		grid-template-rows: 1fr auto;
+		padding: 1rem 1.25rem;
+	}
+
+	.front-page-content .homepage-pathway__media {
+		width: 4.75rem;
+		height: 4rem;
+	}
+
+	.front-page-content .homepage-pathway__title {
+		min-height: calc(1.15em * 2);
+	}
+
+	.front-page-content .homepage-pathway__action {
+		align-self: end;
+	}
 }
