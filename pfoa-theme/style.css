@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.68
+ Version: 0.1.69
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3910,26 +3910,81 @@ body.page-id-22514 .pfoa-adopted-bonded-relationship {
 	}
 }
 
-/* PFOA 0.1.68 — Desktop header typography legibility (CSS-only, >=1320px).
- * Restrained larger scale for utility labels/links and primary nav.
- * Scoped strictly to desktop header navigation; mobile/tablet untouched.
+/* PFOA 0.1.69 — Desktop header readability (CSS-only, >=1320px).
+ * Coherent desktop-header typography/readability system: Title Case primary
+ * nav and submenus, comfortable larger type scale, geometry that lets the
+ * readable type determine row height. Two steps (1320-1439px, >=1440px);
+ * no 1600px increase. Grid, dividers, logo overlap, sticky, Donate, utility
+ * grouping/semantics, and mobile/tablet (<=1319px) untouched.
  */
 @media (min-width: 1320px) {
+	.site-header__inner {
+		min-height: 5.25rem;
+	}
+
+	.utility-groups {
+		padding: 0.55rem 0 0.40rem;
+	}
+
 	.utility-group__label {
-		font-size: 0.80rem;
 		color: var(--pfoa-text-on-structural);
+		font-size: 0.875rem;
 		font-weight: 500;
+		letter-spacing: 0.01em;
+		line-height: 1.4;
+		text-transform: none;
 	}
 
 	.utility-group__list a {
-		font-size: 0.85rem;
+		font-size: 0.95rem;
+		font-weight: 600;
+		letter-spacing: 0.01em;
+		line-height: 1.4;
+		text-transform: none;
 	}
 
 	.primary-menu a {
-		font-size: 0.95rem;
+		letter-spacing: 0.01em;
+		line-height: 1.3;
+		text-transform: none;
+	}
+
+	.primary-menu > .menu-item > a {
+		min-height: 3.25rem;
+		padding: 0.75rem 0.5rem;
 	}
 
 	.primary-menu .sub-menu a {
-		font-size: 0.90rem;
+		min-height: 3rem;
+		padding: 0.75rem 1rem;
+		letter-spacing: 0.01em;
+		line-height: 1.4;
+		text-transform: none;
+	}
+}
+
+@media (min-width: 1320px) and (max-width: 1439px) {
+	.primary-menu > .menu-item > a {
+		font-size: 1.05rem;
+	}
+
+	.primary-menu .sub-menu a {
+		font-size: 0.95rem;
+	}
+}
+
+@media (min-width: 1440px) {
+	.site-header__inner {
+		min-height: 5.5rem;
+	}
+
+	.primary-menu > .menu-item > a {
+		min-height: 3.5rem;
+		padding: 0.75rem 0.6rem;
+		font-size: 1.10rem;
+	}
+
+	.primary-menu .sub-menu a {
+		font-size: 1.00rem;
 	}
 }
