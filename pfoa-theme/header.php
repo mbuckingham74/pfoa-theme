@@ -22,19 +22,65 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<header id="masthead" class="site-header">
 		<?php if ( has_nav_menu( 'header_utility' ) ) : ?>
 		<div class="site-header__utility">
-			<nav class="header-utility-navigation" aria-label="<?php esc_attr_e( 'Utility menu', 'pfoa-theme' ); ?>">
+			<nav class="header-utility-navigation header-utility-navigation--grouped" aria-label="<?php esc_attr_e( 'Utility menu', 'pfoa-theme' ); ?>">
 				<?php
-				wp_nav_menu(
-					array(
-						'theme_location' => 'header_utility',
-						'menu_id'        => 'header-utility-menu',
-						'menu_class'     => 'utility-menu',
-						'container'      => false,
-						'fallback_cb'    => false,
-						'depth'          => 1,
-					)
+				$pfoa_utility_locations = get_nav_menu_locations();
+				$pfoa_utility_menu_id   = isset( $pfoa_utility_locations['header_utility'] ) ? absint( $pfoa_utility_locations['header_utility'] ) : 0;
+				$pfoa_utility_items     = $pfoa_utility_menu_id ? wp_get_nav_menu_items( $pfoa_utility_menu_id, array( 'orderby' => 'menu_order', 'order' => 'ASC' ) ) : false;
+				$pfoa_utility_ordered   = is_array( $pfoa_utility_items ) ? array_values( $pfoa_utility_items ) : array();
+				$pfoa_utility_titles    = array_map(
+					function ( $pfoa_utility_item ) {
+						return isset( $pfoa_utility_item->title ) ? trim( (string) $pfoa_utility_item->title ) : '';
+					},
+					$pfoa_utility_ordered
 				);
-				?>
+				$pfoa_utility_expected  = array( 'Facebook', 'Instagram', 'Petfinder', 'AdoptAPet' );
+
+				if ( $pfoa_utility_titles === $pfoa_utility_expected ) :
+					$pfoa_utility_groups = array(
+						array(
+							'label' => __( 'Follow us', 'pfoa-theme' ),
+							'items' => array_slice( $pfoa_utility_ordered, 0, 2 ),
+						),
+						array(
+							'label' => __( 'Find us on', 'pfoa-theme' ),
+							'items' => array_slice( $pfoa_utility_ordered, 2, 2 ),
+						),
+					);
+					?>
+				<div class="utility-groups">
+					<?php foreach ( $pfoa_utility_groups as $pfoa_utility_group ) : ?>
+					<div class="utility-group">
+						<span class="utility-group__label"><?php echo esc_html( $pfoa_utility_group['label'] ); ?></span>
+						<ul class="utility-group__list">
+							<?php foreach ( $pfoa_utility_group['items'] as $pfoa_utility_item ) : ?>
+								<?php
+								$pfoa_utility_href   = ! empty( $pfoa_utility_item->url ) ? $pfoa_utility_item->url : '';
+								$pfoa_utility_target = ! empty( $pfoa_utility_item->target ) ? $pfoa_utility_item->target : '';
+								$pfoa_utility_xfn    = ! empty( $pfoa_utility_item->xfn ) ? $pfoa_utility_item->xfn : '';
+								?>
+							<li class="utility-group__item">
+								<a class="utility-group__link" href="<?php echo esc_url( $pfoa_utility_href ); ?>"<?php echo ( '_blank' === $pfoa_utility_target ) ? ' target="_blank"' : ''; ?><?php echo ( '' !== $pfoa_utility_xfn ) ? ' rel="' . esc_attr( $pfoa_utility_xfn ) . '"' : ( ( '_blank' === $pfoa_utility_target ) ? ' rel="noopener noreferrer"' : '' ); ?>><?php echo esc_html( trim( (string) $pfoa_utility_item->title ) ); ?></a>
+							</li>
+							<?php endforeach; ?>
+						</ul>
+					</div>
+					<?php endforeach; ?>
+				</div>
+				<?php else : ?>
+					<?php
+					wp_nav_menu(
+						array(
+							'theme_location' => 'header_utility',
+							'menu_id'        => 'header-utility-menu',
+							'menu_class'     => 'utility-menu',
+							'container'      => false,
+							'fallback_cb'    => false,
+							'depth'          => 1,
+						)
+					);
+					?>
+				<?php endif; ?>
 			</nav>
 		</div>
 		<?php endif; ?>

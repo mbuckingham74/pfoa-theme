@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.66
+ Version: 0.1.67
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -1503,6 +1503,86 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 .utility-menu a:hover,
 .utility-menu a:focus-visible,
 .utility-menu .current-menu-item > a {
+	color: var(--pfoa-action-hover);
+	text-decoration: underline;
+	text-underline-offset: 0.16em;
+}
+
+/* Desktop header utility: two restrained semantic groups rendered from the
+ * same header_utility items (Follow us + Find us on). Text only, no icons,
+ * same footprint and right-aligned position as the previous utility row.
+ * Scoped to .site-header__utility so the mobile stacked utility is untouched.
+ */
+.utility-groups {
+	display: flex;
+	flex-wrap: nowrap;
+	justify-content: flex-end;
+	align-items: baseline;
+	gap: 0.5rem 1.5rem;
+	margin: 0;
+	padding: 0.45rem 0 0;
+	background: transparent;
+	white-space: nowrap;
+}
+
+.utility-group {
+	display: inline-flex;
+	flex-wrap: nowrap;
+	align-items: baseline;
+	gap: 0.5rem;
+	min-width: 0;
+}
+
+.utility-group__label {
+	color: var(--pfoa-text-muted);
+	font-family: Georgia, "Times New Roman", serif;
+	font-size: 0.68rem;
+	font-weight: 400;
+	letter-spacing: 0.01em;
+	line-height: 1.4;
+	text-transform: none;
+	white-space: nowrap;
+}
+
+.utility-group__list {
+	display: inline-flex;
+	flex-wrap: nowrap;
+	align-items: baseline;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	white-space: nowrap;
+}
+
+.utility-group__item {
+	display: inline-flex;
+	align-items: baseline;
+	margin: 0;
+	white-space: nowrap;
+}
+
+.utility-group__item + .utility-group__item::before {
+	content: "·";
+	margin-inline: 0.5rem;
+	color: var(--pfoa-text-muted);
+}
+
+.utility-group__list a {
+	display: inline-block;
+	padding: 0.25rem 0;
+	color: var(--pfoa-action-primary);
+	font-family: Georgia, "Times New Roman", serif;
+	font-size: 0.74rem;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	line-height: 1.4;
+	text-transform: none;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.utility-group__list a:hover,
+.utility-group__list a:focus-visible {
 	color: var(--pfoa-action-hover);
 	text-decoration: underline;
 	text-underline-offset: 0.16em;
