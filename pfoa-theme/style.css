@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.70
+ Version: 0.1.71
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3910,11 +3910,12 @@ body.page-id-22514 .pfoa-adopted-bonded-relationship {
 	}
 }
 
-/* PFOA 0.1.70 — Desktop primary-nav system-sans readability (CSS-only, >=1320px).
- * Switch ONLY desktop primary nav + dropdowns from Georgia to the existing
- * system-sans stack at restrained 600 weight; Title Case preserved.
+/* PFOA 0.1.71 — Desktop primary-nav Palatino serif experiment (CSS-only, >=1320px).
+ * Switch ONLY desktop primary nav + dropdowns from system sans to a
+ * Palatino-first serif stack at 700 weight; Title Case preserved.
  * Two steps (1320-1439px: 1.15rem/1.05rem; >=1440px: 1.20rem/1.10rem);
- * no 1600px increase. Geometry per design-study target. Utility grouping
+ * no 1600px increase. Sizes, line heights, letter spacing, row heights,
+ * link padding, and breakpoints unchanged from 0.1.70. Utility grouping
  * (Georgia 0.875rem/500 + 0.95rem/600), logo overlap, grid, dividers,
  * sticky, Donate, and mobile/tablet (<=1319px) untouched.
  */
@@ -3945,12 +3946,14 @@ body.page-id-22514 .pfoa-adopted-bonded-relationship {
 	}
 
 	.main-navigation {
-		font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+		font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+		font-synthesis: none;
 	}
 
 	.primary-menu a {
-		font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-		font-weight: 600;
+		font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+		font-weight: 700;
+		font-synthesis: none;
 		letter-spacing: 0.01em;
 		line-height: 1.35;
 		text-transform: none;
@@ -3965,8 +3968,9 @@ body.page-id-22514 .pfoa-adopted-bonded-relationship {
 	.primary-menu .sub-menu a {
 		min-height: 3rem;
 		padding: 0.75rem 1rem;
-		font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-		font-weight: 600;
+		font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+		font-weight: 700;
+		font-synthesis: none;
 		letter-spacing: 0.01em;
 		line-height: 1.4;
 		text-transform: none;
