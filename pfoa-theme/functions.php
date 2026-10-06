@@ -1880,7 +1880,10 @@ function pfoa_site_homepage_page() {
 			<?php wp_nonce_field( 'pfoa_hero_save', 'pfoa_hero_nonce' ); ?>
 			<h2><?php esc_html_e( 'Hero Section', 'pfoa-theme' ); ?></h2>
 			<h3><?php esc_html_e( 'Hero Media', 'pfoa-theme' ); ?></h3>
-	<p><?php esc_html_e( 'Edit the hero section shown at the top of the site homepage. The headline and buttons stay fixed while carousel images change behind them.', 'pfoa-theme' ); ?></p>
+		<p><?php esc_html_e( 'Edit the hero section shown at the top of the site homepage. The headline and buttons stay fixed while carousel images change behind them.', 'pfoa-theme' ); ?></p>
+		<p class="submit">
+			<button type="submit" class="button button-primary" name="pfoa_hero_save" value="1"><?php esc_html_e( 'Save Homepage', 'pfoa-theme' ); ?></button>
+		</p>
 	<table class="form-table" role="presentation">
 		<tr>
 			<th scope="row"><?php esc_html_e( 'Hero media mode', 'pfoa-theme' ); ?></th>
@@ -2022,7 +2025,7 @@ function pfoa_site_homepage_page() {
 		<button type="button" class="button pfoa-hero-cta-add"><?php esc_html_e( 'Add Button', 'pfoa-theme' ); ?></button>
 	</p>
 			<p class="submit">
-				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save Homepage', 'pfoa-theme' ); ?></button>
+				<button type="submit" class="button button-primary" name="pfoa_hero_save" value="1"><?php esc_html_e( 'Save Homepage', 'pfoa-theme' ); ?></button>
 			</p>
 		</form>
 		<?php endif; ?>
