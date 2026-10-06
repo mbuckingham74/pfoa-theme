@@ -722,7 +722,7 @@ function pfoa_homepage_cards_section() {
 			</table>
 			<p class="submit">
 				<button type="submit" class="button" name="pfoa_cards_add" value="1"><?php esc_html_e( 'Add', 'pfoa-theme' ); ?></button>
-				<button type="submit" class="button button-primary" name="pfoa_cards_save" value="1"><?php esc_html_e( 'Save', 'pfoa-theme' ); ?></button>
+				<button type="submit" class="button button-primary" name="pfoa_cards_save" value="1"><?php esc_html_e( 'Save Cards', 'pfoa-theme' ); ?></button>
 			</p>
 		</form>
 	<?php
