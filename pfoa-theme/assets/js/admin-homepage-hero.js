@@ -86,6 +86,18 @@
 		}
 	} );
 
+	function nextCarouselIndex( list ) {
+		var next = parseInt( list.data( 'next-index' ), 10 );
+
+		if ( isNaN( next ) ) {
+			next = list.children( '.pfoa-hero-carousel-item' ).length;
+		}
+
+		list.data( 'next-index', next + 1 );
+
+		return next;
+	}
+
 	function addCarouselItem( attachment ) {
 		if ( ! attachment || ! attachment.id ) {
 			return;
@@ -94,7 +106,7 @@
 		var id = parseInt( attachment.id, 10 );
 		var list = $( '.pfoa-hero-carousel-list' );
 
-		if ( ! list.length || list.find( 'input[value="' + id + '"]' ).length ) {
+		if ( ! list.length || list.find( '.pfoa-hero-carousel-id[value="' + id + '"]' ).length ) {
 			return;
 		}
 
@@ -106,10 +118,23 @@
 			thumb = '<img src="' + attachment.url + '" width="80" height="80" alt="" />';
 		}
 
+		var index = nextCarouselIndex( list );
+		var template = document.getElementById( 'pfoa-hero-carousel-template' );
+
+		if ( template && template.innerHTML ) {
+			var item = $( template.innerHTML.replace( /__INDEX__/g, String( index ) ) );
+
+			item.find( '.pfoa-hero-carousel-id' ).val( id );
+			item.find( '.pfoa-hero-carousel-preview' ).html( thumb );
+			list.append( item );
+			return;
+		}
+
 		list.append(
 			'<li class="pfoa-hero-carousel-item">' +
 			'<span class="pfoa-hero-carousel-preview">' + thumb + '</span> ' +
-			'<input type="hidden" name="pfoa_hero[carousel_ids][]" value="' + id + '" /> ' +
+			'<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][' + index + '][id]" value="' + id + '" /> ' +
+			'<input type="hidden" name="pfoa_hero[carousel_items][' + index + '][link_page_id]" value="0" /> ' +
 			'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
 			'<button type="button" class="button pfoa-hero-carousel-down">' + moveDownLabel() + '</button> ' +
 			'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +

@@ -21,6 +21,16 @@
 			} else {
 				slide.setAttribute( 'aria-hidden', 'true' );
 			}
+
+			var mediaLink = slide.querySelector( '.homepage-hero__media-link' );
+
+			if ( mediaLink ) {
+				if ( isActive ) {
+					mediaLink.removeAttribute( 'tabindex' );
+				} else {
+					mediaLink.setAttribute( 'tabindex', '-1' );
+				}
+			}
 		} );
 
 		return current;

@@ -754,11 +754,13 @@ function pfoa_homepage_cards_page() {
  * Meta key storing the editable homepage hero as a single array.
  *
  * Shape: array(
- *   'mode'         => 'single' | 'carousel',
- *   'headline'     => string,
- *   'image_id'     => int (attachment ID),
- *   'carousel_ids' => int[] (attachment IDs, display order),
- *   'ctas'         => array[] of array( 'label' => string, 'url' => string ),
+ *   'mode'               => 'single' | 'carousel',
+ *   'headline'           => string,
+ *   'image_id'           => int (attachment ID),
+ *   'image_link_page_id' => int (published page ID, 0 = not clickable),
+ *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
+ *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int ),
+ *   'ctas'               => array[] of array( 'label' => string, 'url' => string ),
  * ).
  *
  * @var string
@@ -797,11 +799,65 @@ function pfoa_get_hero_defaults() {
 	}
 
 	return array(
-		'mode'         => 'single',
-		'headline'     => __( 'Homepage', 'pfoa-theme' ),
-		'image_id'     => 0,
-		'carousel_ids' => array(),
-		'ctas'         => $ctas,
+		'mode'               => 'single',
+		'headline'           => __( 'Homepage', 'pfoa-theme' ),
+		'image_id'           => 0,
+		'image_link_page_id' => 0,
+		'carousel_ids'       => array(),
+		'carousel_items'     => array(),
+		'ctas'               => $ctas,
+	);
+}
+
+/**
+ * Sanitize an optional hero image destination page ID.
+ *
+ * Only a published page is accepted; anything else becomes 0 (not clickable).
+ *
+ * @param mixed $value Raw submitted value.
+ * @return int
+ */
+function pfoa_sanitize_hero_link_page_id( $value ) {
+	$page_id = absint( $value );
+
+	if ( ! $page_id || 'page' !== get_post_type( $page_id ) || 'publish' !== get_post_status( $page_id ) ) {
+		return 0;
+	}
+
+	return $page_id;
+}
+
+/**
+ * Return the clickable destination for a hero image, if valid.
+ *
+ * Re-validated at render time so a page that was unpublished or trashed
+ * after saving stops being clickable without any re-save.
+ *
+ * @param int $page_id Destination page ID.
+ * @return array Array with 'url' and 'title' keys (empty strings when none).
+ */
+function pfoa_get_hero_link( $page_id ) {
+	$page_id = absint( $page_id );
+
+	if ( ! $page_id || 'page' !== get_post_type( $page_id ) || 'publish' !== get_post_status( $page_id ) ) {
+		return array(
+			'url'   => '',
+			'title' => '',
+		);
+	}
+
+	$url = get_permalink( $page_id );
+
+	if ( ! $url ) {
+		return array(
+			'url'   => '',
+			'title' => '',
+		);
+	}
+
+	return array(
+		'url'   => $url,
+		'title' => get_the_title( $page_id ),
 	);
 }
 
@@ -813,11 +869,13 @@ function pfoa_get_hero_defaults() {
  */
 function pfoa_sanitize_hero( $value ) {
 	$hero = array(
-		'mode'         => 'single',
-		'headline'     => '',
-		'image_id'     => 0,
-		'carousel_ids' => array(),
-		'ctas'         => array(),
+		'mode'               => 'single',
+		'headline'           => '',
+		'image_id'           => 0,
+		'image_link_page_id' => 0,
+		'carousel_ids'       => array(),
+		'carousel_items'     => array(),
+		'ctas'               => array(),
 	);
 
 	if ( ! is_array( $value ) ) {
@@ -832,14 +890,75 @@ function pfoa_sanitize_hero( $value ) {
 	$image_id = isset( $value['image_id'] ) ? absint( $value['image_id'] ) : 0;
 	$hero['image_id'] = ( $image_id && wp_attachment_is_image( $image_id ) ) ? $image_id : 0;
 
-	if ( isset( $value['carousel_ids'] ) && is_array( $value['carousel_ids'] ) ) {
+	$hero['image_link_page_id'] = isset( $value['image_link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $value['image_link_page_id'] ) : 0;
+
+	$carousel_items = array();
+
+	if ( isset( $value['carousel_items'] ) && is_array( $value['carousel_items'] ) ) {
+		foreach ( $value['carousel_items'] as $carousel_item ) {
+			if ( ! is_array( $carousel_item ) ) {
+				continue;
+			}
+
+			$carousel_id = isset( $carousel_item['id'] ) ? absint( $carousel_item['id'] ) : 0;
+
+			if ( ! $carousel_id || ! wp_attachment_is_image( $carousel_id ) ) {
+				continue;
+			}
+
+			$is_duplicate = false;
+
+			foreach ( $carousel_items as $existing_item ) {
+				if ( $existing_item['id'] === $carousel_id ) {
+					$is_duplicate = true;
+					break;
+				}
+			}
+
+			if ( $is_duplicate ) {
+				continue;
+			}
+
+			$carousel_items[] = array(
+				'id'           => $carousel_id,
+				'link_page_id' => isset( $carousel_item['link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $carousel_item['link_page_id'] ) : 0,
+			);
+		}
+	}
+
+	if ( array() === $carousel_items && isset( $value['carousel_ids'] ) && is_array( $value['carousel_ids'] ) ) {
 		foreach ( $value['carousel_ids'] as $carousel_id ) {
 			$carousel_id = absint( $carousel_id );
 
-			if ( $carousel_id && wp_attachment_is_image( $carousel_id ) && ! in_array( $carousel_id, $hero['carousel_ids'], true ) ) {
-				$hero['carousel_ids'][] = $carousel_id;
+			if ( ! $carousel_id || ! wp_attachment_is_image( $carousel_id ) ) {
+				continue;
 			}
+
+			$is_duplicate = false;
+
+			foreach ( $carousel_items as $existing_item ) {
+				if ( $existing_item['id'] === $carousel_id ) {
+					$is_duplicate = true;
+					break;
+				}
+			}
+
+			if ( $is_duplicate ) {
+				continue;
+			}
+
+			$carousel_items[] = array(
+				'id'           => $carousel_id,
+				'link_page_id' => 0,
+			);
 		}
+	}
+
+	$hero['carousel_items'] = $carousel_items;
+	$hero['carousel_ids']   = array();
+
+	foreach ( $carousel_items as $carousel_item ) {
+		$hero['carousel_ids'][] = $carousel_item['id'];
 	}
 
 	if ( isset( $value['ctas'] ) && is_array( $value['ctas'] ) ) {
@@ -1721,7 +1840,30 @@ function pfoa_site_homepage_page() {
 	$mode         = in_array( $hero['mode'], array( 'single', 'carousel' ), true ) ? $hero['mode'] : 'single';
 	$headline     = isset( $hero['headline'] ) ? $hero['headline'] : '';
 	$image_id     = isset( $hero['image_id'] ) ? absint( $hero['image_id'] ) : 0;
+	$image_link_page_id = isset( $hero['image_link_page_id'] ) ? absint( $hero['image_link_page_id'] ) : 0;
 	$carousel_ids = ( isset( $hero['carousel_ids'] ) && is_array( $hero['carousel_ids'] ) ) ? $hero['carousel_ids'] : array();
+	$carousel_items = array();
+
+	if ( isset( $hero['carousel_items'] ) && is_array( $hero['carousel_items'] ) && array() !== $hero['carousel_items'] ) {
+		foreach ( $hero['carousel_items'] as $carousel_item ) {
+			if ( ! is_array( $carousel_item ) ) {
+				continue;
+			}
+
+			$carousel_items[] = array(
+				'id'           => isset( $carousel_item['id'] ) ? absint( $carousel_item['id'] ) : 0,
+				'link_page_id' => isset( $carousel_item['link_page_id'] ) ? absint( $carousel_item['link_page_id'] ) : 0,
+			);
+		}
+	} else {
+		foreach ( $carousel_ids as $carousel_id ) {
+			$carousel_items[] = array(
+				'id'           => absint( $carousel_id ),
+				'link_page_id' => 0,
+			);
+		}
+	}
+
 	$ctas         = ( isset( $hero['ctas'] ) && is_array( $hero['ctas'] ) ) ? $hero['ctas'] : array();
 	$preview      = $image_id ? wp_get_attachment_image( $image_id, array( 80, 80 ) ) : '';
 
@@ -1763,21 +1905,51 @@ function pfoa_site_homepage_page() {
 				<button type="button" class="button pfoa-hero-single-select"><?php echo $preview ? esc_html__( 'Replace', 'pfoa-theme' ) : esc_html__( 'Select Image', 'pfoa-theme' ); ?></button>
 				<button type="button" class="button pfoa-hero-single-remove"<?php echo $preview ? '' : ' style="display:none;"'; ?>><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
 				<p class="description"><?php esc_html_e( 'Shown when Single Image mode is selected. If empty, the page featured image (or the theme fallback banner) is used.', 'pfoa-theme' ); ?></p>
+				<p>
+					<label for="pfoa-hero-image-link"><?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?></label><br />
+					<?php
+					wp_dropdown_pages(
+						array(
+							'show_option_none' => __( '— No link —', 'pfoa-theme' ),
+							'option_none_value' => 0,
+							'name'              => 'pfoa_hero[image_link_page_id]',
+							'id'                => 'pfoa-hero-image-link',
+							'selected'          => $image_link_page_id,
+						)
+					);
+					?>
+				</p>
+				<p class="description"><?php esc_html_e( 'Optional. Clicking the hero image opens this page.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
 		<tr>
 			<th scope="row"><?php esc_html_e( 'Carousel images', 'pfoa-theme' ); ?></th>
 			<td>
-				<ul class="pfoa-hero-carousel-list">
-					<?php foreach ( $carousel_ids as $carousel_id ) : ?>
+				<ul class="pfoa-hero-carousel-list" data-next-index="<?php echo esc_attr( (string) count( $carousel_items ) ); ?>">
+					<?php foreach ( $carousel_items as $carousel_index => $carousel_item ) : ?>
 						<?php
-						$carousel_id      = absint( $carousel_id );
-						$carousel_preview = $carousel_id ? wp_get_attachment_image( $carousel_id, array( 80, 80 ) ) : '';
+						$carousel_id        = absint( $carousel_item['id'] );
+						$carousel_link      = absint( $carousel_item['link_page_id'] );
+						$carousel_preview   = $carousel_id ? wp_get_attachment_image( $carousel_id, array( 80, 80 ) ) : '';
+						$carousel_field_base = 'pfoa_hero[carousel_items][' . $carousel_index . ']';
 						?>
 						<?php if ( $carousel_preview ) : ?>
 							<li class="pfoa-hero-carousel-item">
 								<span class="pfoa-hero-carousel-preview"><?php echo $carousel_preview; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
-								<input type="hidden" name="pfoa_hero[carousel_ids][]" value="<?php echo esc_attr( (string) $carousel_id ); ?>" />
+								<input type="hidden" class="pfoa-hero-carousel-id" name="<?php echo esc_attr( $carousel_field_base ); ?>[id]" value="<?php echo esc_attr( (string) $carousel_id ); ?>" />
+								<label class="pfoa-hero-carousel-link">
+									<?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?>
+									<?php
+									wp_dropdown_pages(
+										array(
+											'show_option_none' => __( '— No link —', 'pfoa-theme' ),
+											'option_none_value' => 0,
+											'name'              => $carousel_field_base . '[link_page_id]',
+											'selected'          => $carousel_link,
+										)
+									);
+									?>
+								</label>
 								<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
 								<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
 								<button type="button" class="button pfoa-hero-carousel-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
@@ -1785,6 +1957,29 @@ function pfoa_site_homepage_page() {
 						<?php endif; ?>
 					<?php endforeach; ?>
 				</ul>
+				<template id="pfoa-hero-carousel-template">
+					<li class="pfoa-hero-carousel-item">
+						<span class="pfoa-hero-carousel-preview"></span>
+						<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][__INDEX__][id]" value="0" />
+						<label class="pfoa-hero-carousel-link">
+							<?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?>
+							<?php
+							wp_dropdown_pages(
+								array(
+									'show_option_none' => __( '— No link —', 'pfoa-theme' ),
+									'option_none_value' => 0,
+									'name'              => 'pfoa_hero[carousel_items][__INDEX__][link_page_id]',
+									'selected'          => 0,
+									'echo'              => 1,
+								)
+							);
+							?>
+						</label>
+						<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
+						<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
+						<button type="button" class="button pfoa-hero-carousel-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+					</li>
+				</template>
 				<button type="button" class="button pfoa-hero-carousel-add"><?php esc_html_e( 'Add Images', 'pfoa-theme' ); ?></button>
 				<p class="description"><?php esc_html_e( 'Shown in order when Carousel mode is selected. Use Move Up and Move Down to reorder; the headline and buttons stay the same on every image.', 'pfoa-theme' ); ?></p>
 			</td>

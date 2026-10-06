@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.60
+ Version: 0.1.61
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3735,4 +3735,34 @@ body.page-id-22514 .pfoa-adopted-bonded-relationship {
 		grid-template-columns: 1fr 1fr;
 		max-width: 100%;
 	}
+}
+
+/* PFOA 0.1.61 — Optional per-image hero destination link. The overlay covers
+ * only the hero media layer (which sits at z-index -1), so the headline and
+ * .homepage-hero__actions (z-index 1) plus carousel controls (z-index 2)
+ * stay above it and remain independently clickable. No link layer renders
+ * when an image has no destination.
+ */
+.front-page-content .homepage-hero__scrim {
+	pointer-events: none;
+}
+
+.front-page-content .homepage-hero__media-link {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	display: block;
+}
+
+.front-page-content .homepage-hero__media-link:focus-visible {
+	outline: 2px solid #ffffff;
+	outline-offset: -2px;
+}
+
+.front-page-content .homepage-hero--carousel .homepage-hero__slide .homepage-hero__media-link {
+	pointer-events: none;
+}
+
+.front-page-content .homepage-hero--carousel .homepage-hero__slide.is-active .homepage-hero__media-link {
+	pointer-events: auto;
 }
