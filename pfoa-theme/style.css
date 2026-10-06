@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.65
+ Version: 0.1.66
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -2326,7 +2326,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	background: var(--pfoa-surface-subtle);
 	color: var(--pfoa-text-primary);
 	/* No section heading remains; keep a modest hero-to-cards gap. */
-	padding-block: clamp(1.5rem, 3vw, 2.5rem) var(--pfoa-section-space);
+	padding-block: clamp(1.5rem, 3vw, 2.5rem) clamp(2.5rem, 4vw, 3.5rem);
 }
 
 /* PFOA 0.1.19 — Card row shares the header/footer structural gutters so its
