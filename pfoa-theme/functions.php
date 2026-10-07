@@ -3016,8 +3016,9 @@ add_filter( 'the_content', 'pfoa_present_bonded_pairs', 999 );
  * @param string $content Post content.
  * @return string Event section plus (possibly claim-stripped) content.
  */
-function pfoa_adoption_event_member_media( $image_id ) {
+function pfoa_adoption_event_member_media( $image_id, $caption = '' ) {
 	$image_id = (int) $image_id;
+	$caption  = is_string( $caption ) ? trim( (string) $caption ) : '';
 
 	if ( 0 < $image_id && function_exists( 'wp_attachment_is_image' ) && ! wp_attachment_is_image( $image_id ) ) {
 		$image_id = 0;
@@ -3027,6 +3028,42 @@ function pfoa_adoption_event_member_media( $image_id ) {
 		$linked_image = wp_get_attachment_link( $image_id, 'medium', false, false );
 
 		if ( is_string( $linked_image ) && '' !== trim( $linked_image ) && false !== strpos( $linked_image, '<img' ) ) {
+			// PFOA 0.1.78 — presentation only: override the generated
+			// <img> alt and the lightbox link's data-pfoa-caption with the
+			// already-resolved snapshot presentation caption (caption,
+			// fallback cat_name_at_event). Attachment ID, URLs, thumb,
+			// href, CSS, and visible markup are unchanged; no figcaption
+			// is added here.
+			if ( '' !== $caption ) {
+				$alt = esc_attr( $caption );
+
+				$linked_image = (string) preg_replace_callback(
+					'/<img\b[^>]*>/i',
+					function ( $matches ) use ( $alt ) {
+						$img = $matches[0];
+
+						if ( preg_match( '/\salt=(["\']).*?\1/i', $img ) ) {
+							$img = (string) preg_replace( '/\salt=(["\']).*?\1/i', ' alt="' . $alt . '"', $img );
+						} else {
+							$img = (string) preg_replace( '/<img\b/i', '<img alt="' . $alt . '"', $img, 1 );
+						}
+
+						return $img;
+					},
+					$linked_image,
+					1
+				);
+
+				$linked_image = (string) preg_replace_callback(
+					'/<a\b/i',
+					function () use ( $alt ) {
+						return '<a data-pfoa-caption="' . $alt . '"';
+					},
+					$linked_image,
+					1
+				);
+			}
+
 			return $linked_image;
 		}
 	}
@@ -3268,7 +3305,7 @@ function pfoa_present_adoption_events( $content ) {
 			}
 
 			$events_html .= '<figure class="pfoa-adoption-event-member">';
-			$events_html .= '<div class="pfoa-adoption-event-thumb">' . pfoa_adoption_event_member_media( $event_member['image_id'] ) . '</div>';
+			$events_html .= '<div class="pfoa-adoption-event-thumb">' . pfoa_adoption_event_member_media( $event_member['image_id'], $event_member['caption'] ) . '</div>';
 
 			// PFOA 0.1.75 — presentation only: multi-member events show the
 			// combined heading only; per-member figcaptions are suppressed
