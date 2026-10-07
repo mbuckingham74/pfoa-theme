@@ -3258,7 +3258,11 @@ function pfoa_present_adoption_events( $content ) {
 			$events_html .= '<figure class="pfoa-adoption-event-member">';
 			$events_html .= '<div class="pfoa-adoption-event-thumb">' . pfoa_adoption_event_member_media( $event_member['image_id'] ) . '</div>';
 
-			if ( '' !== $event_member['caption'] ) {
+			// PFOA 0.1.75 — presentation only: multi-member events show the
+			// combined heading only; per-member figcaptions are suppressed
+			// from markup while stored snapshots stay untouched. Single-cat
+			// events keep their visible caption exactly as before.
+			if ( '' !== $event_member['caption'] && 1 >= $member_count ) {
 				$events_html .= '<figcaption class="pfoa-adoption-event-caption">' . esc_html( $event_member['caption'] ) . '</figcaption>';
 			}
 
