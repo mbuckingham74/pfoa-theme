@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.88
+ Version: 0.1.89
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4397,7 +4397,7 @@ body.page-id-22514 .pfoa-adoption-event-together-badge {
 	background: var(--pfoa-cta-primary);
 }
 
-/* PFOA 0.1.88 — Board Documents & Resources cards */
+/* PFOA 0.1.89 — Board Documents & Resources cards */
 .pfoa-board-resources {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
@@ -4458,6 +4458,30 @@ a.pfoa-board-card:focus-visible {
 
 .pfoa-board-card.is-unavailable {
 	cursor: default;
+}
+
+/* PFOA 0.1.89 — parity override: the theme's generic [aria-disabled="true"]
+   rule (opacity 0.55, not-allowed cursor) matches non-clickable board cards.
+   Restore every resting property to the exact active-card values. */
+.pfoa-board-resources .pfoa-board-card.is-unavailable,
+.pfoa-board-resources .pfoa-board-card[aria-disabled="true"] {
+	background: #ffffff;
+	border: 1px solid var(--pfoa-border-default);
+	border-left: 4px solid var(--pfoa-accent);
+	border-radius: 10px;
+	box-shadow: none;
+	opacity: 1;
+	filter: none;
+	cursor: default;
+	color: var(--pfoa-color-text);
+}
+
+.pfoa-board-resources .pfoa-board-card.is-unavailable .pfoa-board-card__title {
+	color: var(--pfoa-color-text);
+}
+
+.pfoa-board-resources .pfoa-board-card.is-unavailable .pfoa-board-card__desc {
+	color: var(--pfoa-color-muted);
 }
 
 @media (min-width: 640px) {
