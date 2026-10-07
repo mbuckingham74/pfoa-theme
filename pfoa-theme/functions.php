@@ -2974,6 +2974,521 @@ function pfoa_present_bonded_pairs( $content ) {
 add_filter( 'the_content', 'pfoa_present_bonded_pairs', 999 );
 
 /**
+ * Adopted 2026 gallery: transitional adoption-event rendering.
+ *
+ * Page-specific (page 22514 / adopted2026). Renders published
+ * pfoa_adoption_event records for event year 2026 from immutable event
+ * snapshots ONLY: _pfoa_event_uuid, _pfoa_event_date / _pfoa_event_year,
+ * and the canonical ordered _pfoa_event_members rows (order, image_id,
+ * caption, cat_name_at_event, cat_post_id). Canonical
+ * pfoa_adoption_event_get_* readers are preferred with direct snapshot
+ * meta under identical keys as fallback. Never from pfoa_cat, never from
+ * current profile thumbnails/galleries, never from attachment
+ * post_excerpt, never inferred membership/grouping.
+ *
+ * Runs at priority 950, BEFORE the legacy adopted bonded-pair
+ * presentation (1000) and the adoptable companion (999), so figures
+ * claimed by published event snapshots are removed from the rendered
+ * legacy gallery before legacy grouping/inference runs. The legacy
+ * grouping itself is never rewritten. With zero published 2026 events the
+ * filter returns $content byte-identical (no DOM work at all).
+ *
+ * Per event: one .pfoa-adoption-event wrapper carrying the event UUID in
+ * data-pfoa-adoption-event (never a post ID as public identity), a neutral
+ * combined-name heading (no relationship wording, no historical facts),
+ * and one visible figure per member in canonical stored order, each with
+ * its own snapshot image/caption. A repeated cat across events renders in
+ * every event; events are never deduped. A missing/unusable snapshot
+ * image renders a restrained placeholder with the snapshot caption/name;
+ * the event is never silently dropped and the current profile image is
+ * never substituted. pfoa_cat receives no presentation metadata.
+ *
+ * Event markup deliberately uses no .gallery / .gallery-item classes and
+ * emits no gallery-N-ID / aria-describedby signals, so the legacy
+ * discovery rules can never claim event figures. Member links are
+ * standard wp_get_attachment_link() file links, which the PFOA Gallery
+ * Lightbox serves as standalone one-image sets.
+ *
+ * @param string $content Post content.
+ * @return string Event section plus (possibly claim-stripped) content.
+ */
+function pfoa_adoption_event_member_media( $image_id ) {
+	$image_id = (int) $image_id;
+
+	if ( 0 < $image_id && function_exists( 'wp_attachment_is_image' ) && ! wp_attachment_is_image( $image_id ) ) {
+		$image_id = 0;
+	}
+
+	if ( 0 < $image_id && function_exists( 'wp_get_attachment_link' ) ) {
+		$linked_image = wp_get_attachment_link( $image_id, 'medium', false, false );
+
+		if ( is_string( $linked_image ) && '' !== trim( $linked_image ) && false !== strpos( $linked_image, '<img' ) ) {
+			return $linked_image;
+		}
+	}
+
+	return '<span class="pfoa-adoption-event-thumb-missing"><span class="pfoa-adoption-event-missing-text">Photo unavailable</span></span>';
+}
+
+function pfoa_present_adoption_events( $content ) {
+	if ( function_exists( 'is_admin' ) && is_admin() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_feed' ) && is_feed() ) {
+		return $content;
+	}
+
+	if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+		return $content;
+	}
+
+	if ( ! is_string( $content ) || '' === $content ) {
+		return $content;
+	}
+
+	if ( function_exists( 'in_the_loop' ) && ! in_the_loop() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_main_query' ) && ! is_main_query() ) {
+		return $content;
+	}
+
+	$is_target_page = false;
+
+	if ( function_exists( 'is_page' ) && ( is_page( 22514 ) || is_page( 'adopted2026' ) ) ) {
+		$is_target_page = true;
+	} elseif ( function_exists( 'get_post' ) ) {
+		$post = get_post();
+
+		if ( $post instanceof WP_Post ) {
+			if ( 22514 === (int) $post->ID ) {
+				$is_target_page = true;
+			} elseif ( isset( $post->post_name ) && 'adopted2026' === $post->post_name ) {
+				$is_target_page = true;
+			}
+		}
+	}
+
+	if ( ! $is_target_page ) {
+		return $content;
+	}
+
+	if ( ! function_exists( 'get_posts' ) || ! function_exists( 'get_post_meta' ) ) {
+		return $content;
+	}
+
+	// Step 1: query published adoption events for event year 2026. Final
+	// ordering (adoption date DESC, event post ID DESC) is applied in PHP
+	// via the canonical readers so storage order can never misorder.
+	$event_ids = get_posts(
+		array(
+			'post_type'      => 'pfoa_adoption_event',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+			'orderby'        => 'ID',
+			'order'          => 'DESC',
+			'meta_query'     => array(
+				array(
+					'key'     => '_pfoa_event_year',
+					'value'   => '2026',
+					'compare' => '=',
+				),
+			),
+		)
+	);
+
+	if ( ! is_array( $event_ids ) || empty( $event_ids ) ) {
+		return $content;
+	}
+
+	// Step 2: read each event from immutable snapshots only. No gallery
+	// early-out here on purpose: events render even when the legacy
+	// gallery is absent or holds none of the snapshot images.
+	$events = array();
+
+	foreach ( $event_ids as $event_id_raw ) {
+		$event_id = (int) $event_id_raw;
+
+		if ( 0 >= $event_id ) {
+			continue;
+		}
+
+		if ( function_exists( 'get_post' ) ) {
+			$event_post = get_post( $event_id );
+
+			if ( ! $event_post instanceof WP_Post || 'pfoa_adoption_event' !== $event_post->post_type ) {
+				continue;
+			}
+		}
+
+		if ( function_exists( 'pfoa_adoption_event_get_year' ) ) {
+			$event_year = (string) pfoa_adoption_event_get_year( $event_id );
+		} else {
+			$event_year = (string) get_post_meta( $event_id, '_pfoa_event_year', true );
+		}
+
+		if ( '2026' !== trim( $event_year ) ) {
+			continue;
+		}
+
+		if ( function_exists( 'pfoa_adoption_event_get_date' ) ) {
+			$event_date = (string) pfoa_adoption_event_get_date( $event_id );
+		} else {
+			$event_date = (string) get_post_meta( $event_id, '_pfoa_event_date', true );
+		}
+
+		if ( function_exists( 'pfoa_adoption_event_get_uuid' ) ) {
+			$event_uuid = (string) pfoa_adoption_event_get_uuid( $event_id );
+		} else {
+			$event_uuid = (string) get_post_meta( $event_id, '_pfoa_event_uuid', true );
+		}
+
+		$event_uuid = trim( $event_uuid );
+
+		if ( '' === $event_uuid ) {
+			continue;
+		}
+
+		if ( function_exists( 'pfoa_adoption_event_get_members' ) ) {
+			$members_raw = pfoa_adoption_event_get_members( $event_id );
+		} else {
+			$members_raw = get_post_meta( $event_id, '_pfoa_event_members', true );
+		}
+
+		if ( ! is_array( $members_raw ) || empty( $members_raw ) ) {
+			continue;
+		}
+
+		$members = array();
+
+		foreach ( array_values( $members_raw ) as $member_raw ) {
+			if ( ! is_array( $member_raw ) ) {
+				continue;
+			}
+
+			$member_image = isset( $member_raw['image_id'] ) ? (int) $member_raw['image_id'] : 0;
+			$member_name  = isset( $member_raw['cat_name_at_event'] ) ? trim( (string) $member_raw['cat_name_at_event'] ) : '';
+			$member_cap   = isset( $member_raw['caption'] ) ? trim( (string) $member_raw['caption'] ) : '';
+
+			if ( '' === $member_cap ) {
+				$member_cap = $member_name;
+			}
+
+			$members[] = array(
+				'image_id' => 0 < $member_image ? $member_image : 0,
+				'caption'  => $member_cap,
+				'name'     => $member_name,
+			);
+		}
+
+		if ( empty( $members ) ) {
+			continue;
+		}
+
+		$events[] = array(
+			'id'      => $event_id,
+			'date'    => trim( (string) $event_date ),
+			'uuid'    => $event_uuid,
+			'members' => $members,
+		);
+	}
+
+	if ( empty( $events ) ) {
+		return $content;
+	}
+
+	// Adoption date DESC, event post ID DESC tie-break. Each event renders
+	// exactly once; a repeated cat across events is never deduped.
+	usort(
+		$events,
+		function ( $a, $b ) {
+			$date_cmp = strcmp( (string) $b['date'], (string) $a['date'] );
+
+			if ( 0 !== $date_cmp ) {
+				return $date_cmp;
+			}
+
+			if ( (int) $b['id'] === (int) $a['id'] ) {
+				return 0;
+			}
+
+			return (int) $b['id'] > (int) $a['id'] ? 1 : -1;
+		}
+	);
+
+	// Step 3: build event markup from snapshots and collect the claimed
+	// snapshot image IDs for legacy suppression below.
+	$claimed_ids = array();
+	$events_html = '<section class="pfoa-adoption-events" aria-label="Adopted cats">';
+
+	foreach ( $events as $event ) {
+		$member_count = count( $event['members'] );
+		$count_class  = 3 < $member_count ? 'n' : (string) $member_count;
+
+		$names = array();
+
+		foreach ( $event['members'] as $event_member ) {
+			if ( '' !== $event_member['name'] ) {
+				$names[] = $event_member['name'];
+			}
+		}
+
+		$events_html .= '<div class="pfoa-adoption-event" data-pfoa-adoption-event="' . esc_attr( $event['uuid'] ) . '">';
+
+		if ( ! empty( $names ) ) {
+			$events_html .= '<h2 class="pfoa-adoption-event-title">' . implode( ' &amp; ', array_map( 'esc_html', $names ) ) . '</h2>';
+		}
+
+		$events_html .= '<div class="pfoa-adoption-event-members pfoa-adoption-event-members-' . $count_class . '">';
+
+		foreach ( $event['members'] as $event_member ) {
+			if ( 0 < $event_member['image_id'] ) {
+				$claimed_ids[ $event_member['image_id'] ] = true;
+			}
+
+			$events_html .= '<figure class="pfoa-adoption-event-member">';
+			$events_html .= '<div class="pfoa-adoption-event-thumb">' . pfoa_adoption_event_member_media( $event_member['image_id'] ) . '</div>';
+
+			if ( '' !== $event_member['caption'] ) {
+				$events_html .= '<figcaption class="pfoa-adoption-event-caption">' . esc_html( $event_member['caption'] ) . '</figcaption>';
+			}
+
+			$events_html .= '</figure>';
+		}
+
+		$events_html .= '</div></div>';
+	}
+
+	$events_html .= '</section>';
+
+	// Step 4: suppress claimed figures from the rendered legacy gallery
+	// (exact attachment-ID match only) and insert the event section before
+	// the first legacy gallery. Without DOM support the events still
+	// render (prepended) while the legacy gallery is left untouched.
+	if ( ! class_exists( 'DOMDocument' ) || ! class_exists( 'DOMXPath' ) ) {
+		return $events_html . $content;
+	}
+
+	$prev_libxml = libxml_use_internal_errors( true );
+
+	$dom = new DOMDocument( '1.0', 'UTF-8' );
+
+	if ( function_exists( 'mb_encode_numericentity' ) ) {
+		$fragment = mb_encode_numericentity( $content, array( 0x80, 0x10FFFF, 0, 0x1FFFFF ), 'UTF-8' );
+	} else {
+		$fragment = $content;
+	}
+
+	$loaded = $dom->loadHTML(
+		'<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body><div id="pfoa-adoption-events-wrapper">' . $fragment . '</div></body></html>'
+	);
+
+	if ( ! $loaded ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $events_html . $content;
+	}
+
+	$xpath = new DOMXPath( $dom );
+
+	$wrapper_list = $xpath->query( '//div[@id="pfoa-adoption-events-wrapper"]' );
+
+	if ( ! $wrapper_list instanceof DOMNodeList || 0 === $wrapper_list->length ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $events_html . $content;
+	}
+
+	$wrapper = $wrapper_list->item( 0 );
+
+	// Removal uses the same discovery rules as the legacy presentation
+	// (figure/dl.gallery-item as a direct child of .gallery, attachment ID
+	// only from figcaption[id^=gallery-N-ID] and/or img[aria-describedby])
+	// but strips every exact claimed match: no workflow claims, no
+	// cat/name/caption/adjacency dedupe, no ambiguity logic.
+	if ( ! empty( $claimed_ids ) ) {
+		$item_list = $xpath->query(
+			'.//*[contains(concat(" ", normalize-space(@class), " "), " gallery-item ")]',
+			$wrapper
+		);
+
+		if ( $item_list instanceof DOMNodeList && 0 < $item_list->length ) {
+			$removable = array();
+
+			foreach ( $item_list as $item_node ) {
+				if ( ! $item_node instanceof DOMElement ) {
+					continue;
+				}
+
+				$tag = strtolower( $item_node->nodeName );
+
+				if ( 'figure' !== $tag && 'dl' !== $tag ) {
+					continue;
+				}
+
+				$parent = $item_node->parentNode;
+
+				if ( ! $parent instanceof DOMElement ) {
+					continue;
+				}
+
+				$parent_class = ' ' . preg_replace( '/\s+/', ' ', (string) $parent->getAttribute( 'class' ) ) . ' ';
+
+				if ( false === strpos( $parent_class, ' gallery ' ) ) {
+					continue;
+				}
+
+				$from_caption = 0;
+				$from_img     = 0;
+
+				$caption_list = $xpath->query( './/*[self::figcaption or self::dd][@id]', $item_node );
+
+				if ( $caption_list instanceof DOMNodeList && 0 < $caption_list->length ) {
+					foreach ( $caption_list as $caption_node ) {
+						if ( ! $caption_node instanceof DOMElement ) {
+							continue;
+						}
+
+						$caption_id = trim( (string) $caption_node->getAttribute( 'id' ) );
+
+						if ( 1 === preg_match( '/^gallery-\d+-(\d+)$/', $caption_id, $caption_matches ) ) {
+							$from_caption = (int) $caption_matches[1];
+							break;
+						}
+					}
+				}
+
+				$img_list = $xpath->query( './/img[@aria-describedby]', $item_node );
+
+				if ( $img_list instanceof DOMNodeList && 0 < $img_list->length ) {
+					foreach ( $img_list as $img_node ) {
+						if ( ! $img_node instanceof DOMElement ) {
+							continue;
+						}
+
+						$describedby = trim( (string) $img_node->getAttribute( 'aria-describedby' ) );
+
+						if ( 1 === preg_match( '/^gallery-\d+-(\d+)$/', $describedby, $img_matches ) ) {
+							$from_img = (int) $img_matches[1];
+							break;
+						}
+					}
+				}
+
+				if ( 0 < $from_caption && 0 < $from_img && $from_caption !== $from_img ) {
+					continue;
+				}
+
+				$attachment_id = 0 < $from_caption ? $from_caption : $from_img;
+
+				if ( 0 < $attachment_id && isset( $claimed_ids[ $attachment_id ] ) ) {
+					$removable[] = $item_node;
+				}
+			}
+
+			foreach ( $removable as $removable_node ) {
+				if ( null !== $removable_node->parentNode ) {
+					$removable_node->parentNode->removeChild( $removable_node );
+				}
+			}
+		}
+	}
+
+	// Import the event section through a second document so snapshot
+	// captions/names survive encoding intact, then place it before the
+	// first remaining legacy gallery (prepend when there is none).
+	$event_dom = new DOMDocument( '1.0', 'UTF-8' );
+
+	if ( function_exists( 'mb_encode_numericentity' ) ) {
+		$event_fragment = mb_encode_numericentity( $events_html, array( 0x80, 0x10FFFF, 0, 0x1FFFFF ), 'UTF-8' );
+	} else {
+		$event_fragment = $events_html;
+	}
+
+	$event_loaded = $event_dom->loadHTML(
+		'<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body><div id="pfoa-adoption-events-insert">' . $event_fragment . '</div></body></html>'
+	);
+
+	$insert_nodes = array();
+
+	if ( $event_loaded ) {
+		$event_xpath = new DOMXPath( $event_dom );
+
+		$event_wrapper_list = $event_xpath->query( '//div[@id="pfoa-adoption-events-insert"]' );
+
+		if ( $event_wrapper_list instanceof DOMNodeList && 0 < $event_wrapper_list->length ) {
+			$event_wrapper = $event_wrapper_list->item( 0 );
+
+			foreach ( $event_wrapper->childNodes as $event_child ) {
+				$insert_nodes[] = $dom->importNode( $event_child, true );
+			}
+		}
+	}
+
+	if ( empty( $insert_nodes ) ) {
+		$output = '';
+
+		foreach ( $wrapper->childNodes as $child ) {
+			$output .= $dom->saveHTML( $child );
+		}
+
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+
+		return $events_html . ( '' !== $output ? $output : $content );
+	}
+
+	$first_gallery = null;
+
+	$gallery_list = $xpath->query(
+		'.//*[contains(concat(" ", normalize-space(@class), " "), " gallery ")]',
+		$wrapper
+	);
+
+	if ( $gallery_list instanceof DOMNodeList && 0 < $gallery_list->length ) {
+		foreach ( $gallery_list as $gallery_node ) {
+			if ( $gallery_node instanceof DOMElement ) {
+				$first_gallery = $gallery_node;
+				break;
+			}
+		}
+	}
+
+	if ( $first_gallery instanceof DOMElement && null !== $first_gallery->parentNode ) {
+		foreach ( $insert_nodes as $insert_node ) {
+			$first_gallery->parentNode->insertBefore( $insert_node, $first_gallery );
+		}
+	} else {
+		$first_child = $wrapper->firstChild;
+
+		foreach ( $insert_nodes as $insert_node ) {
+			$wrapper->insertBefore( $insert_node, $first_child );
+		}
+	}
+
+	$output = '';
+
+	foreach ( $wrapper->childNodes as $child ) {
+		$output .= $dom->saveHTML( $child );
+	}
+
+	libxml_clear_errors();
+	libxml_use_internal_errors( $prev_libxml );
+
+	if ( '' === $output ) {
+		return $events_html . $content;
+	}
+
+	return $output;
+}
+
+add_filter( 'the_content', 'pfoa_present_adoption_events', 950 );
+
+/**
  * Adopted 2026 gallery: group workflow-managed bonded pairs.
  *
  * Page-specific (page 22514 / adopted2026) companion to
