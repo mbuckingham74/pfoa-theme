@@ -760,6 +760,7 @@ function pfoa_homepage_cards_page() {
  *   'image_link_page_id' => int (published page ID, 0 = not clickable),
  *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
  *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int, 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 70|80|90|100|110|120 ),
+ *   'carousel_interval_ms' => 3500|5000|7000 (ms each carousel image stays visible; missing/invalid resolves to 5000),
  *   'ctas'               => array[] of array( 'label' => string, 'url' => string ),
  * ).
  *
@@ -805,6 +806,7 @@ function pfoa_get_hero_defaults() {
 		'image_link_page_id' => 0,
 		'carousel_ids'       => array(),
 		'carousel_items'     => array(),
+		'carousel_interval_ms' => 5000,
 		'ctas'               => $ctas,
 	);
 }
@@ -898,6 +900,24 @@ function pfoa_sanitize_hero_headline_scale( $value ) {
 }
 
 /**
+ * Sanitize the homepage hero carousel auto-advance interval.
+ *
+ * Only 3500, 5000, 7000 are accepted; anything else becomes 5000 (5 seconds).
+ *
+ * @param mixed $value Raw submitted value.
+ * @return int
+ */
+function pfoa_sanitize_hero_carousel_interval_ms( $value ) {
+	$interval = absint( $value );
+
+	if ( ! in_array( $interval, array( 3500, 5000, 7000 ), true ) ) {
+		return 5000;
+	}
+
+	return $interval;
+}
+
+/**
  * Sanitize a homepage hero value. No raw HTML is allowed.
  *
  * @param mixed $value Raw submitted value (expected unslashed).
@@ -911,6 +931,7 @@ function pfoa_sanitize_hero( $value ) {
 		'image_link_page_id' => 0,
 		'carousel_ids'       => array(),
 		'carousel_items'     => array(),
+		'carousel_interval_ms' => 5000,
 		'ctas'               => array(),
 	);
 
@@ -927,6 +948,8 @@ function pfoa_sanitize_hero( $value ) {
 	$hero['image_id'] = ( $image_id && wp_attachment_is_image( $image_id ) ) ? $image_id : 0;
 
 	$hero['image_link_page_id'] = isset( $value['image_link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $value['image_link_page_id'] ) : 0;
+
+	$hero['carousel_interval_ms'] = isset( $value['carousel_interval_ms'] ) ? pfoa_sanitize_hero_carousel_interval_ms( $value['carousel_interval_ms'] ) : 5000;
 
 	$carousel_items = array();
 
@@ -1884,6 +1907,7 @@ function pfoa_site_homepage_page() {
 	$image_id     = isset( $hero['image_id'] ) ? absint( $hero['image_id'] ) : 0;
 	$image_link_page_id = isset( $hero['image_link_page_id'] ) ? absint( $hero['image_link_page_id'] ) : 0;
 	$carousel_ids = ( isset( $hero['carousel_ids'] ) && is_array( $hero['carousel_ids'] ) ) ? $hero['carousel_ids'] : array();
+	$carousel_interval_ms = isset( $hero['carousel_interval_ms'] ) ? pfoa_sanitize_hero_carousel_interval_ms( $hero['carousel_interval_ms'] ) : 5000;
 	$carousel_items = array();
 
 		if ( isset( $hero['carousel_items'] ) && is_array( $hero['carousel_items'] ) && array() !== $hero['carousel_items'] ) {
@@ -2086,6 +2110,17 @@ function pfoa_site_homepage_page() {
 				</template>
 				<button type="button" class="button pfoa-hero-carousel-add"><?php esc_html_e( 'Add Images', 'pfoa-theme' ); ?></button>
 				<p class="description"><?php esc_html_e( 'Shown in order when Carousel mode is selected. Use Move Up and Move Down to reorder; the buttons stay the same on every image.', 'pfoa-theme' ); ?></p>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><label for="pfoa-hero-carousel-interval"><?php esc_html_e( 'Carousel timing', 'pfoa-theme' ); ?></label></th>
+			<td>
+				<select id="pfoa-hero-carousel-interval" name="pfoa_hero[carousel_interval_ms]">
+					<option value="3500"<?php selected( $carousel_interval_ms, 3500 ); ?>><?php esc_html_e( '3.5 seconds', 'pfoa-theme' ); ?></option>
+					<option value="5000"<?php selected( $carousel_interval_ms, 5000 ); ?>><?php esc_html_e( '5 seconds', 'pfoa-theme' ); ?></option>
+					<option value="7000"<?php selected( $carousel_interval_ms, 7000 ); ?>><?php esc_html_e( '7 seconds', 'pfoa-theme' ); ?></option>
+				</select>
+				<p class="description"><?php esc_html_e( 'Time each carousel image remains visible before advancing automatically.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
 		<tr>

@@ -78,6 +78,8 @@ if ( 'carousel' === $hero_mode ) {
 
 $is_carousel = array() !== $carousel_slides;
 
+$carousel_interval_ms = isset( $hero['carousel_interval_ms'] ) ? pfoa_sanitize_hero_carousel_interval_ms( $hero['carousel_interval_ms'] ) : 5000;
+
 $hero_title_scale = 100;
 
 if ( $is_carousel ) {
@@ -100,7 +102,7 @@ if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fa
 ?>
 <section id="homepage-hero" class="<?php echo esc_attr( implode( ' ', $hero_classes ) ); ?>" aria-labelledby="homepage-hero-title">
 	<?php if ( $is_carousel ) : ?>
-		<div class="homepage-hero__media" id="homepage-hero-media" data-pfoa-hero-carousel>
+		<div class="homepage-hero__media" id="homepage-hero-media" data-pfoa-hero-carousel data-carousel-interval="<?php echo esc_attr( (string) $carousel_interval_ms ); ?>">
 		<?php foreach ( $carousel_slides as $slide_index => $slide ) : ?>
 			<?php
 			$slide_id    = $slide['id'];
@@ -218,6 +220,9 @@ if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fa
 			</button>
 			<button type="button" class="homepage-hero__nav homepage-hero__nav--next" data-pfoa-hero-next aria-controls="homepage-hero-media" aria-label="<?php esc_attr_e( 'Next hero image', 'pfoa-theme' ); ?>">
 				<span aria-hidden="true">&#8250;</span>
+			</button>
+			<button type="button" class="homepage-hero__nav homepage-hero__nav--toggle" data-pfoa-hero-toggle aria-controls="homepage-hero-media" aria-label="<?php esc_attr_e( 'Pause carousel', 'pfoa-theme' ); ?>" aria-pressed="false">
+				<span aria-hidden="true" data-pfoa-hero-toggle-icon>&#10074;&#10074;</span>
 			</button>
 		</div>
 	<?php endif; ?>
