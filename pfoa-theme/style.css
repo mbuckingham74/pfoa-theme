@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.87
+ Version: 0.1.88
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4397,7 +4397,7 @@ body.page-id-22514 .pfoa-adoption-event-together-badge {
 	background: var(--pfoa-cta-primary);
 }
 
-/* PFOA 0.1.87 — Board Documents & Resources cards */
+/* PFOA 0.1.88 — Board Documents & Resources cards */
 .pfoa-board-resources {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
@@ -4441,27 +4441,12 @@ a.pfoa-board-card:focus-visible {
 }
 
 .pfoa-board-card__title {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: var(--pfoa-space-2);
+	display: block;
 	margin: 0;
 	font-weight: 700;
 	font-size: 1.02rem;
 	line-height: 1.35;
 	color: var(--pfoa-color-text);
-}
-
-a.pfoa-board-card .pfoa-board-card__title::after {
-	content: "→";
-	flex: none;
-	color: var(--pfoa-accent);
-	font-weight: 700;
-	transition: transform 0.18s ease;
-}
-
-a.pfoa-board-card:hover .pfoa-board-card__title::after {
-	transform: translateX(4px);
 }
 
 .pfoa-board-card__desc {
@@ -4472,13 +4457,7 @@ a.pfoa-board-card:hover .pfoa-board-card__title::after {
 }
 
 .pfoa-board-card.is-unavailable {
-	background: var(--pfoa-surface-subtle);
-	border-left-color: var(--pfoa-border-default);
 	cursor: default;
-}
-
-.pfoa-board-card.is-unavailable .pfoa-board-card__title {
-	color: var(--pfoa-color-muted);
 }
 
 @media (min-width: 640px) {
@@ -4495,8 +4474,7 @@ a.pfoa-board-card:hover .pfoa-board-card__title::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	a.pfoa-board-card,
-	a.pfoa-board-card .pfoa-board-card__title::after {
+	a.pfoa-board-card {
 		transition: none;
 	}
 
