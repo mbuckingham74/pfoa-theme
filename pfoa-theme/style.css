@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.84
+ Version: 0.1.85
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3638,33 +3638,27 @@ div.pfoa-cat-cards .pfoa-cat-bonded-footer a:focus-visible {
 	outline-offset: 3px;
 }
 
-/* PFOA DEV — shared bonded-pair badge INSIDE Adoptables bonded cards
- * (beneath the pair name, centered: [images] / Pair Name / Bonded Pair pill).
- * The badge span stays inside the existing h3 title (pair name stays primary,
- * a11y/click/dialog/grid/images untouched) but is absolutely positioned just
- * below the title text (top:100% of the title + 0.25rem gap), so it
- * contributes zero normal flow. The footer reserves one pill row
- * (padding-bottom 1.75rem ≈ 28px ≥ ~23px pill + 4px gap) inside the card, so
- * the pill never overhangs the top border, never collides with the row above,
- * and never reaches the square photos (aspect-ratio 1/1 untouched). Pill
- * colors/typography/radius/border/shadow unchanged. Existing
- * p.pfoa-cat-bonded-relationship CSS left untouched (deprecated, unrendered).
+/* PFOA 0.1.85 — shared bonded-pair badge straddling the BOTTOM border of
+ * Adoptables bonded cards (mirrors 0.1.83 top-straddle logic, moved to bottom).
+ * The outer bonded card is the containing block; the pill is absolutely
+ * positioned at bottom:0 with translate(-50%,50%), so it straddles the bottom
+ * border and lives in the row gap below the card (absolute = zero flow, so no
+ * new card height). No footer padding reservation, no title containing block.
+ * white-space:nowrap plus a max-width ellipsis guard keeps every breakpoint
+ * overflow-free with no per-breakpoint rules needed. Badge SIZE LOCKED to
+ * 0.1.83 values — do not change (font-size 0.72rem, line-height 1.4,
+ * font-weight 800, padding 0.15rem 0.65rem, 1px border, radius 999px).
+ * Existing p.pfoa-cat-bonded-relationship CSS left untouched (deprecated,
+ * unrendered).
  */
 div.pfoa-cat-cards > article.pfoa-cat-bonded-card {
 	position: relative;
 }
 
-div.pfoa-cat-cards .pfoa-cat-bonded-footer {
-	padding-bottom: 1.75rem;
-}
-
-div.pfoa-cat-cards h3.pfoa-cat-bonded-title {
-	position: relative;
-}
-
 div.pfoa-cat-cards .pfoa-cat-bonded-badge {
 	position: absolute;
-	top: 100%;
+	bottom: 0;
+	top: auto;
 	left: 50%;
 	z-index: 2;
 	display: inline-block;
@@ -3672,8 +3666,7 @@ div.pfoa-cat-cards .pfoa-cat-bonded-badge {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	transform: translateX(-50%);
-	margin-top: 0.25rem;
+	transform: translate(-50%, 50%);
 	padding: 0.15rem 0.65rem;
 	background: var(--pfoa-color-brand);
 	color: #ffffff;
@@ -4350,29 +4343,28 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
 	margin-top: var(--pfoa-space-3);
 }
 
-/* PFOA DEV — Bonded-pair pill INSIDE true-bonded Adoption Events (DEV scope,
- * page 22514 only): [images] / Pair Name / Bonded Pair pill (centered).
- * The badge span stays inside the existing h2 title (names stay primary,
- * bond derivation/a11y/grid-spans/square images untouched) but is absolutely
- * positioned just below the title text (top:100% of the title + 0.25rem gap),
- * so it contributes zero normal flow. The bonded outer card reserves one
- * pill row (padding-bottom calc(space-2 + 1.75rem) ≈ 12px + 28px ≥ ~23px
- * pill + 4px gap) inside the card, so the pill never overhangs the top
- * border, never collides with the row above, and never reaches the square
- * photos. Pill colors/typography/radius/border/shadow unchanged.
+/* PFOA 0.1.85 — Bonded-pair pill straddling the BOTTOM border of true-bonded
+ * Adoption Events (DEV scope, page 22514 only; mirrors Adoptables bottom
+ * straddle). The outer bonded card is the containing block; the pill is
+ * absolutely positioned at bottom:0 with translate(-50%,50%), so it straddles
+ * the bottom border and lives in the gallery row gap below the card
+ * (absolute = zero flow, so the 0.1.80/0.1.81 equal outer-height work is
+ * untouched — no new vertical row, no title shift, no member image
+ * size/grid-span change). No card padding reservation, no title containing
+ * block. white-space:nowrap plus a max-width ellipsis guard keeps every
+ * breakpoint (1024/720/390) overflow-free with no per-breakpoint rules
+ * needed. Badge SIZE LOCKED to 0.1.83 values — do not change (font-size
+ * 0.72rem, line-height 1.4, font-weight 800, padding 0.15rem 0.65rem, 1px
+ * border, radius 999px).
  */
 body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event--bonded {
-	position: relative;
-	padding-bottom: calc(var(--pfoa-space-2) + 1.75rem);
-}
-
-body.page-id-22514 .pfoa-adoption-event--bonded .pfoa-adoption-event-title {
 	position: relative;
 }
 
 body.page-id-22514 .pfoa-adoption-event-bonded-badge {
 	position: absolute;
-	top: 100%;
+	bottom: 0;
+	top: auto;
 	left: 50%;
 	z-index: 2;
 	display: inline-block;
@@ -4380,8 +4372,7 @@ body.page-id-22514 .pfoa-adoption-event-bonded-badge {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	transform: translateX(-50%);
-	margin-top: 0.25rem;
+	transform: translate(-50%, 50%);
 	padding: 0.15rem 0.65rem;
 	background: var(--pfoa-color-brand);
 	color: #ffffff;
