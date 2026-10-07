@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.85
+ Version: 0.1.86
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4343,9 +4343,11 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
 	margin-top: var(--pfoa-space-3);
 }
 
-/* PFOA 0.1.85 — Bonded-pair pill straddling the BOTTOM border of true-bonded
- * Adoption Events (DEV scope, page 22514 only; mirrors Adoptables bottom
- * straddle). The outer bonded card is the containing block; the pill is
+/* PFOA 0.1.86 — Bonded-pair + adopted-together pills straddling the BOTTOM
+ * border of multi-cat Adoption Events (DEV scope, page 22514 only; mirrors
+ * Adoptables bottom straddle). Shared base keeps 0.1.85 geometry EXACTLY;
+ * only the background differs per modifier (bonded red vs together green).
+ * The outer bonded/together card is the containing block; the pill is
  * absolutely positioned at bottom:0 with translate(-50%,50%), so it straddles
  * the bottom border and lives in the gallery row gap below the card
  * (absolute = zero flow, so the 0.1.80/0.1.81 equal outer-height work is
@@ -4357,11 +4359,13 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
  * 0.72rem, line-height 1.4, font-weight 800, padding 0.15rem 0.65rem, 1px
  * border, radius 999px).
  */
-body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event--bonded {
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event--bonded,
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event--together {
 	position: relative;
 }
 
-body.page-id-22514 .pfoa-adoption-event-bonded-badge {
+body.page-id-22514 .pfoa-adoption-event-bonded-badge,
+body.page-id-22514 .pfoa-adoption-event-together-badge {
 	position: absolute;
 	bottom: 0;
 	top: auto;
@@ -4374,7 +4378,6 @@ body.page-id-22514 .pfoa-adoption-event-bonded-badge {
 	white-space: nowrap;
 	transform: translate(-50%, 50%);
 	padding: 0.15rem 0.65rem;
-	background: var(--pfoa-color-brand);
 	color: #ffffff;
 	border: 1px solid #ffffff;
 	border-radius: 999px;
@@ -4384,4 +4387,12 @@ body.page-id-22514 .pfoa-adoption-event-bonded-badge {
 	line-height: 1.4;
 	letter-spacing: 0.02em;
 	text-align: center;
+}
+
+body.page-id-22514 .pfoa-adoption-event-bonded-badge {
+	background: var(--pfoa-color-brand);
+}
+
+body.page-id-22514 .pfoa-adoption-event-together-badge {
+	background: var(--pfoa-cta-primary);
 }

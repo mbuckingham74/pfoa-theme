@@ -3327,6 +3327,12 @@ function pfoa_present_adoption_events( $content ) {
 			}
 		}
 
+		// PFOA 0.1.86 — presentation only: adopted-together indicator for
+		// non-bonded multi-cat events only. Single-cat => false; true-bonded
+		// 2-member => false; all other multi-cat (2+ non-bonded incl. 3+) =>
+		// true. No meta reads beyond the bonded helpers above, no writes.
+		$is_adopted_together = ( 2 <= $member_count && ! $is_bonded_pair );
+
 		$names = array();
 
 		foreach ( $event['members'] as $event_member ) {
@@ -3345,7 +3351,11 @@ function pfoa_present_adoption_events( $content ) {
 		// bonded pairs; badge markup joins the combined title below.
 		$bonded_class = $is_bonded_pair ? ' pfoa-adoption-event--bonded' : '';
 
-		$events_html .= '<div class="pfoa-adoption-event' . $multi_class . $bonded_class . '" data-pfoa-adoption-event="' . esc_attr( $event['uuid'] ) . '">';
+		// PFOA 0.1.86 — presentation only: together modifier class for
+		// non-bonded multi-cat events; badge markup joins the title below.
+		$together_class = $is_adopted_together ? ' pfoa-adoption-event--together' : '';
+
+		$events_html .= '<div class="pfoa-adoption-event' . $multi_class . $bonded_class . $together_class . '" data-pfoa-adoption-event="' . esc_attr( $event['uuid'] ) . '">';
 
 		// PFOA 0.1.76 — presentation only: single-cat events keep the
 		// combined heading above the image (image->name); multi-member
@@ -3364,6 +3374,8 @@ function pfoa_present_adoption_events( $content ) {
 			// visually-hidden suffix gives assistive-tech context.
 			if ( $is_bonded_pair ) {
 				$combined_title .= ' <span class="pfoa-adoption-event-bonded-badge">' . esc_html__( 'Bonded Pair', 'pfoa-theme' ) . '<span class="screen-reader-text"> ' . esc_html__( 'adopted together as a bonded pair', 'pfoa-theme' ) . '</span></span>';
+			} elseif ( $is_adopted_together ) {
+				$combined_title .= ' <span class="pfoa-adoption-event-together-badge">' . esc_html__( 'Adopted Together', 'pfoa-theme' ) . '<span class="screen-reader-text"> ' . esc_html__( 'in the same adoption event', 'pfoa-theme' ) . '</span></span>';
 			}
 
 			$combined_title .= '</h2>';
