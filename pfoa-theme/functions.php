@@ -2547,7 +2547,7 @@ function pfoa_present_bonded_pairs( $content ) {
 
 		// Build replacement via DOM methods so text/attributes stay escaped.
 		$bonded = $dom->createElement( 'article' );
-		$bonded->setAttribute( 'class', 'pfoa-cat-card pfoa-cat-bonded-card' );
+		$bonded->setAttribute( 'class', 'pfoa-cat-card pfoa-cat-bonded-card pfoa-cat-bonded-card--bonded' );
 		$bonded->setAttribute( 'data-pfoa-cat-dialog', $left_dialog );
 
 		if ( '' !== $shared_profile_id ) {
@@ -2595,10 +2595,20 @@ function pfoa_present_bonded_pairs( $content ) {
 		$name_link->textContent = $shared_name;
 		$name_heading->appendChild( $name_link );
 
-		$relationship_el = $dom->createElement( 'p' );
-		$relationship_el->setAttribute( 'class', 'pfoa-cat-bonded-relationship' );
-		$relationship_el->textContent = $relationship;
-		$footer->appendChild( $relationship_el );
+		// PFOA 0.1.83 — presentation only: shared "Bonded Pair" badge inside
+		// the existing title (pair name stays primary). Absolutely positioned
+		// by CSS so title/card geometry is unchanged; the visually-hidden
+		// suffix gives assistive-tech context. Replaces the old plain
+		// p.pfoa-cat-bonded-relationship line so there is one presentation only.
+		$name_heading->appendChild( $dom->createTextNode( ' ' ) );
+		$bonded_badge = $dom->createElement( 'span' );
+		$bonded_badge->setAttribute( 'class', 'pfoa-cat-bonded-badge' );
+		$bonded_badge->appendChild( $dom->createTextNode( esc_html__( 'Bonded Pair', 'pfoa-theme' ) ) );
+		$bonded_sr = $dom->createElement( 'span' );
+		$bonded_sr->setAttribute( 'class', 'screen-reader-text' );
+		$bonded_sr->appendChild( $dom->createTextNode( ' ' . esc_html__( 'available together as a bonded pair', 'pfoa-theme' ) ) );
+		$bonded_badge->appendChild( $bonded_sr );
+		$name_heading->appendChild( $bonded_badge );
 
 		$parent = $left->parentNode;
 
@@ -2879,7 +2889,7 @@ function pfoa_present_bonded_pairs( $content ) {
 
 			// Build replacement via DOM methods so text/attributes stay escaped.
 			$structured_bonded = $dom->createElement( 'article' );
-			$structured_bonded->setAttribute( 'class', 'pfoa-cat-card pfoa-cat-bonded-card' );
+			$structured_bonded->setAttribute( 'class', 'pfoa-cat-card pfoa-cat-bonded-card pfoa-cat-bonded-card--bonded' );
 
 			if ( '' !== $first_dialog ) {
 				$structured_bonded->setAttribute( 'data-pfoa-cat-dialog', $first_dialog );
@@ -2927,10 +2937,21 @@ function pfoa_present_bonded_pairs( $content ) {
 			$structured_link->textContent = $first_name . ' & ' . $second_name;
 			$structured_heading->appendChild( $structured_link );
 
-			$structured_relationship = $dom->createElement( 'p' );
-			$structured_relationship->setAttribute( 'class', 'pfoa-cat-bonded-relationship' );
-			$structured_relationship->textContent = 'Bonded pair';
-			$structured_footer->appendChild( $structured_relationship );
+			// PFOA 0.1.83 — presentation only: shared "Bonded Pair" badge
+			// inside the existing title (pair name stays primary). Absolutely
+			// positioned by CSS so title/card geometry is unchanged; the
+			// visually-hidden suffix gives assistive-tech context. Replaces
+			// the old plain p.pfoa-cat-bonded-relationship line so there is
+			// one presentation only.
+			$structured_heading->appendChild( $dom->createTextNode( ' ' ) );
+			$structured_badge = $dom->createElement( 'span' );
+			$structured_badge->setAttribute( 'class', 'pfoa-cat-bonded-badge' );
+			$structured_badge->appendChild( $dom->createTextNode( esc_html__( 'Bonded Pair', 'pfoa-theme' ) ) );
+			$structured_sr = $dom->createElement( 'span' );
+			$structured_sr->setAttribute( 'class', 'screen-reader-text' );
+			$structured_sr->appendChild( $dom->createTextNode( ' ' . esc_html__( 'available together as a bonded pair', 'pfoa-theme' ) ) );
+			$structured_badge->appendChild( $structured_sr );
+			$structured_heading->appendChild( $structured_badge );
 
 			$structured_parent = $first_card->parentNode;
 
