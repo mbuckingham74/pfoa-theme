@@ -759,7 +759,7 @@ function pfoa_homepage_cards_page() {
  *   'image_id'           => int (attachment ID),
  *   'image_link_page_id' => int (published page ID, 0 = not clickable),
  *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
- *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int, 'headline' => string ),
+ *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int, 'headline' => string, 'brightness' => 100|110|120|130 ),
  *   'ctas'               => array[] of array( 'label' => string, 'url' => string ),
  * ).
  *
@@ -862,6 +862,24 @@ function pfoa_get_hero_link( $page_id ) {
 }
 
 /**
+ * Sanitize a per-image hero carousel brightness value.
+ *
+ * Only 100, 110, 120, 130 are accepted; anything else becomes 100 (Original).
+ *
+ * @param mixed $value Raw submitted value.
+ * @return int
+ */
+function pfoa_sanitize_hero_brightness( $value ) {
+	$brightness = absint( $value );
+
+	if ( ! in_array( $brightness, array( 100, 110, 120, 130 ), true ) ) {
+		return 100;
+	}
+
+	return $brightness;
+}
+
+/**
  * Sanitize a homepage hero value. No raw HTML is allowed.
  *
  * @param mixed $value Raw submitted value (expected unslashed).
@@ -923,6 +941,7 @@ function pfoa_sanitize_hero( $value ) {
 				'id'           => $carousel_id,
 				'link_page_id' => isset( $carousel_item['link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $carousel_item['link_page_id'] ) : 0,
 				'headline'     => isset( $carousel_item['headline'] ) ? sanitize_text_field( $carousel_item['headline'] ) : '',
+				'brightness'   => isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100,
 			);
 		}
 	}
@@ -952,6 +971,7 @@ function pfoa_sanitize_hero( $value ) {
 				'id'           => $carousel_id,
 				'link_page_id' => 0,
 				'headline'     => '',
+				'brightness'   => 100,
 			);
 		}
 	}
@@ -1856,6 +1876,7 @@ function pfoa_site_homepage_page() {
 				'id'           => isset( $carousel_item['id'] ) ? absint( $carousel_item['id'] ) : 0,
 				'link_page_id' => isset( $carousel_item['link_page_id'] ) ? absint( $carousel_item['link_page_id'] ) : 0,
 				'headline'     => isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '',
+				'brightness'   => isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100,
 			);
 		}
 	} else {
@@ -1864,6 +1885,7 @@ function pfoa_site_homepage_page() {
 				'id'           => absint( $carousel_id ),
 				'link_page_id' => 0,
 				'headline'     => '',
+				'brightness'   => 100,
 			);
 		}
 	}
@@ -1935,9 +1957,10 @@ function pfoa_site_homepage_page() {
 				<ul class="pfoa-hero-carousel-list" data-next-index="<?php echo esc_attr( (string) count( $carousel_items ) ); ?>">
 					<?php foreach ( $carousel_items as $carousel_index => $carousel_item ) : ?>
 						<?php
-						$carousel_id        = absint( $carousel_item['id'] );
-						$carousel_link      = absint( $carousel_item['link_page_id'] );
-						$carousel_headline  = isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '';
+					$carousel_id        = absint( $carousel_item['id'] );
+					$carousel_link      = absint( $carousel_item['link_page_id'] );
+					$carousel_headline  = isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '';
+					$carousel_brightness = isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100;
 						$carousel_preview   = $carousel_id ? wp_get_attachment_image( $carousel_id, array( 80, 80 ) ) : '';
 						$carousel_field_base = 'pfoa_hero[carousel_items][' . $carousel_index . ']';
 						?>
@@ -1958,10 +1981,19 @@ function pfoa_site_homepage_page() {
 									);
 									?>
 								</label>
-								<label class="pfoa-hero-carousel-headline">
-									<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
-									<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[headline]" value="<?php echo esc_attr( $carousel_headline ); ?>" />
-								</label>
+							<label class="pfoa-hero-carousel-headline">
+								<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
+								<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[headline]" value="<?php echo esc_attr( $carousel_headline ); ?>" />
+							</label>
+							<label class="pfoa-hero-carousel-brightness">
+								<?php esc_html_e( 'Image brightness', 'pfoa-theme' ); ?>
+								<select name="<?php echo esc_attr( $carousel_field_base ); ?>[brightness]">
+									<option value="100"<?php selected( $carousel_brightness, 100 ); ?>><?php esc_html_e( 'Original (100%)', 'pfoa-theme' ); ?></option>
+									<option value="110"<?php selected( $carousel_brightness, 110 ); ?>><?php esc_html_e( '110%', 'pfoa-theme' ); ?></option>
+									<option value="120"<?php selected( $carousel_brightness, 120 ); ?>><?php esc_html_e( '120%', 'pfoa-theme' ); ?></option>
+									<option value="130"<?php selected( $carousel_brightness, 130 ); ?>><?php esc_html_e( '130%', 'pfoa-theme' ); ?></option>
+								</select>
+							</label>
 								<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
 								<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
 								<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
@@ -1988,10 +2020,19 @@ function pfoa_site_homepage_page() {
 							);
 							?>
 						</label>
-						<label class="pfoa-hero-carousel-headline">
-							<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
-							<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][__INDEX__][headline]" value="" />
-						</label>
+					<label class="pfoa-hero-carousel-headline">
+						<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
+						<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][__INDEX__][headline]" value="" />
+					</label>
+					<label class="pfoa-hero-carousel-brightness">
+						<?php esc_html_e( 'Image brightness', 'pfoa-theme' ); ?>
+						<select name="pfoa_hero[carousel_items][__INDEX__][brightness]">
+							<option value="100" selected="selected"><?php esc_html_e( 'Original (100%)', 'pfoa-theme' ); ?></option>
+							<option value="110"><?php esc_html_e( '110%', 'pfoa-theme' ); ?></option>
+							<option value="120"><?php esc_html_e( '120%', 'pfoa-theme' ); ?></option>
+							<option value="130"><?php esc_html_e( '130%', 'pfoa-theme' ); ?></option>
+						</select>
+					</label>
 						<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
 						<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
 						<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>

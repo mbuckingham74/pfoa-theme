@@ -130,17 +130,18 @@
 			return;
 		}
 
-		list.append(
-			'<li class="pfoa-hero-carousel-item">' +
-			'<span class="pfoa-hero-carousel-preview">' + thumb + '</span> ' +
-			'<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][' + index + '][id]" value="' + id + '" /> ' +
-			'<input type="hidden" name="pfoa_hero[carousel_items][' + index + '][link_page_id]" value="0" /> ' +
-			'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
-			'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
-			'<button type="button" class="button pfoa-hero-carousel-down">' + moveDownLabel() + '</button> ' +
-			'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +
-			'</li>'
-		);
+	list.append(
+		'<li class="pfoa-hero-carousel-item">' +
+		'<span class="pfoa-hero-carousel-preview">' + thumb + '</span> ' +
+		'<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][' + index + '][id]" value="' + id + '" /> ' +
+		'<input type="hidden" name="pfoa_hero[carousel_items][' + index + '][link_page_id]" value="0" /> ' +
+		'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
+		'<label class="pfoa-hero-carousel-brightness">Image brightness <select name="pfoa_hero[carousel_items][' + index + '][brightness]"><option value="100" selected="selected">Original (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option></select></label> ' +
+		'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
+		'<button type="button" class="button pfoa-hero-carousel-down">' + moveDownLabel() + '</button> ' +
+		'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +
+		'</li>'
+	);
 	}
 
 	$( document ).on( 'click', '.pfoa-hero-carousel-add', function ( event ) {

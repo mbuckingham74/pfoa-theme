@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.92
+ Version: 0.1.93
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -2364,6 +2364,13 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 
 .front-page-content .homepage-hero--carousel .homepage-hero__slide.is-active {
 	opacity: 1;
+}
+
+/* PFOA 0.1.93 — Per-image carousel brightness: image pixels only. The custom
+   property lives on the slide wrapper; the filter applies to the img only so
+   headline/CTAs/scrim/arrows are unaffected. Single-image mode untouched. */
+.front-page-content .homepage-hero--carousel .homepage-hero__slide .homepage-hero__image {
+	filter: brightness(var(--pfoa-hero-brightness, 1));
 }
 
 .front-page-content .homepage-hero__controls {

@@ -61,11 +61,14 @@ if ( 'carousel' === $hero_mode ) {
 			$slide_headline = $hero_title;
 		}
 
+		$slide_brightness = ( is_array( $raw_item ) && isset( $raw_item['brightness'] ) ) ? pfoa_sanitize_hero_brightness( $raw_item['brightness'] ) : 100;
+
 		$carousel_slides[] = array(
 			'id'         => $slide_id,
 			'link_url'   => $slide_link['url'],
 			'link_title' => $slide_link['title'],
 			'headline'   => $slide_headline,
+			'brightness' => $slide_brightness,
 		);
 	}
 }
@@ -92,12 +95,23 @@ if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fa
 <section id="homepage-hero" class="<?php echo esc_attr( implode( ' ', $hero_classes ) ); ?>" aria-labelledby="homepage-hero-title">
 	<?php if ( $is_carousel ) : ?>
 		<div class="homepage-hero__media" id="homepage-hero-media" data-pfoa-hero-carousel>
-			<?php foreach ( $carousel_slides as $slide_index => $slide ) : ?>
-				<?php
-				$slide_id    = $slide['id'];
-				$slide_label = '' !== $slide['link_title'] ? sprintf( __( 'Open page: %s', 'pfoa-theme' ), $slide['link_title'] ) : __( 'Open linked page', 'pfoa-theme' );
-				?>
-				<div class="homepage-hero__slide<?php echo 0 === $slide_index ? ' is-active' : ''; ?>"<?php echo 0 === $slide_index ? '' : ' aria-hidden="true"'; ?> data-headline="<?php echo esc_attr( $slide['headline'] ); ?>">
+		<?php foreach ( $carousel_slides as $slide_index => $slide ) : ?>
+			<?php
+			$slide_id    = $slide['id'];
+			$slide_label = '' !== $slide['link_title'] ? sprintf( __( 'Open page: %s', 'pfoa-theme' ), $slide['link_title'] ) : __( 'Open linked page', 'pfoa-theme' );
+			$brightness_factors = array(
+				100 => '1',
+				110 => '1.1',
+				120 => '1.2',
+				130 => '1.3',
+			);
+			$slide_brightness   = isset( $slide['brightness'] ) ? (int) $slide['brightness'] : 100;
+			if ( ! isset( $brightness_factors[ $slide_brightness ] ) ) {
+				$slide_brightness = 100;
+			}
+			$brightness_factor = $brightness_factors[ $slide_brightness ];
+			?>
+			<div class="homepage-hero__slide<?php echo 0 === $slide_index ? ' is-active' : ''; ?>"<?php echo 0 === $slide_index ? '' : ' aria-hidden="true"'; ?> data-headline="<?php echo esc_attr( $slide['headline'] ); ?>" style="--pfoa-hero-brightness:<?php echo esc_attr( $brightness_factor ); ?>;">
 					<?php
 					echo wp_get_attachment_image(
 						$slide_id,
