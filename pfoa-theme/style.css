@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.81
+ Version: 0.1.82
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4299,4 +4299,43 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-n {
 
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
 	margin-top: var(--pfoa-space-3);
+}
+
+/* PFOA 0.1.82 — Bonded-pair indicator tab for TRUE bonded Adoption Events
+ * (DEV scope, page 22514 only). The badge span lives inside the existing
+ * h2 title but is absolutely positioned as a small centered tab straddling
+ * the outer card's top border: it contributes zero flow height, so the
+ * 0.1.80/0.1.81 equal outer-height work is untouched (no new vertical row,
+ * no title shift, no member image size/grid-span change). Half the tab
+ * (~10px) sits above the card inside the 12px gallery row gap, so it never
+ * reaches the square photos and faces stay uncovered. white-space:nowrap
+ * plus a max-width ellipsis guard keeps every breakpoint (1024/720/390)
+ * overflow-free with no per-breakpoint rules needed.
+ */
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event--bonded {
+	position: relative;
+}
+
+body.page-id-22514 .pfoa-adoption-event-bonded-badge {
+	position: absolute;
+	top: 0;
+	left: 50%;
+	z-index: 2;
+	display: inline-block;
+	max-width: calc(100% - 1rem);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	transform: translate(-50%, -50%);
+	padding: 0.15rem 0.65rem;
+	background: var(--pfoa-color-brand);
+	color: #ffffff;
+	border: 1px solid #ffffff;
+	border-radius: 999px;
+	box-shadow: 0 1px 3px rgba(33, 30, 29, 0.35);
+	font-size: 0.72rem;
+	font-weight: 800;
+	line-height: 1.4;
+	letter-spacing: 0.02em;
+	text-align: center;
 }

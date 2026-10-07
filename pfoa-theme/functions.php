@@ -3214,15 +3214,17 @@ function pfoa_present_adoption_events( $content ) {
 			$member_image = isset( $member_raw['image_id'] ) ? (int) $member_raw['image_id'] : 0;
 			$member_name  = isset( $member_raw['cat_name_at_event'] ) ? trim( (string) $member_raw['cat_name_at_event'] ) : '';
 			$member_cap   = isset( $member_raw['caption'] ) ? trim( (string) $member_raw['caption'] ) : '';
+			$member_cat   = isset( $member_raw['cat_post_id'] ) ? (int) $member_raw['cat_post_id'] : 0;
 
 			if ( '' === $member_cap ) {
 				$member_cap = $member_name;
 			}
 
 			$members[] = array(
-				'image_id' => 0 < $member_image ? $member_image : 0,
-				'caption'  => $member_cap,
-				'name'     => $member_name,
+				'image_id'    => 0 < $member_image ? $member_image : 0,
+				'caption'     => $member_cap,
+				'name'        => $member_name,
+				'cat_post_id' => 0 < $member_cat ? $member_cat : 0,
 			);
 		}
 
@@ -3270,6 +3272,40 @@ function pfoa_present_adoption_events( $content ) {
 		$member_count = count( $event['members'] );
 		$count_class  = 3 < $member_count ? 'n' : (string) $member_count;
 
+		// PFOA 0.1.82 — presentation only: bonded-pair indicator for TRUE
+		// bonded 2-member events only. Strict reciprocal validation via the
+		// Cat Profiles helpers (fail-closed: helpers absent, IDs missing /
+		// duplicated, or any check failing leaves the event unlabelled).
+		// 3+ member events are NEVER labelled bonded. No bond data, event
+		// meta, or stored facts are read beyond the helpers or written.
+		$is_bonded_pair = false;
+
+		if ( 2 === $member_count && function_exists( 'pfoa_cat_is_bonded' ) && function_exists( 'pfoa_cat_get_bonded_pair' ) ) {
+			$bond_ids = array();
+
+			foreach ( $event['members'] as $bond_member ) {
+				$bond_ids[] = ( is_array( $bond_member ) && isset( $bond_member['cat_post_id'] ) ) ? (int) $bond_member['cat_post_id'] : 0;
+			}
+
+			if ( 0 < $bond_ids[0] && 0 < $bond_ids[1] && $bond_ids[0] !== $bond_ids[1] ) {
+				if ( pfoa_cat_is_bonded( $bond_ids[0] ) && pfoa_cat_is_bonded( $bond_ids[1] ) ) {
+					$bond_pair = pfoa_cat_get_bonded_pair( $bond_ids[0] );
+
+					if ( is_array( $bond_pair ) ) {
+						$bond_pair   = array_map( 'intval', array_values( $bond_pair ) );
+						$bond_sorted = $bond_ids;
+
+						sort( $bond_pair, SORT_NUMERIC );
+						sort( $bond_sorted, SORT_NUMERIC );
+
+						if ( $bond_pair === $bond_sorted ) {
+							$is_bonded_pair = true;
+						}
+					}
+				}
+			}
+		}
+
 		$names = array();
 
 		foreach ( $event['members'] as $event_member ) {
@@ -3283,7 +3319,12 @@ function pfoa_present_adoption_events( $content ) {
 		// .gallery > .pfoa-adoption-event-count-{1,2,3,n} selectors match.
 		// Multi markup (multi + count-2/3/n order) is unchanged.
 		$multi_class = 1 < $member_count ? ' pfoa-adoption-event-multi pfoa-adoption-event-count-' . $count_class : ' pfoa-adoption-event-count-1';
-		$events_html .= '<div class="pfoa-adoption-event' . $multi_class . '" data-pfoa-adoption-event="' . esc_attr( $event['uuid'] ) . '">';
+
+		// PFOA 0.1.82 — presentation only: bonded modifier class for true
+		// bonded pairs; badge markup joins the combined title below.
+		$bonded_class = $is_bonded_pair ? ' pfoa-adoption-event--bonded' : '';
+
+		$events_html .= '<div class="pfoa-adoption-event' . $multi_class . $bonded_class . '" data-pfoa-adoption-event="' . esc_attr( $event['uuid'] ) . '">';
 
 		// PFOA 0.1.76 — presentation only: single-cat events keep the
 		// combined heading above the image (image->name); multi-member
@@ -3294,7 +3335,17 @@ function pfoa_present_adoption_events( $content ) {
 		$combined_title = '';
 
 		if ( ! empty( $names ) ) {
-			$combined_title = '<h2 class="pfoa-adoption-event-title">' . implode( ' &amp; ', array_map( 'esc_html', $names ) ) . '</h2>';
+			$combined_title = '<h2 class="pfoa-adoption-event-title">' . implode( ' &amp; ', array_map( 'esc_html', $names ) );
+
+			// PFOA 0.1.82 — presentation only: visible "Bonded Pair" badge
+			// inside the existing title (names stay primary). Absolutely
+			// positioned by CSS so title/card geometry is unchanged; the
+			// visually-hidden suffix gives assistive-tech context.
+			if ( $is_bonded_pair ) {
+				$combined_title .= ' <span class="pfoa-adoption-event-bonded-badge">' . esc_html__( 'Bonded Pair', 'pfoa-theme' ) . '<span class="screen-reader-text"> ' . esc_html__( 'adopted together as a bonded pair', 'pfoa-theme' ) . '</span></span>';
+			}
+
+			$combined_title .= '</h2>';
 		}
 
 		if ( 1 >= $member_count && '' !== $combined_title ) {
