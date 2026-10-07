@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.79
+ Version: 0.1.80
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4266,4 +4266,34 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
 	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
 		grid-column: 1 / -1;
 	}
+}
+
+/* PFOA 0.1.80 — Equal outer-height for multi-member adoption events (DEV
+ * scope, page 22514 only). The multi outer shell carries singleton-shell
+ * padding/border while inner members are stripped (border:0, padding:0),
+ * so an unconstrained inner grid renders larger squares than singleton
+ * cards and the multi outer card ends up taller than its single-cat
+ * neighbors. Shrink the inner member grid by one singleton shell (pair:
+ * 2 x space-2 + 3px combined border; trio/N 3-up: 4 x space-2 + 6px) and
+ * center it, so each inner square resolves to singleton width and outer
+ * heights equalize. Title gap below the member row becomes
+ * space-2 + space-3 to match the singleton image-to-caption rhythm (icon
+ * margin-bottom space-2 + caption margin-top space-3; multi thumbs carry
+ * no bottom margin). Token-based calc with repeated var() subtraction, no
+ * hard-coded rem. No markup, span, typography, image, or breakpoint change.
+ */
+body.page-id-22514 .pfoa-adoption-event-members-2,
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-2 {
+	width: calc(100% - var(--pfoa-space-2) - var(--pfoa-space-2) - 3px);
+	margin-inline: auto;
+}
+
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-3,
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-n {
+	width: calc(100% - var(--pfoa-space-2) - var(--pfoa-space-2) - var(--pfoa-space-2) - var(--pfoa-space-2) - 6px);
+	margin-inline: auto;
+}
+
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
+	margin-top: calc(var(--pfoa-space-2) + var(--pfoa-space-3));
 }
