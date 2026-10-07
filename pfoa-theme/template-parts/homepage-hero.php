@@ -6,8 +6,9 @@
  * as the site homepage (stored as post meta). When nothing has been saved,
  * the legacy effective content renders: the page featured image (or the
  * theme fallback banner), the "Homepage" headline, and the Adopt/Volunteer
- * destinations. The headline and buttons stay fixed while carousel images
- * change behind them.
+ * destinations. Each carousel image can have its own headline; images
+ * without one fall back to the global hero headline. The buttons stay
+ * fixed while carousel images change behind them.
  *
  * @package PFOA
  */
@@ -54,15 +55,26 @@ if ( 'carousel' === $hero_mode ) {
 		$slide_link_page_id = ( is_array( $raw_item ) && isset( $raw_item['link_page_id'] ) ) ? $raw_item['link_page_id'] : 0;
 		$slide_link         = pfoa_get_hero_link( $slide_link_page_id );
 
+		$slide_headline = ( is_array( $raw_item ) && isset( $raw_item['headline'] ) ) ? trim( $raw_item['headline'] ) : '';
+
+		if ( '' === $slide_headline ) {
+			$slide_headline = $hero_title;
+		}
+
 		$carousel_slides[] = array(
 			'id'         => $slide_id,
 			'link_url'   => $slide_link['url'],
 			'link_title' => $slide_link['title'],
+			'headline'   => $slide_headline,
 		);
 	}
 }
 
 $is_carousel = array() !== $carousel_slides;
+
+if ( $is_carousel ) {
+	$hero_title = $carousel_slides[0]['headline'];
+}
 
 $has_custom_image   = 0 !== $hero_image;
 $has_featured_image = has_post_thumbnail();
@@ -85,7 +97,7 @@ if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fa
 				$slide_id    = $slide['id'];
 				$slide_label = '' !== $slide['link_title'] ? sprintf( __( 'Open page: %s', 'pfoa-theme' ), $slide['link_title'] ) : __( 'Open linked page', 'pfoa-theme' );
 				?>
-				<div class="homepage-hero__slide<?php echo 0 === $slide_index ? ' is-active' : ''; ?>"<?php echo 0 === $slide_index ? '' : ' aria-hidden="true"'; ?>>
+				<div class="homepage-hero__slide<?php echo 0 === $slide_index ? ' is-active' : ''; ?>"<?php echo 0 === $slide_index ? '' : ' aria-hidden="true"'; ?> data-headline="<?php echo esc_attr( $slide['headline'] ); ?>">
 					<?php
 					echo wp_get_attachment_image(
 						$slide_id,

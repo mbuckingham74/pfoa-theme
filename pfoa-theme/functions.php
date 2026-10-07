@@ -759,7 +759,7 @@ function pfoa_homepage_cards_page() {
  *   'image_id'           => int (attachment ID),
  *   'image_link_page_id' => int (published page ID, 0 = not clickable),
  *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
- *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int ),
+ *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int, 'headline' => string ),
  *   'ctas'               => array[] of array( 'label' => string, 'url' => string ),
  * ).
  *
@@ -922,6 +922,7 @@ function pfoa_sanitize_hero( $value ) {
 			$carousel_items[] = array(
 				'id'           => $carousel_id,
 				'link_page_id' => isset( $carousel_item['link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $carousel_item['link_page_id'] ) : 0,
+				'headline'     => isset( $carousel_item['headline'] ) ? sanitize_text_field( $carousel_item['headline'] ) : '',
 			);
 		}
 	}
@@ -950,6 +951,7 @@ function pfoa_sanitize_hero( $value ) {
 			$carousel_items[] = array(
 				'id'           => $carousel_id,
 				'link_page_id' => 0,
+				'headline'     => '',
 			);
 		}
 	}
@@ -1853,6 +1855,7 @@ function pfoa_site_homepage_page() {
 			$carousel_items[] = array(
 				'id'           => isset( $carousel_item['id'] ) ? absint( $carousel_item['id'] ) : 0,
 				'link_page_id' => isset( $carousel_item['link_page_id'] ) ? absint( $carousel_item['link_page_id'] ) : 0,
+				'headline'     => isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '',
 			);
 		}
 	} else {
@@ -1860,6 +1863,7 @@ function pfoa_site_homepage_page() {
 			$carousel_items[] = array(
 				'id'           => absint( $carousel_id ),
 				'link_page_id' => 0,
+				'headline'     => '',
 			);
 		}
 	}
@@ -1880,7 +1884,7 @@ function pfoa_site_homepage_page() {
 			<?php wp_nonce_field( 'pfoa_hero_save', 'pfoa_hero_nonce' ); ?>
 			<h2><?php esc_html_e( 'Hero Section', 'pfoa-theme' ); ?></h2>
 			<h3><?php esc_html_e( 'Hero Media', 'pfoa-theme' ); ?></h3>
-		<p><?php esc_html_e( 'Edit the hero section shown at the top of the site homepage. The headline and buttons stay fixed while carousel images change behind them.', 'pfoa-theme' ); ?></p>
+		<p><?php esc_html_e( 'Edit the hero section shown at the top of the site homepage. Each carousel image can have its own headline; images without one use the global hero headline. The buttons stay fixed while carousel images change behind them.', 'pfoa-theme' ); ?></p>
 		<p class="submit">
 			<button type="submit" class="button button-primary" name="pfoa_hero_save" value="1"><?php esc_html_e( 'Save Homepage', 'pfoa-theme' ); ?></button>
 		</p>
@@ -1933,6 +1937,7 @@ function pfoa_site_homepage_page() {
 						<?php
 						$carousel_id        = absint( $carousel_item['id'] );
 						$carousel_link      = absint( $carousel_item['link_page_id'] );
+						$carousel_headline  = isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '';
 						$carousel_preview   = $carousel_id ? wp_get_attachment_image( $carousel_id, array( 80, 80 ) ) : '';
 						$carousel_field_base = 'pfoa_hero[carousel_items][' . $carousel_index . ']';
 						?>
@@ -1953,6 +1958,11 @@ function pfoa_site_homepage_page() {
 									);
 									?>
 								</label>
+								<label class="pfoa-hero-carousel-headline">
+									<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
+									<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[headline]" value="<?php echo esc_attr( $carousel_headline ); ?>" />
+								</label>
+								<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
 								<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
 								<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
 								<button type="button" class="button pfoa-hero-carousel-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
@@ -1978,19 +1988,25 @@ function pfoa_site_homepage_page() {
 							);
 							?>
 						</label>
+						<label class="pfoa-hero-carousel-headline">
+							<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
+							<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][__INDEX__][headline]" value="" />
+						</label>
+						<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
 						<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
 						<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
 						<button type="button" class="button pfoa-hero-carousel-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
 					</li>
 				</template>
 				<button type="button" class="button pfoa-hero-carousel-add"><?php esc_html_e( 'Add Images', 'pfoa-theme' ); ?></button>
-				<p class="description"><?php esc_html_e( 'Shown in order when Carousel mode is selected. Use Move Up and Move Down to reorder; the headline and buttons stay the same on every image.', 'pfoa-theme' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Shown in order when Carousel mode is selected. Use Move Up and Move Down to reorder; the buttons stay the same on every image.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
 		<tr>
-			<th scope="row"><label for="pfoa-hero-headline"><?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?></label></th>
+			<th scope="row"><label for="pfoa-hero-headline"><?php esc_html_e( 'Global hero headline', 'pfoa-theme' ); ?></label></th>
 			<td>
 				<input type="text" id="pfoa-hero-headline" class="regular-text" name="pfoa_hero[headline]" value="<?php echo esc_attr( $headline ); ?>" />
+				<p class="description"><?php esc_html_e( 'Global hero headline — Used for Single Image mode and as the fallback for Carousel images without their own headline.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
 	</table>

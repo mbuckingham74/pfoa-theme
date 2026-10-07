@@ -135,6 +135,7 @@
 			'<span class="pfoa-hero-carousel-preview">' + thumb + '</span> ' +
 			'<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][' + index + '][id]" value="' + id + '" /> ' +
 			'<input type="hidden" name="pfoa_hero[carousel_items][' + index + '][link_page_id]" value="0" /> ' +
+			'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
 			'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
 			'<button type="button" class="button pfoa-hero-carousel-down">' + moveDownLabel() + '</button> ' +
 			'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +

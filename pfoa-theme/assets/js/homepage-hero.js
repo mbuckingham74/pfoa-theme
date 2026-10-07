@@ -18,6 +18,16 @@
 
 			if ( isActive ) {
 				slide.removeAttribute( 'aria-hidden' );
+
+				var headline = slide.getAttribute( 'data-headline' );
+
+				if ( headline !== null ) {
+					var title = document.getElementById( 'homepage-hero-title' );
+
+					if ( title ) {
+						title.textContent = headline;
+					}
+				}
 			} else {
 				slide.setAttribute( 'aria-hidden', 'true' );
 			}
