@@ -3244,8 +3244,20 @@ function pfoa_present_adoption_events( $content ) {
 		$multi_class = 1 < $member_count ? ' pfoa-adoption-event-multi pfoa-adoption-event-count-' . $count_class : '';
 		$events_html .= '<div class="pfoa-adoption-event' . $multi_class . '" data-pfoa-adoption-event="' . esc_attr( $event['uuid'] ) . '">';
 
+		// PFOA 0.1.76 — presentation only: single-cat events keep the
+		// combined heading above the image (image->name); multi-member
+		// events render the same combined heading once below the
+		// member-image grid (image->names). Names order/composition,
+		// member order, images, links/lightbox, and the 0.1.75
+		// per-member figcaption gate below are unchanged.
+		$combined_title = '';
+
 		if ( ! empty( $names ) ) {
-			$events_html .= '<h2 class="pfoa-adoption-event-title">' . implode( ' &amp; ', array_map( 'esc_html', $names ) ) . '</h2>';
+			$combined_title = '<h2 class="pfoa-adoption-event-title">' . implode( ' &amp; ', array_map( 'esc_html', $names ) ) . '</h2>';
+		}
+
+		if ( 1 >= $member_count && '' !== $combined_title ) {
+			$events_html .= $combined_title;
 		}
 
 		$events_html .= '<div class="pfoa-adoption-event-members pfoa-adoption-event-members-' . $count_class . '">';
@@ -3269,7 +3281,13 @@ function pfoa_present_adoption_events( $content ) {
 			$events_html .= '</figure>';
 		}
 
-		$events_html .= '</div></div>';
+		$events_html .= '</div>';
+
+		if ( 1 < $member_count && '' !== $combined_title ) {
+			$events_html .= $combined_title;
+		}
+
+		$events_html .= '</div>';
 	}
 
 	$events_html .= '</section>';

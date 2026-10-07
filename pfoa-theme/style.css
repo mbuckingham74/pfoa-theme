@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.75
+ Version: 0.1.76
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4203,6 +4203,16 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-member {
  */
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-thumb {
 	margin-bottom: 0;
+}
+
+/* PFOA 0.1.76 — Multi-member combined title now renders below the
+ * member-image grid (presentation only, DEV scope). Same element/class and
+ * typography as the single-cat title above; only the multi spacing flips
+ * from margin-bottom to margin-top with zero bottom margin. Single-cat
+ * title rules above are untouched; no grid/sizing change.
+ */
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
+	margin: var(--pfoa-space-2) 0 0;
 }
 
 @media (max-width: 1319px) {
