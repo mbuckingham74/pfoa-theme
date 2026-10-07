@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.76
+ Version: 0.1.77
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4019,11 +4019,15 @@ body.page-id-22514 .pfoa-adoption-events {
 	margin: 0 0 var(--pfoa-space-4);
 }
 
+/* PFOA 0.1.77 — Normalize adoption-event title to adopted card typography
+ * (1.05rem/700/1.3, same color/center) to match ordinary captions and
+ * bonded titles. Margins/placement below thumbnails unchanged.
+ */
 body.page-id-22514 .pfoa-adoption-event-title {
 	margin: 0 0 var(--pfoa-space-2);
 	color: var(--pfoa-action-primary);
 	font-weight: 700;
-	font-size: 1.25rem;
+	font-size: 1.05rem;
 	line-height: 1.3;
 	text-align: center;
 }
