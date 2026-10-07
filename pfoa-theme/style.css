@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.78
+ Version: 0.1.79
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4013,9 +4013,15 @@ body.page-id-22514 .pfoa-adopted-bonded-relationship {
  * --pfoa-space-4, card border #aeb4cd); no .gallery/.gallery-item
  * selectors, no relationship wording, no header/homepage/global changes.
  */
+/* PFOA 0.1.79 — Retired separate .pfoa-adoption-events grid. The DEV
+ * Adopted2026 event (page 22514, trio Spencer/Thompson/Wilbur) now renders
+ * as a direct child div.pfoa-adoption-event inside the legacy .gallery
+ * grid, so the gallery stays the single grid container. This outer wrapper,
+ * if still emitted elsewhere, stays a plain block and creates no columns,
+ * no gaps, and no separate grid.
+ */
 body.page-id-22514 .pfoa-adoption-events {
-	display: grid;
-	gap: var(--pfoa-space-4);
+	display: block;
 	margin: 0 0 var(--pfoa-space-4);
 }
 
@@ -4137,33 +4143,40 @@ body.page-id-22514 .pfoa-adoption-event-missing-text {
 	}
 }
 
-/* PFOA 0.1.74 — Multi-cat grouped card at standard thumb scale
- * (presentation only, DEV scope). Supersedes the rejected 0.1.73 fixed
- * 340px card, which shrank member thumbs. Scoped strictly to
- * body.page-id-22514. The event section reuses the legacy
- * adopted-gallery grid metrics (6 columns, 12px column gap) while keeping
- * the existing row rhythm; single-member events stay full-row so
- * members-1 is untouched. A multi-member event is ONE outer card shell
- * (same recipe as the adopted/bonded cards: --pfoa-surface-page, 1.5px
- * #aeb4cd, --pfoa-radius) spanning 2 standard tracks (pairs) or 3 (trios
- * and larger) — never the full row — with borderless inner slots (bonded
- * pattern) so each member thumb renders at ordinary adopted size
- * (width:100%, 1:1 cover). Neutral combined heading kept at the shared
- * event title size, per-member snapshot captions and independent
- * wp_get_attachment_link file links preserved (no stacked lightbox), no
- * relationship wording. Narrow breakpoints mirror the legacy/bonded
- * grids; inner members wrap inside the one card with no horizontal
- * overflow.
+/* PFOA 0.1.79 — Adoption event as a direct .gallery grid child (DEV scope,
+ * page 22514 only). The trio event (Spencer/Thompson/Wilbur) is inserted by
+ * the PHP lane as div.pfoa-adoption-event inside the legacy .gallery, after
+ * Thunder and before Frost. The gallery stays the single grid container
+ * (6 cols desktop, 4 at <=1319px, 3 at <=720px, 2 at <=480px — same
+ * breakpoints as the adopted cards above). The event wrapper is one grid
+ * item with a bounded column span, never display:contents, so the title,
+ * figures, links, and data attribute stay grouped for assistive tech.
+ * Single-member events span 1 track; pairs span 2; trios and larger span 3
+ * on desktop so ROW2 packs as Thunder (1) + trio (3) + Frost (1) +
+ * Lightning (1) with no forced row break and no empty gap. The outer card
+ * shell below applies to multi-member events only, so single members keep
+ * their ordinary bordered member card without a doubled frame. Inner
+ * members stay an equal-thumbnail grid with the shared title below the
+ * images; narrow breakpoints mirror the gallery columns with no horizontal
+ * overflow and no blank row.
  */
-body.page-id-22514 .pfoa-adoption-events {
-	grid-template-columns: repeat(6, minmax(0, 1fr));
-	column-gap: var(--pfoa-space-2);
-	row-gap: var(--pfoa-space-4);
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event {
+	min-width: 0;
+	max-width: 100%;
+	box-sizing: border-box;
 }
 
-body.page-id-22514 .pfoa-adoption-event {
-	min-width: 0;
-	grid-column: 1 / -1;
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-1 {
+	grid-column: span 1;
+}
+
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-2 {
+	grid-column: span 2;
+}
+
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-3,
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
+	grid-column: span 3;
 }
 
 body.page-id-22514 .pfoa-adoption-event-multi {
@@ -4174,15 +4187,6 @@ body.page-id-22514 .pfoa-adoption-event-multi {
 	border: 1.5px solid #aeb4cd;
 	border-radius: var(--pfoa-radius);
 	box-sizing: border-box;
-}
-
-body.page-id-22514 .pfoa-adoption-event-count-2 {
-	grid-column: span 2;
-}
-
-body.page-id-22514 .pfoa-adoption-event-count-3,
-body.page-id-22514 .pfoa-adoption-event-count-n {
-	grid-column: span 3;
 }
 
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-2 {
@@ -4220,28 +4224,46 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
 }
 
 @media (max-width: 1319px) {
-	body.page-id-22514 .pfoa-adoption-events {
-		grid-template-columns: repeat(4, minmax(0, 1fr));
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-1 {
+		grid-column: span 1;
+	}
+
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-2 {
+		grid-column: span 2;
+	}
+
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-3,
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
+		grid-column: span 3;
 	}
 }
 
 @media (max-width: 720px) {
-	body.page-id-22514 .pfoa-adoption-events {
-		grid-template-columns: repeat(3, minmax(0, 1fr));
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-1 {
+		grid-column: span 1;
+	}
+
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-2 {
+		grid-column: span 2;
+	}
+
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-3,
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
+		grid-column: span 3;
 	}
 }
 
 @media (max-width: 480px) {
-	body.page-id-22514 .pfoa-adoption-events {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-1 {
+		grid-column: span 1;
 	}
 
-	body.page-id-22514 .pfoa-adoption-event-count-2 {
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-2 {
 		grid-column: span 2;
 	}
 
-	body.page-id-22514 .pfoa-adoption-event-count-3,
-	body.page-id-22514 .pfoa-adoption-event-count-n {
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-3,
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
 		grid-column: 1 / -1;
 	}
 }

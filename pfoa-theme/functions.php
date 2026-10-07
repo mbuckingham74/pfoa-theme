@@ -3028,7 +3028,7 @@ function pfoa_adoption_event_member_media( $image_id, $caption = '' ) {
 		$linked_image = wp_get_attachment_link( $image_id, 'medium', false, false );
 
 		if ( is_string( $linked_image ) && '' !== trim( $linked_image ) && false !== strpos( $linked_image, '<img' ) ) {
-			// PFOA 0.1.78 — presentation only: override the generated
+			// PFOA 0.1.79 — presentation only: override the generated
 			// <img> alt and the lightbox link's data-pfoa-caption with the
 			// already-resolved snapshot presentation caption (caption,
 			// fallback cat_name_at_event). Attachment ID, URLs, thumb,
@@ -3278,7 +3278,11 @@ function pfoa_present_adoption_events( $content ) {
 			}
 		}
 
-		$multi_class = 1 < $member_count ? ' pfoa-adoption-event-multi pfoa-adoption-event-count-' . $count_class : '';
+		// PFOA 0.1.79 — presentation only: every wrapper carries its count
+		// class (count-1 for singles) so the style.css
+		// .gallery > .pfoa-adoption-event-count-{1,2,3,n} selectors match.
+		// Multi markup (multi + count-2/3/n order) is unchanged.
+		$multi_class = 1 < $member_count ? ' pfoa-adoption-event-multi pfoa-adoption-event-count-' . $count_class : ' pfoa-adoption-event-count-1';
 		$events_html .= '<div class="pfoa-adoption-event' . $multi_class . '" data-pfoa-adoption-event="' . esc_attr( $event['uuid'] ) . '">';
 
 		// PFOA 0.1.76 — presentation only: single-cat events keep the
@@ -3330,9 +3334,11 @@ function pfoa_present_adoption_events( $content ) {
 	$events_html .= '</section>';
 
 	// Step 4: suppress claimed figures from the rendered legacy gallery
-	// (exact attachment-ID match only) and insert the event section before
-	// the first legacy gallery. Without DOM support the events still
-	// render (prepended) while the legacy gallery is left untouched.
+	// (exact attachment-ID match only) and insert each event wrapper at
+	// its earliest claimed snapshot position inside the same legacy
+	// gallery (PFOA 0.1.79 shared grid; fallback: before the first
+	// remaining gallery, else prepend). Without DOM support the events
+	// still render (prepended) while the legacy gallery is left untouched.
 	if ( ! class_exists( 'DOMDocument' ) || ! class_exists( 'DOMXPath' ) ) {
 		return $events_html . $content;
 	}
@@ -3374,6 +3380,25 @@ function pfoa_present_adoption_events( $content ) {
 	// only from figcaption[id^=gallery-N-ID] and/or img[aria-describedby])
 	// but strips every exact claimed match: no workflow claims, no
 	// cat/name/caption/adjacency dedupe, no ambiguity logic.
+	// PFOA 0.1.79 — presentation only: map each claimed snapshot image to
+	// its owning event (claimed IDs only, no caption/name inference; first
+	// event wins on a shared image) so per-event wrappers can re-enter at
+	// their earliest claimed snapshot position below.
+	$claimed_event = array();
+
+	foreach ( $events as $event ) {
+		foreach ( $event['members'] as $event_member ) {
+			if ( 0 < $event_member['image_id'] && ! isset( $claimed_event[ $event_member['image_id'] ] ) ) {
+				$claimed_event[ $event_member['image_id'] ] = $event['uuid'];
+			}
+		}
+	}
+
+	// attachment ID => array( parent gallery element, next sibling,
+	// order, plus ref: first surviving successor resolved pre-removal ).
+	$claimed_anchors = array();
+	$scan_order      = 0;
+
 	if ( ! empty( $claimed_ids ) ) {
 		$item_list = $xpath->query(
 			'.//*[contains(concat(" ", normalize-space(@class), " "), " gallery-item ")]',
@@ -3384,6 +3409,9 @@ function pfoa_present_adoption_events( $content ) {
 			$removable = array();
 
 			foreach ( $item_list as $item_node ) {
+				$item_order = $scan_order;
+				$scan_order++;
+
 				if ( ! $item_node instanceof DOMElement ) {
 					continue;
 				}
@@ -3451,7 +3479,43 @@ function pfoa_present_adoption_events( $content ) {
 
 				if ( 0 < $attachment_id && isset( $claimed_ids[ $attachment_id ] ) ) {
 					$removable[] = $item_node;
+
+					if ( ! isset( $claimed_anchors[ $attachment_id ] ) ) {
+						$claimed_anchors[ $attachment_id ] = array(
+							'parent' => $parent,
+							'next'   => $item_node->nextSibling,
+							'order'  => $item_order,
+						);
+					}
 				}
+			}
+
+			// Resolve each recorded anchor's insertion reference BEFORE
+			// removal: from the claimed node's raw nextSibling, walk forward
+			// past any sibling queued for removal to the first surviving
+			// sibling in the same gallery (null when consecutive claims run
+			// to the gallery end). Surviving nodes are never removed below,
+			// so the reference stays a valid insertion point.
+			$removal_ids = array();
+
+			foreach ( $removable as $removable_node ) {
+				$removal_ids[ spl_object_id( $removable_node ) ] = true;
+			}
+
+			foreach ( $claimed_anchors as $anchor_id => $anchor ) {
+				$successor = $anchor['next'];
+
+				while ( $successor instanceof DOMNode
+					&& isset( $removal_ids[ spl_object_id( $successor ) ] )
+					&& $successor->parentNode === $anchor['parent'] ) {
+					$successor = $successor->nextSibling;
+				}
+
+				if ( ! $successor instanceof DOMNode || $successor->parentNode !== $anchor['parent'] ) {
+					$successor = null;
+				}
+
+				$claimed_anchors[ $anchor_id ]['ref'] = $successor;
 			}
 
 			foreach ( $removable as $removable_node ) {
@@ -3462,9 +3526,30 @@ function pfoa_present_adoption_events( $content ) {
 		}
 	}
 
-	// Import the event section through a second document so snapshot
-	// captions/names survive encoding intact, then place it before the
-	// first remaining legacy gallery (prepend when there is none).
+	// event UUID => earliest claimed snapshot anchor (min document order
+	// over that event's member image IDs actually found in the gallery).
+	$event_anchors = array();
+
+	foreach ( $claimed_anchors as $anchor_id => $anchor ) {
+		if ( ! isset( $claimed_event[ $anchor_id ] ) ) {
+			continue;
+		}
+
+		$anchor_uuid = $claimed_event[ $anchor_id ];
+
+		if ( ! isset( $event_anchors[ $anchor_uuid ] ) || $anchor['order'] < $event_anchors[ $anchor_uuid ]['order'] ) {
+			$event_anchors[ $anchor_uuid ] = $anchor;
+		}
+	}
+
+	// Import each event wrapper individually through a second document so
+	// snapshot captions/names survive encoding intact. The outer section is
+	// not imported (shared-grid flow); each
+	// div.pfoa-adoption-event[data-pfoa-adoption-event] enters the legacy
+	// gallery on its own so one wrapper stays one logical/lightbox group
+	// and events never merge. The section's "Adopted cats" labeling moves
+	// onto each wrapper as role="group" + aria-label (the section element
+	// itself is dropped, never flattened via CSS).
 	$event_dom = new DOMDocument( '1.0', 'UTF-8' );
 
 	if ( function_exists( 'mb_encode_numericentity' ) ) {
@@ -3477,7 +3562,20 @@ function pfoa_present_adoption_events( $content ) {
 		'<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body><div id="pfoa-adoption-events-insert">' . $event_fragment . '</div></body></html>'
 	);
 
-	$insert_nodes = array();
+	$event_nodes  = array();
+	$event_labels = array();
+
+	foreach ( $events as $event ) {
+		$label_names = array();
+
+		foreach ( $event['members'] as $event_member ) {
+			if ( '' !== $event_member['name'] ) {
+				$label_names[] = $event_member['name'];
+			}
+		}
+
+		$event_labels[ $event['uuid'] ] = empty( $label_names ) ? 'Adopted cats' : 'Adopted cats: ' . implode( ' & ', $label_names );
+	}
 
 	if ( $event_loaded ) {
 		$event_xpath = new DOMXPath( $event_dom );
@@ -3487,13 +3585,42 @@ function pfoa_present_adoption_events( $content ) {
 		if ( $event_wrapper_list instanceof DOMNodeList && 0 < $event_wrapper_list->length ) {
 			$event_wrapper = $event_wrapper_list->item( 0 );
 
-			foreach ( $event_wrapper->childNodes as $event_child ) {
-				$insert_nodes[] = $dom->importNode( $event_child, true );
+			$event_item_list = $event_xpath->query(
+				'.//div[contains(concat(" ", normalize-space(@class), " "), " pfoa-adoption-event ") and @data-pfoa-adoption-event]',
+				$event_wrapper
+			);
+
+			if ( $event_item_list instanceof DOMNodeList && 0 < $event_item_list->length ) {
+				foreach ( $event_item_list as $event_item ) {
+					if ( ! $event_item instanceof DOMElement ) {
+						continue;
+					}
+
+					$item_uuid = trim( (string) $event_item->getAttribute( 'data-pfoa-adoption-event' ) );
+
+					if ( '' === $item_uuid || isset( $event_nodes[ $item_uuid ] ) ) {
+						continue;
+					}
+
+					$imported = $dom->importNode( $event_item, true );
+
+					if ( ! $imported instanceof DOMElement ) {
+						continue;
+					}
+
+					$imported->setAttribute( 'role', 'group' );
+
+					if ( isset( $event_labels[ $item_uuid ] ) ) {
+						$imported->setAttribute( 'aria-label', $event_labels[ $item_uuid ] );
+					}
+
+					$event_nodes[ $item_uuid ] = $imported;
+				}
 			}
 		}
 	}
 
-	if ( empty( $insert_nodes ) ) {
+	if ( empty( $event_nodes ) ) {
 		$output = '';
 
 		foreach ( $wrapper->childNodes as $child ) {
@@ -3506,31 +3633,98 @@ function pfoa_present_adoption_events( $content ) {
 		return $events_html . ( '' !== $output ? $output : $content );
 	}
 
-	$first_gallery = null;
+	// PFOA 0.1.79 — presentation only: shared-grid insertion. Each event
+	// wrapper re-enters at its earliest claimed snapshot position inside
+	// the same legacy .gallery: insertBefore the first surviving successor
+	// at/after that position (resolved pre-removal past consecutive
+	// claims), else append to that gallery when claims run to its end.
+	// Anchors run in ascending document order so multiple events insert
+	// stably and never merge. Only an event with no anchor parent (no
+	// found snapshot node, or parent gone) keeps the prior behavior
+	// (before the first remaining .gallery, else prepend).
+	$ordered_uuids = array();
 
-	$gallery_list = $xpath->query(
-		'.//*[contains(concat(" ", normalize-space(@class), " "), " gallery ")]',
-		$wrapper
-	);
-
-	if ( $gallery_list instanceof DOMNodeList && 0 < $gallery_list->length ) {
-		foreach ( $gallery_list as $gallery_node ) {
-			if ( $gallery_node instanceof DOMElement ) {
-				$first_gallery = $gallery_node;
-				break;
-			}
+	foreach ( $events as $event_index => $event ) {
+		if ( ! isset( $event_nodes[ $event['uuid'] ] ) ) {
+			continue;
 		}
+
+		$ordered_uuids[] = array(
+			'uuid'  => $event['uuid'],
+			'order' => isset( $event_anchors[ $event['uuid'] ] ) ? (int) $event_anchors[ $event['uuid'] ]['order'] : PHP_INT_MAX,
+			'index' => (int) $event_index,
+		);
 	}
 
-	if ( $first_gallery instanceof DOMElement && null !== $first_gallery->parentNode ) {
-		foreach ( $insert_nodes as $insert_node ) {
-			$first_gallery->parentNode->insertBefore( $insert_node, $first_gallery );
-		}
-	} else {
-		$first_child = $wrapper->firstChild;
+	usort(
+		$ordered_uuids,
+		function ( $a, $b ) {
+			if ( (int) $a['order'] !== (int) $b['order'] ) {
+				return (int) $a['order'] > (int) $b['order'] ? 1 : -1;
+			}
 
-		foreach ( $insert_nodes as $insert_node ) {
-			$wrapper->insertBefore( $insert_node, $first_child );
+			if ( (int) $a['index'] === (int) $b['index'] ) {
+				return 0;
+			}
+
+			return (int) $a['index'] > (int) $b['index'] ? 1 : -1;
+		}
+	);
+
+	foreach ( $ordered_uuids as $ordered ) {
+		$insert_node = $event_nodes[ $ordered['uuid'] ];
+		$placed      = false;
+
+		if ( isset( $event_anchors[ $ordered['uuid'] ] ) ) {
+			$anchor        = $event_anchors[ $ordered['uuid'] ];
+			$anchor_parent = $anchor['parent'];
+			$anchor_ref    = isset( $anchor['ref'] ) ? $anchor['ref'] : null;
+			$connected     = false;
+
+			if ( $anchor_parent instanceof DOMElement && $anchor_parent->ownerDocument === $dom ) {
+				$ancestor = $anchor_parent;
+
+				while ( $ancestor instanceof DOMNode && $ancestor !== $wrapper ) {
+					$ancestor = $ancestor->parentNode;
+				}
+
+				$connected = ( $ancestor === $wrapper );
+			}
+
+			if ( $connected ) {
+				if ( $anchor_ref instanceof DOMNode && $anchor_ref->parentNode === $anchor_parent ) {
+					$anchor_parent->insertBefore( $insert_node, $anchor_ref );
+				} else {
+					$anchor_parent->appendChild( $insert_node );
+				}
+
+				$placed = true;
+			}
+		}
+
+		if ( ! $placed ) {
+			$fallback_gallery = null;
+
+			$gallery_list = $xpath->query(
+				'.//*[contains(concat(" ", normalize-space(@class), " "), " gallery ")]',
+				$wrapper
+			);
+
+			if ( $gallery_list instanceof DOMNodeList && 0 < $gallery_list->length ) {
+				foreach ( $gallery_list as $gallery_node ) {
+					if ( $gallery_node instanceof DOMElement ) {
+						$fallback_gallery = $gallery_node;
+						break;
+					}
+				}
+			}
+
+			if ( $fallback_gallery instanceof DOMElement && null !== $fallback_gallery->parentNode ) {
+				$fallback_gallery->parentNode->insertBefore( $insert_node, $fallback_gallery );
+			} else {
+				$first_child = $wrapper->firstChild;
+				$wrapper->insertBefore( $insert_node, $first_child );
+			}
 		}
 	}
 
