@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.73
+ Version: 0.1.74
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4133,33 +4133,57 @@ body.page-id-22514 .pfoa-adoption-event-missing-text {
 	}
 }
 
-/* PFOA 0.1.73 — Multi-cat grouped card (presentation only, DEV scope).
- * Scoped strictly to body.page-id-22514. A multi-member adoption event
- * renders as ONE compact outer card sized to a single normal item
- * footprint (matches the single-cat card width), not a full-width row:
- * neutral combined heading kept, inner members in a 2-up/3-up grid with
- * borderless slots (same shell recipe as the adopted/bonded cards:
- * --pfoa-surface-page, 1.5px #aeb4cd, --pfoa-radius). Single-member
- * events are untouched. Each member keeps its own snapshot image/caption
- * and its own wp_get_attachment_link file link (no stacked lightbox),
- * and no relationship wording is added. Very narrow viewports may stack
- * the inner grid, but the outer card stays grouped.
+/* PFOA 0.1.74 — Multi-cat grouped card at standard thumb scale
+ * (presentation only, DEV scope). Supersedes the rejected 0.1.73 fixed
+ * 340px card, which shrank member thumbs. Scoped strictly to
+ * body.page-id-22514. The event section reuses the legacy
+ * adopted-gallery grid metrics (6 columns, 12px column gap) while keeping
+ * the existing row rhythm; single-member events stay full-row so
+ * members-1 is untouched. A multi-member event is ONE outer card shell
+ * (same recipe as the adopted/bonded cards: --pfoa-surface-page, 1.5px
+ * #aeb4cd, --pfoa-radius) spanning 2 standard tracks (pairs) or 3 (trios
+ * and larger) — never the full row — with borderless inner slots (bonded
+ * pattern) so each member thumb renders at ordinary adopted size
+ * (width:100%, 1:1 cover). Neutral combined heading kept at the shared
+ * event title size, per-member snapshot captions and independent
+ * wp_get_attachment_link file links preserved (no stacked lightbox), no
+ * relationship wording. Narrow breakpoints mirror the legacy/bonded
+ * grids; inner members wrap inside the one card with no horizontal
+ * overflow.
  */
+body.page-id-22514 .pfoa-adoption-events {
+	grid-template-columns: repeat(6, minmax(0, 1fr));
+	column-gap: var(--pfoa-space-2);
+	row-gap: var(--pfoa-space-4);
+}
+
+body.page-id-22514 .pfoa-adoption-event {
+	min-width: 0;
+	grid-column: 1 / -1;
+}
+
 body.page-id-22514 .pfoa-adoption-event-multi {
-	max-width: 340px;
-	margin-inline: auto;
+	max-width: 100%;
+	margin: 0;
 	padding: var(--pfoa-space-2);
 	background: var(--pfoa-surface-page);
 	border: 1.5px solid #aeb4cd;
 	border-radius: var(--pfoa-radius);
+	box-sizing: border-box;
 }
 
-body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
-	font-size: 1.05rem;
+body.page-id-22514 .pfoa-adoption-event-count-2 {
+	grid-column: span 2;
+}
+
+body.page-id-22514 .pfoa-adoption-event-count-3,
+body.page-id-22514 .pfoa-adoption-event-count-n {
+	grid-column: span 3;
 }
 
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-2 {
 	max-width: none;
+	margin: 0;
 }
 
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-n {
@@ -4170,4 +4194,31 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-member {
 	border: 0;
 	padding: 0;
 	background: transparent;
+}
+
+@media (max-width: 1319px) {
+	body.page-id-22514 .pfoa-adoption-events {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 720px) {
+	body.page-id-22514 .pfoa-adoption-events {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 480px) {
+	body.page-id-22514 .pfoa-adoption-events {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	body.page-id-22514 .pfoa-adoption-event-count-2 {
+		grid-column: span 2;
+	}
+
+	body.page-id-22514 .pfoa-adoption-event-count-3,
+	body.page-id-22514 .pfoa-adoption-event-count-n {
+		grid-column: 1 / -1;
+	}
 }

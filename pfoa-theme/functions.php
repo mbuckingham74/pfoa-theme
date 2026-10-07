@@ -2998,9 +2998,10 @@ add_filter( 'the_content', 'pfoa_present_bonded_pairs', 999 );
  * combined-name heading (no relationship wording, no historical facts),
  * and one visible figure per member in canonical stored order, each with
  * its own snapshot image/caption. Multi-member events also carry
- * .pfoa-adoption-event-multi for the compact grouped-card presentation
- * (one outer card, borderless inner slots); single-member markup is
- * unchanged. A repeated cat across events renders in
+ * .pfoa-adoption-event-multi plus .pfoa-adoption-event-count-{2,3,n} so
+ * the grouped outer card spans 2 (pairs) or 3 (trios and larger) standard
+ * grid tracks; single-member markup is unchanged. A repeated cat across
+ * events renders in
  * every event; events are never deduped. A missing/unusable snapshot
  * image renders a restrained placeholder with the snapshot caption/name;
  * the event is never silently dropped and the current profile image is
@@ -3240,7 +3241,7 @@ function pfoa_present_adoption_events( $content ) {
 			}
 		}
 
-		$multi_class   = 1 < $member_count ? ' pfoa-adoption-event-multi' : '';
+		$multi_class = 1 < $member_count ? ' pfoa-adoption-event-multi pfoa-adoption-event-count-' . $count_class : '';
 		$events_html .= '<div class="pfoa-adoption-event' . $multi_class . '" data-pfoa-adoption-event="' . esc_attr( $event['uuid'] ) . '">';
 
 		if ( ! empty( $names ) ) {
