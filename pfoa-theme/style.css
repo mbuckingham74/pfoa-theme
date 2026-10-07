@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.80
+ Version: 0.1.81
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4276,11 +4276,14 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
  * neighbors. Shrink the inner member grid by one singleton shell (pair:
  * 2 x space-2 + 3px combined border; trio/N 3-up: 4 x space-2 + 6px) and
  * center it, so each inner square resolves to singleton width and outer
- * heights equalize. Title gap below the member row becomes
- * space-2 + space-3 to match the singleton image-to-caption rhythm (icon
- * margin-bottom space-2 + caption margin-top space-3; multi thumbs carry
- * no bottom margin). Token-based calc with repeated var() subtraction, no
- * hard-coded rem. No markup, span, typography, image, or breakpoint change.
+ * heights equalize. Title gap below the member row is space-3 alone
+ * (PFOA 0.1.81 margin-collapse correction): the singleton 28px stack
+ * (icon margin-bottom space-2 + caption margin-top space-3) collapses to
+ * the 16px max, while the multi members grid carries margin 0 so nothing
+ * collapses — space-2 + space-3 would sit titles ~12px low and leave
+ * events ~11.5px taller. Token-based calc with repeated var()
+ * subtraction, no hard-coded rem. No markup, span, typography, image,
+ * or breakpoint change.
  */
 body.page-id-22514 .pfoa-adoption-event-members-2,
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-2 {
@@ -4295,5 +4298,5 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-n {
 }
 
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
-	margin-top: calc(var(--pfoa-space-2) + var(--pfoa-space-3));
+	margin-top: var(--pfoa-space-3);
 }
