@@ -2997,7 +2997,10 @@ add_filter( 'the_content', 'pfoa_present_bonded_pairs', 999 );
  * data-pfoa-adoption-event (never a post ID as public identity), a neutral
  * combined-name heading (no relationship wording, no historical facts),
  * and one visible figure per member in canonical stored order, each with
- * its own snapshot image/caption. A repeated cat across events renders in
+ * its own snapshot image/caption. Multi-member events also carry
+ * .pfoa-adoption-event-multi for the compact grouped-card presentation
+ * (one outer card, borderless inner slots); single-member markup is
+ * unchanged. A repeated cat across events renders in
  * every event; events are never deduped. A missing/unusable snapshot
  * image renders a restrained placeholder with the snapshot caption/name;
  * the event is never silently dropped and the current profile image is
@@ -3237,7 +3240,8 @@ function pfoa_present_adoption_events( $content ) {
 			}
 		}
 
-		$events_html .= '<div class="pfoa-adoption-event" data-pfoa-adoption-event="' . esc_attr( $event['uuid'] ) . '">';
+		$multi_class   = 1 < $member_count ? ' pfoa-adoption-event-multi' : '';
+		$events_html .= '<div class="pfoa-adoption-event' . $multi_class . '" data-pfoa-adoption-event="' . esc_attr( $event['uuid'] ) . '">';
 
 		if ( ! empty( $names ) ) {
 			$events_html .= '<h2 class="pfoa-adoption-event-title">' . implode( ' &amp; ', array_map( 'esc_html', $names ) ) . '</h2>';

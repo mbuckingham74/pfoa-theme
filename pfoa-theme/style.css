@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.72
+ Version: 0.1.73
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4131,4 +4131,43 @@ body.page-id-22514 .pfoa-adoption-event-missing-text {
 	body.page-id-22514 .pfoa-adoption-event-members-2 {
 		max-width: none;
 	}
+}
+
+/* PFOA 0.1.73 — Multi-cat grouped card (presentation only, DEV scope).
+ * Scoped strictly to body.page-id-22514. A multi-member adoption event
+ * renders as ONE compact outer card sized to a single normal item
+ * footprint (matches the single-cat card width), not a full-width row:
+ * neutral combined heading kept, inner members in a 2-up/3-up grid with
+ * borderless slots (same shell recipe as the adopted/bonded cards:
+ * --pfoa-surface-page, 1.5px #aeb4cd, --pfoa-radius). Single-member
+ * events are untouched. Each member keeps its own snapshot image/caption
+ * and its own wp_get_attachment_link file link (no stacked lightbox),
+ * and no relationship wording is added. Very narrow viewports may stack
+ * the inner grid, but the outer card stays grouped.
+ */
+body.page-id-22514 .pfoa-adoption-event-multi {
+	max-width: 340px;
+	margin-inline: auto;
+	padding: var(--pfoa-space-2);
+	background: var(--pfoa-surface-page);
+	border: 1.5px solid #aeb4cd;
+	border-radius: var(--pfoa-radius);
+}
+
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
+	font-size: 1.05rem;
+}
+
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-2 {
+	max-width: none;
+}
+
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-n {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-member {
+	border: 0;
+	padding: 0;
+	background: transparent;
 }
