@@ -63,20 +63,26 @@ if ( 'carousel' === $hero_mode ) {
 
 		$slide_brightness = ( is_array( $raw_item ) && isset( $raw_item['brightness'] ) ) ? pfoa_sanitize_hero_brightness( $raw_item['brightness'] ) : 100;
 
+		$slide_headline_scale = ( is_array( $raw_item ) && isset( $raw_item['headline_scale'] ) ) ? pfoa_sanitize_hero_headline_scale( $raw_item['headline_scale'] ) : 100;
+
 		$carousel_slides[] = array(
-			'id'         => $slide_id,
-			'link_url'   => $slide_link['url'],
-			'link_title' => $slide_link['title'],
-			'headline'   => $slide_headline,
-			'brightness' => $slide_brightness,
+			'id'             => $slide_id,
+			'link_url'       => $slide_link['url'],
+			'link_title'     => $slide_link['title'],
+			'headline'       => $slide_headline,
+			'brightness'     => $slide_brightness,
+			'headline_scale' => $slide_headline_scale,
 		);
 	}
 }
 
 $is_carousel = array() !== $carousel_slides;
 
+$hero_title_scale = 100;
+
 if ( $is_carousel ) {
 	$hero_title = $carousel_slides[0]['headline'];
+	$hero_title_scale = isset( $carousel_slides[0]['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_slides[0]['headline_scale'] ) : 100;
 }
 
 $has_custom_image   = 0 !== $hero_image;
@@ -111,7 +117,7 @@ if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fa
 			}
 			$brightness_factor = $brightness_factors[ $slide_brightness ];
 			?>
-			<div class="homepage-hero__slide<?php echo 0 === $slide_index ? ' is-active' : ''; ?>"<?php echo 0 === $slide_index ? '' : ' aria-hidden="true"'; ?> data-headline="<?php echo esc_attr( $slide['headline'] ); ?>" style="--pfoa-hero-brightness:<?php echo esc_attr( $brightness_factor ); ?>;">
+			<div class="homepage-hero__slide<?php echo 0 === $slide_index ? ' is-active' : ''; ?>"<?php echo 0 === $slide_index ? '' : ' aria-hidden="true"'; ?> data-headline="<?php echo esc_attr( $slide['headline'] ); ?>" data-headline-scale="<?php echo esc_attr( (string) ( isset( $slide['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $slide['headline_scale'] ) : 100 ) ); ?>" style="--pfoa-hero-brightness:<?php echo esc_attr( $brightness_factor ); ?>;">
 					<?php
 					echo wp_get_attachment_image(
 						$slide_id,
@@ -179,7 +185,7 @@ if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fa
 	<div class="wide-container homepage-hero__inner">
 		<div class="homepage-hero__content">
 			<p class="homepage-hero__site-name"><?php echo esc_html( get_bloginfo( 'name' ) ); ?></p>
-			<h1 id="homepage-hero-title" class="homepage-hero__title"><?php echo esc_html( $hero_title ); ?></h1>
+			<h1 id="homepage-hero-title" class="homepage-hero__title<?php echo $is_carousel ? ' scale-' . esc_attr( (string) $hero_title_scale ) : ''; ?>"><?php echo esc_html( $hero_title ); ?></h1>
 
 			<?php if ( $hero_ctas ) : ?>
 				<div class="homepage-hero__actions">

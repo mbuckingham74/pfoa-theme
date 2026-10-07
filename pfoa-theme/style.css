@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.93
+ Version: 0.1.94
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -2306,6 +2306,30 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	text-shadow: 0 0.1em 0.8em rgb(33 30 29 / 22%);
 }
 
+.front-page-content .homepage-hero__title.scale-70 {
+	font-size: clamp(1.925rem, 4.9vw, 4.2rem);
+}
+
+.front-page-content .homepage-hero__title.scale-80 {
+	font-size: clamp(2.2rem, 5.6vw, 4.8rem);
+}
+
+.front-page-content .homepage-hero__title.scale-90 {
+	font-size: clamp(2.475rem, 6.3vw, 5.4rem);
+}
+
+.front-page-content .homepage-hero__title.scale-100 {
+	font-size: clamp(2.75rem, 7vw, 6rem);
+}
+
+.front-page-content .homepage-hero__title.scale-110 {
+	font-size: clamp(3.025rem, 7.7vw, 6.6rem);
+}
+
+.front-page-content .homepage-hero__title.scale-120 {
+	font-size: clamp(3.3rem, 8.4vw, 7.2rem);
+}
+
 .front-page-content .homepage-hero--no-image {
 	background:
 		radial-gradient(circle at 85% 20%, rgb(233 173 78 / 24%), transparent 25%),
@@ -3229,6 +3253,30 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 
 	.front-page-content .homepage-hero__title {
 		font-size: clamp(2.25rem, 12vw, 3.75rem);
+	}
+
+	.front-page-content .homepage-hero__title.scale-70 {
+		font-size: clamp(1.575rem, 8.4vw, 2.625rem);
+	}
+
+	.front-page-content .homepage-hero__title.scale-80 {
+		font-size: clamp(1.8rem, 9.6vw, 3rem);
+	}
+
+	.front-page-content .homepage-hero__title.scale-90 {
+		font-size: clamp(2.025rem, 10.8vw, 3.375rem);
+	}
+
+	.front-page-content .homepage-hero__title.scale-100 {
+		font-size: clamp(2.25rem, 12vw, 3.75rem);
+	}
+
+	.front-page-content .homepage-hero__title.scale-110 {
+		font-size: clamp(2.475rem, 13.2vw, 4.125rem);
+	}
+
+	.front-page-content .homepage-hero__title.scale-120 {
+		font-size: clamp(2.7rem, 14.4vw, 4.5rem);
 	}
 
 	.front-page-content .homepage-pathways__grid,

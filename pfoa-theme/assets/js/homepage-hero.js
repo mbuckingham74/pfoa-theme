@@ -11,6 +11,23 @@
 	function showSlide( slides, index ) {
 		var total = slides.length;
 		var current = ( ( index % total ) + total ) % total;
+		var allowedScales = [ '70', '80', '90', '100', '110', '120' ];
+
+		function applyHeadlineScale( title, scale ) {
+			if ( ! title ) {
+				return;
+			}
+
+			if ( allowedScales.indexOf( scale ) === -1 ) {
+				scale = '100';
+			}
+
+			allowedScales.forEach( function ( allowed ) {
+				title.classList.remove( 'scale-' + allowed );
+			} );
+
+			title.classList.add( 'scale-' + scale );
+		}
 
 		slides.forEach( function ( slide, position ) {
 			var isActive = position === current;
@@ -26,6 +43,7 @@
 
 					if ( title ) {
 						title.textContent = headline;
+						applyHeadlineScale( title, slide.getAttribute( 'data-headline-scale' ) );
 					}
 				}
 			} else {
