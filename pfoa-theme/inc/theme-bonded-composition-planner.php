@@ -16,14 +16,26 @@
  * post_type, post_status, name (presence only), bonded.valid,
  * bonded.partner_id, bonded.pair, lifecycle.bonded_state,
  * lifecycle.eligible_for_adoptable, publication.has_required_card_image,
- * and legacy (null check only). No other snapshot content is read for
- * bonding decisions, and no outside state is consulted.
+ * and legacy.members (grouped only when a valid nonempty member list).
+ * No other snapshot content is read for bonding decisions, and no outside
+ * state is consulted.
  *
  * Bonding rules:
- * - A snapshot with grouped legacy data (legacy !== null) is always a
- *   single individual unit, never bonded. Its own bonded claim, if any, is
- *   not acted on; a non-legacy candidate naming a legacy profile as partner
- *   fails as a half link (the legacy side can never reciprocate).
+ * - A snapshot is a grouped legacy record ONLY when legacy is an array
+ *   carrying legacy.members as a valid nonempty list of member names.
+ *   Source-only or label-only legacy metadata without grouped members is
+ *   not grouped and stays eligible for ordinary bonded composition.
+ *   Malformed legacy.members data fails the whole plan. A genuine grouped
+ *   record is always one single individual unit, never bonded, and never
+ *   split; its own bonded claim, if any, is not acted on, and a
+ *   non-grouped candidate naming a grouped profile as partner fails as a
+ *   half link (the grouped side can never reciprocate).
+ * - Coherent unbonded facts are required of every non-grouped
+ *   non-candidate: bonded.valid === false, bonded.partner_id === 0,
+ *   bonded.pair empty, and lifecycle.bonded_state === 'unbonded'. Any
+ *   invalid, half-linked, conflicting, or inconsistent bonded claim fails
+ *   the whole plan instead of falling back to an individual unit; bonded
+ *   ties are never repaired, cleared, or changed.
  * - Bonded candidacy requires ALL of: bonded.valid === true,
  *   lifecycle.bonded_state === 'bonded', post_status === 'publish',
  *   publication.has_required_card_image === true,
@@ -94,8 +106,41 @@ if ( ! function_exists( 'pfoa_theme_plan_bonded_composition' ) ) {
 			);
 		};
 
-		$by_id      = array();
-		$is_grouped = array();
+	$by_id      = array();
+	$is_grouped = array();
+
+	// Grouped means a genuine grouped legacy record: legacy.members is a
+	// valid nonempty list of member names. Source-only or label-only
+	// legacy metadata without grouped members is not grouped.
+	$classify_legacy = function ( $legacy ) {
+		if ( null === $legacy ) {
+			return 'single';
+		}
+
+		if ( ! is_array( $legacy ) ) {
+			return 'malformed';
+		}
+
+		if ( ! array_key_exists( 'members', $legacy ) ) {
+			return 'single';
+		}
+
+		if ( ! is_array( $legacy['members'] ) ) {
+			return 'malformed';
+		}
+
+		if ( 0 === count( $legacy['members'] ) ) {
+			return 'single';
+		}
+
+		foreach ( $legacy['members'] as $member_name ) {
+			if ( ! is_string( $member_name ) || '' === trim( $member_name ) ) {
+				return 'malformed';
+			}
+		}
+
+		return 'grouped';
+	};
 
 		foreach ( $snapshots as $index => $snapshot ) {
 			if ( ! is_array( $snapshot ) ) {
@@ -172,22 +217,24 @@ if ( ! function_exists( 'pfoa_theme_plan_bonded_composition' ) ) {
 				return $failure( 'missing_required_fields' );
 			}
 
-			if ( ! array_key_exists( 'legacy', $snapshot ) ) {
-				return $failure( 'missing_required_fields' );
-			}
-
-			if ( null !== $snapshot['legacy'] && ! is_array( $snapshot['legacy'] ) ) {
-				return $failure( 'missing_required_fields' );
-			}
-
-			$is_grouped[ $index ] = null !== $snapshot['legacy'];
+		if ( ! array_key_exists( 'legacy', $snapshot ) ) {
+			return $failure( 'missing_required_fields' );
 		}
 
-		// Null means not a candidate; a two-int list means candidate pair.
-		$candidate_pair = function ( array $snapshot ) {
-			if ( null !== $snapshot['legacy'] ) {
-				return null;
-			}
+		$legacy_class = $classify_legacy( $snapshot['legacy'] );
+
+		if ( 'malformed' === $legacy_class ) {
+			return $failure( 'missing_required_fields' );
+		}
+
+		$is_grouped[ $index ] = 'grouped' === $legacy_class;
+	}
+
+	// Null means not a candidate; a two-int list means candidate pair.
+	$candidate_pair = function ( array $snapshot ) use ( $classify_legacy ) {
+		if ( 'grouped' === $classify_legacy( $snapshot['legacy'] ) ) {
+			return null;
+		}
 
 			$bonded      = $snapshot['bonded'];
 			$lifecycle   = $snapshot['lifecycle'];
@@ -357,6 +404,21 @@ if ( ! function_exists( 'pfoa_theme_plan_bonded_composition' ) ) {
 						return $failure( 'conflicting_pair_membership' );
 					}
 				}
+			}
+		}
+
+		// Non-grouped non-candidates must carry coherent unbonded facts;
+		// any other bonded trace fails rather than falling back to single.
+		foreach ( $snapshots as $index => $snapshot ) {
+			if ( $is_grouped[ $index ] || $is_candidate[ $index ] ) {
+				continue;
+			}
+
+			$bonded    = $snapshot['bonded'];
+			$lifecycle = $snapshot['lifecycle'];
+
+			if ( false !== $bonded['valid'] || 0 !== $bonded['partner_id'] || array() !== array_values( $bonded['pair'] ) || 'unbonded' !== $lifecycle['bonded_state'] ) {
+				return $failure( 'half_link_or_inconsistent_metadata' );
 			}
 		}
 

@@ -66,7 +66,7 @@ function fixture_make_snapshot( $id, $name = 'Cat', $overrides = array() ) {
 			'pair'       => array(),
 		),
 		'lifecycle'      => array(
-			'bonded_state'           => 'single',
+			'bonded_state'           => 'unbonded',
 			'eligible_for_adoptable' => true,
 		),
 		'publication'    => array(
@@ -243,6 +243,81 @@ fixture_assert( array( 801 ) === $result['units'][0]['member_ids'], 'h: legacy m
 fixture_assert( 1 === count( $result['units'][0]['snapshots'] ), 'h: legacy not split' );
 fixture_assert( 'individual' === $result['units'][1]['type'], 'h: neighbour individual' );
 
+// (h2) Single cat with legacy source metadata but no members stays eligible.
+$source_only = fixture_make_snapshot(
+	810,
+	'Source Only',
+	array(
+		'legacy' => array(
+			'source' => 'legacy-import',
+		),
+	)
+);
+$result = pfoa_theme_plan_bonded_composition( array( $source_only ) );
+fixture_assert( 'success' === $result['status'], 'h2: success status' );
+fixture_assert( 1 === count( $result['units'] ), 'h2: one unit' );
+fixture_assert( 'individual' === $result['units'][0]['type'], 'h2: individual type' );
+fixture_assert( array( 810 ) === $result['units'][0]['member_ids'], 'h2: member id' );
+
+// (h3) Legacy record with an empty members list is not grouped either.
+$empty_members = fixture_make_snapshot(
+	811,
+	'Empty Members',
+	array(
+		'legacy' => array(
+			'members' => array(),
+			'source'  => 'legacy-import',
+		),
+	)
+);
+$result = pfoa_theme_plan_bonded_composition( array( $empty_members ) );
+fixture_assert( 'success' === $result['status'], 'h3: success status' );
+fixture_assert( 1 === count( $result['units'] ), 'h3: one unit' );
+fixture_assert( 'individual' === $result['units'][0]['type'], 'h3: individual type' );
+fixture_assert( array( 811 ) === $result['units'][0]['member_ids'], 'h3: member id' );
+
+// (h4) Valid bonded pair carrying non-grouped legacy metadata still bonds.
+$la = fixture_make_bonded_snapshot( 820, 821, array( 820, 821 ), 'La' );
+$la['legacy'] = array(
+	'source' => 'legacy-import',
+);
+$lb = fixture_make_bonded_snapshot( 821, 820, array( 820, 821 ), 'Lb' );
+$lb['legacy'] = array(
+	'source'      => 'legacy-import',
+	'card_labels' => array( 'La', 'Lb' ),
+);
+$result = pfoa_theme_plan_bonded_composition( array( $la, $lb ) );
+fixture_assert( 'success' === $result['status'], 'h4: success status' );
+fixture_assert( 1 === count( $result['units'] ), 'h4: one unit' );
+fixture_assert( 'bonded' === $result['units'][0]['type'], 'h4: bonded type' );
+fixture_assert( array( 820, 821 ) === $result['units'][0]['member_ids'], 'h4: member ids' );
+
+// (h5) Malformed legacy members (non-list) fails the whole plan.
+$bad_legacy = fixture_make_snapshot(
+	830,
+	'Bad Legacy',
+	array(
+		'legacy' => array(
+			'members' => 'Alpha',
+		),
+	)
+);
+$result = pfoa_theme_plan_bonded_composition( array( $bad_legacy ) );
+fixture_assert_failure( $result, 'missing_required_fields', 'h5' );
+
+// (h6) Malformed legacy members (blank entry) fails the whole plan.
+$blank_member = fixture_make_snapshot(
+	831,
+	'Blank Member',
+	array(
+		'legacy' => array(
+			'members' => array( 'Alpha', '' ),
+		),
+	)
+);
+$result = pfoa_theme_plan_bonded_composition( array( $blank_member ) );
+fixture_assert_failure( $result, 'missing_required_fields', 'h6' );
+
 // (i) Adopted-together style nonbonded adjacency never merges.
 $ua = fixture_make_snapshot( 901, 'Una' );
 $ub = fixture_make_snapshot( 902, 'Uba' );
@@ -253,6 +328,64 @@ fixture_assert( 'individual' === $result['units'][0]['type'], 'i: first individu
 fixture_assert( 'individual' === $result['units'][1]['type'], 'i: second individual' );
 fixture_assert( array( 901 ) === $result['units'][0]['member_ids'], 'i: first id' );
 fixture_assert( array( 902 ) === $result['units'][1]['member_ids'], 'i: second id' );
+
+// (u1) Stale lifecycle.bonded_state without coherent unbonded facts fails.
+$stale_state = fixture_make_snapshot(
+	840,
+	'Stale State',
+	array(
+		'lifecycle' => array(
+			'bonded_state' => 'single',
+		),
+	)
+);
+$result = pfoa_theme_plan_bonded_composition( array( $stale_state ) );
+fixture_assert_failure( $result, 'half_link_or_inconsistent_metadata', 'u1' );
+
+// (u2) Nonzero partner_id with bonded.valid false never downgrades.
+$half_valid = fixture_make_snapshot(
+	850,
+	'Half Valid',
+	array(
+		'bonded' => array(
+			'valid'      => false,
+			'partner_id' => 851,
+			'pair'       => array(),
+		),
+	)
+);
+$result = pfoa_theme_plan_bonded_composition( array( $half_valid, fixture_make_snapshot( 851, 'Other' ) ) );
+fixture_assert_failure( $result, 'half_link_or_inconsistent_metadata', 'u2' );
+
+// (u3) One-sided invalid claim naming a missing partner still fails.
+$ghost = fixture_make_snapshot(
+	860,
+	'Ghost',
+	array(
+		'bonded' => array(
+			'valid'      => false,
+			'partner_id' => 9999,
+			'pair'       => array(),
+		),
+	)
+);
+$result = pfoa_theme_plan_bonded_composition( array( $ghost ) );
+fixture_assert_failure( $result, 'half_link_or_inconsistent_metadata', 'u3' );
+
+// (u4) Invalid pair metadata with bonded.valid false never downgrades.
+$bad_pair = fixture_make_snapshot(
+	870,
+	'Bad Pair',
+	array(
+		'bonded' => array(
+			'valid'      => false,
+			'partner_id' => 0,
+			'pair'       => array( 870, 871 ),
+		),
+	)
+);
+$result = pfoa_theme_plan_bonded_composition( array( $bad_pair, fixture_make_snapshot( 871, 'Nbr' ) ) );
+fixture_assert_failure( $result, 'half_link_or_inconsistent_metadata', 'u4' );
 
 // (k) Missing required fields fail the whole plan.
 $base = fixture_make_snapshot( 1001, 'Base' );
@@ -317,4 +450,4 @@ foreach ( array( 'wp_' ) as $needle ) {
 $functions_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
 fixture_assert( false === strpos( $functions_source, 'theme-bonded-composition-planner' ), 'functions.php does not require planner file' );
 
-fwrite( STDOUT, "PASS: theme bonded composition planner fixture (individual, bonded, canonical order + placement, missing partner, half links, duplicates, conflicts, nonadjacent, legacy, nonbonded adjacency, missing fields, no hooks/writes/reads)\n" );
+fwrite( STDOUT, "PASS: theme bonded composition planner fixture (individual, bonded, canonical order + placement, missing partner, half links, duplicates, conflicts, nonadjacent, grouped vs source-only legacy, malformed legacy, unbonded coherence, invalid bonded claims, nonbonded adjacency, missing fields, no hooks/writes/reads)\n" );
