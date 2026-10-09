@@ -122,9 +122,91 @@ bs_assert( false === strpos( $result['projected_content'], 'data-pfoa-profile-id
 $result_str = bs_splice( '20323', $content, bs_classify( $owned ), $records );
 bs_assert( true === $result_str['success'] && $expected === $result_str['projected_content'], 'a-string-source: same bytes' );
 
-// Minimal classification shape (owned/manual only, no ok flag) is accepted.
-$minimal = bs_splice( 20323, $content, array( 'owned' => $owned, 'manual' => array() ), $records );
-bs_assert( true === $minimal['success'] && $expected === $minimal['projected_content'], 'a-minimal-shape: same bytes' );
+// Minimal classification shape (owned/manual only, no ok flag) is rejected.
+$minimal = array( 'owned' => $owned, 'manual' => array() );
+bs_assert_failure( bs_splice( 20323, $content, $minimal, $records ), 'invalid_classification', 'a-minimal-shape' );
+
+// (a2) Verified classification contract: exact successful classifier shape only.
+$legacy_owned        = $owned;
+$legacy_owned[0]     = $owned[0];
+$legacy_owned[0]['kind'] = 'legacy-proven';
+$legacy_records = array( bs_record( $legacy_owned[0], '<section data-new="1">Fluffy new</section>' ) );
+$legacy_result  = bs_splice( 20323, $content, bs_classify( $legacy_owned ), $legacy_records );
+bs_assert_success( $legacy_result, 'a2-legacy-kind' );
+bs_assert( $expected === $legacy_result['projected_content'], 'a2-legacy-kind: exact bytes' );
+bs_assert( 1 === $legacy_result['replaced_count'], 'a2-legacy-kind: count' );
+
+// Missing ok rejected.
+$no_ok = bs_classify( $owned );
+unset( $no_ok['ok'] );
+bs_assert_failure( bs_splice( 20323, $content, $no_ok, $records ), 'invalid_classification', 'a2-missing-ok' );
+
+// Truthy non-true ok (1) rejected.
+$ok_one       = bs_classify( $owned );
+$ok_one['ok'] = 1;
+bs_assert_failure( bs_splice( 20323, $content, $ok_one, $records ), 'invalid_classification', 'a2-ok-one' );
+
+// Missing source_page_id rejected.
+$no_source = bs_classify( $owned );
+unset( $no_source['source_page_id'] );
+bs_assert_failure( bs_splice( 20323, $content, $no_source, $records ), 'invalid_classification', 'a2-missing-source' );
+
+// Wrong source_page_id int rejected.
+$bad_source                    = bs_classify( $owned );
+$bad_source['source_page_id'] = 99999;
+bs_assert_failure( bs_splice( 20323, $content, $bad_source, $records ), 'invalid_classification', 'a2-wrong-source' );
+
+// String '20323' source_page_id rejected (must be int strict).
+$str_source                    = bs_classify( $owned );
+$str_source['source_page_id'] = '20323';
+bs_assert_failure( bs_splice( 20323, $content, $str_source, $records ), 'invalid_classification', 'a2-string-source-id' );
+
+// Missing manual array rejected.
+$no_manual = bs_classify( $owned );
+unset( $no_manual['manual'] );
+bs_assert_failure( bs_splice( 20323, $content, $no_manual, $records ), 'invalid_classification', 'a2-missing-manual' );
+
+// Manual non-array rejected.
+$manual_str           = bs_classify( $owned );
+$manual_str['manual'] = 'x';
+bs_assert_failure( bs_splice( 20323, $content, $manual_str, $records ), 'invalid_classification', 'a2-manual-string' );
+
+// Incorrect count_owned rejected (off by one).
+$bad_owned_count                 = bs_classify( $owned );
+$bad_owned_count['count_owned'] = count( $owned ) + 1;
+bs_assert_failure( bs_splice( 20323, $content, $bad_owned_count, $records ), 'invalid_classification', 'a2-count-owned-high' );
+
+// Non-int count_owned rejected.
+$bad_owned_type                 = bs_classify( $owned );
+$bad_owned_type['count_owned'] = '1';
+bs_assert_failure( bs_splice( 20323, $content, $bad_owned_type, $records ), 'invalid_classification', 'a2-count-owned-string' );
+
+// Incorrect count_manual rejected.
+$bad_manual_count                  = bs_classify( $owned );
+$bad_manual_count['count_manual'] = 1;
+bs_assert_failure( bs_splice( 20323, $content, $bad_manual_count, $records ), 'invalid_classification', 'a2-count-manual-high' );
+
+// Non-int count_manual rejected.
+$bad_manual_type                  = bs_classify( $owned );
+$bad_manual_type['count_manual'] = '0';
+bs_assert_failure( bs_splice( 20323, $content, $bad_manual_type, $records ), 'invalid_classification', 'a2-count-manual-string' );
+
+// Missing owned kind rejected.
+$no_kind = $owned;
+unset( $no_kind[0]['kind'] );
+bs_assert_failure( bs_splice( 20323, $content, bs_classify( $no_kind ), $records ), 'invalid_classification', 'a2-missing-kind' );
+
+// Unsupported owned kinds rejected.
+foreach ( array( 'manual', 'id-incomplete', '', null ) as $bad_kind ) {
+	$bad_kind_owned       = $owned;
+	$bad_kind_owned[0]   = $owned[0];
+	$bad_kind_owned[0]['kind'] = $bad_kind;
+	bs_assert_failure(
+		bs_splice( 20323, $content, bs_classify( $bad_kind_owned ), $records ),
+		'invalid_classification',
+		'a2-bad-kind-' . var_export( $bad_kind, true )
+	);
+}
 
 // (b) Multiple replacements; caller order does not matter (offsets cannot shift).
 $card_b   = bs_card( 102, 'mittens', 'Mittens' );
@@ -385,4 +467,4 @@ foreach ( array( 'placement', 'bond', 'render', 'compose', 'proof', 'lifecycle',
 $functions_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
 bs_assert( false === strpos( $functions_source, 'theme-managed-card-byte-splice' ), 'functions.php does not require splice file' );
 
-fwrite( STDOUT, "PASS: theme managed card byte splice fixture (single, multiple reversed, mixed managed/manual, editorial bytes, unicode+whitespace, adjacent spans, explicit empty clear, missing/duplicate/stale/manual-overlap/extra/unrecognized failures with null output, malformed/out-of-range/overlapping spans, strict record types, empty plan, verbatim html, no hooks/reads/writes)\n" );
+fwrite( STDOUT, "PASS: theme managed card byte splice fixture with verified classification contract (single, multiple reversed, mixed managed/manual, editorial bytes, unicode+whitespace, adjacent spans, explicit empty clear, missing/duplicate/stale/manual-overlap/extra/unrecognized failures with null output, malformed/out-of-range/overlapping spans, strict record types, empty plan, verbatim html, classification contract, no hooks/reads/writes)\n" );

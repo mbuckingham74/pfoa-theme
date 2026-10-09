@@ -27,6 +27,17 @@
  * manual_overlap, invalid_replacement, duplicate_replacement,
  * missing_replacement, unrecognized_replacement.
  *
+ * Classification contract: only the exact successful output of
+ * pfoa_theme_classify_managed_card_ownership is accepted. Callers must
+ * take that trusted classifier output as-is and must not fabricate it.
+ * Required keys with strict types: 'ok' === true, 'source_page_id' ===
+ * 20323 int, 'owned' list, 'manual' list, 'count_owned' int ===
+ * count(owned), 'count_manual' int === count(manual). Each owned entry
+ * carries int start, int end, string slice, digit string profile id,
+ * string slot and string kind; kind is only 'id-owned' or
+ * 'legacy-proven'. Any deviation fails with invalid_classification and
+ * null output before any HTML assembly.
+ *
  * @package PFOA
  */
 
@@ -52,9 +63,11 @@ if ( ! function_exists( 'pfoa_theme_splice_managed_cards' ) ) {
 	 * output on any doubt.
 	 *
 	 * Only source page 20323 (int or digit string) is accepted. The
-	 * classification must carry an owned span list and may carry a manual
-	 * span list; each owned span holds int start, int end, string slice,
-	 * string profile id and string slot, and each manual span holds int
+	 * classification must be the exact trusted classifier output described
+	 * above: ok, source_page_id, owned, manual, count_owned and count_manual
+	 * with matching counts. Each owned span holds int start, int end, string
+	 * slice, string profile id, string slot and string kind
+	 * ('id-owned' or 'legacy-proven'), and each manual span holds int
 	 * start, int end and string slice. Caller HTML records each hold string
 	 * profile id, string slot, int start, int end and string html, matched
 	 * on all four of profile id, slot, start and end with ===.
@@ -101,19 +114,28 @@ if ( ! function_exists( 'pfoa_theme_splice_managed_cards' ) ) {
 		if ( ! is_array( $classification ) ) {
 			return $fail( 'invalid_classification' );
 		}
-		if ( array_key_exists( 'ok', $classification ) && true !== $classification['ok'] ) {
-			return $fail( 'invalid_classification' );
-		}
-		if ( ! array_key_exists( 'owned', $classification ) || ! is_array( $classification['owned'] ) ) {
-			return $fail( 'invalid_classification' );
-		}
-		$owned_input = $classification['owned'];
-		$manual_input = array();
-		if ( array_key_exists( 'manual', $classification ) ) {
-			if ( ! is_array( $classification['manual'] ) ) {
+		$required_keys = array( 'ok', 'source_page_id', 'owned', 'manual', 'count_owned', 'count_manual' );
+		foreach ( $required_keys as $required_key ) {
+			if ( ! array_key_exists( $required_key, $classification ) ) {
 				return $fail( 'invalid_classification' );
 			}
-			$manual_input = $classification['manual'];
+		}
+		if ( true !== $classification['ok'] ) {
+			return $fail( 'invalid_classification' );
+		}
+		if ( 20323 !== $classification['source_page_id'] ) {
+			return $fail( 'invalid_classification' );
+		}
+		if ( ! is_array( $classification['owned'] ) || ! is_array( $classification['manual'] ) ) {
+			return $fail( 'invalid_classification' );
+		}
+		$owned_input  = $classification['owned'];
+		$manual_input = $classification['manual'];
+		if ( ! is_int( $classification['count_owned'] ) || count( $owned_input ) !== $classification['count_owned'] ) {
+			return $fail( 'invalid_classification' );
+		}
+		if ( ! is_int( $classification['count_manual'] ) || count( $manual_input ) !== $classification['count_manual'] ) {
+			return $fail( 'invalid_classification' );
 		}
 
 		$slot_pattern = '/\A[A-Za-z0-9_-]{1,64}\z/';
@@ -136,6 +158,12 @@ if ( ! function_exists( 'pfoa_theme_splice_managed_cards' ) ) {
 
 		$owned = array();
 		foreach ( $owned_input as $entry ) {
+			if ( ! array_key_exists( 'kind', $entry )
+				|| ! is_string( $entry['kind'] )
+				|| ( 'id-owned' !== $entry['kind'] && 'legacy-proven' !== $entry['kind'] )
+			) {
+				return $fail( 'invalid_classification' );
+			}
 			if ( ! array_key_exists( 'start', $entry )
 				|| ! array_key_exists( 'end', $entry )
 				|| ! array_key_exists( 'slice', $entry )
@@ -165,6 +193,7 @@ if ( ! function_exists( 'pfoa_theme_splice_managed_cards' ) ) {
 				'slice'      => $entry['slice'],
 				'profile_id' => $entry['profile_id'],
 				'slot'       => $entry['slot'],
+				'kind'       => $entry['kind'],
 			);
 		}
 
