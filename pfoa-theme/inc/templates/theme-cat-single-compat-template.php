@@ -20,9 +20,11 @@
  * decides presentation from publication.complete. Rendering is read-only and
  * safe under GET.
  *
- * Fail-closed: every byte is buffered until one fully validated record has
- * rendered. Missing dependencies, wrong post type, or missing/invalid neutral
- * data discards the buffer and emits nothing — never a partial profile.
+ * Fail-closed: every byte stays buffered and the neutral snapshot is fully
+ * validated — dependencies, loop post type, snapshot shape, schema 1.0,
+ * snapshot post_id matching the current loop post, and nonempty renderer
+ * output — before any page output is emitted. Any failure discards the
+ * buffer and emits zero bytes — never a partial profile.
  *
  * @package PFOA
  */
@@ -31,14 +33,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Hold all output until validation succeeds so failures emit nothing.
+// Buffer every byte as a backstop: header/footer output stays inside the
+// buffer, so any failure below emits nothing.
 ob_start();
 
 $pfoa_compat_rendered = false;
+$pfoa_compat_mains    = '';
 
 if ( function_exists( 'pfoa_cat_get_profile_data' ) && function_exists( 'pfoa_theme_render_cat_profile_compat' ) ) {
-	get_header();
-
+	// Phase 1: validate the neutral snapshot and capture rendering first —
+	// the loop itself emits nothing, so no page output exists yet.
 	while ( have_posts() ) :
 		the_post();
 
@@ -48,7 +52,9 @@ if ( function_exists( 'pfoa_cat_get_profile_data' ) && function_exists( 'pfoa_th
 			continue;
 		}
 
-		$compat_data = pfoa_cat_get_profile_data( get_the_ID() );
+		$compat_loop_id = get_the_ID();
+
+		$compat_data = pfoa_cat_get_profile_data( $compat_loop_id );
 		if ( ! is_array( $compat_data ) ) {
 			continue;
 		}
@@ -58,16 +64,32 @@ if ( function_exists( 'pfoa_cat_get_profile_data' ) && function_exists( 'pfoa_th
 		if ( ! isset( $compat_data['schema_version'] ) || '1.0' !== $compat_data['schema_version'] ) {
 			continue;
 		}
+		if ( ! isset( $compat_data['post_id'] ) || (int) $compat_data['post_id'] <= 0 ) {
+			continue;
+		}
+		if ( (int) $compat_data['post_id'] !== (int) $compat_loop_id ) {
+			continue;
+		}
+		if ( (int) $compat_data['post_id'] !== (int) $compat_post->ID ) {
+			continue;
+		}
 
-		echo '<main class="pfoa-cat-single">';
-		echo pfoa_theme_render_cat_profile_compat( $compat_data, 'h1' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- theme renderer escapes its output.
-		echo '</main>';
+		$compat_html = pfoa_theme_render_cat_profile_compat( $compat_data, 'h1' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- theme renderer escapes its output.
+		if ( ! is_string( $compat_html ) || '' === trim( $compat_html ) ) {
+			continue;
+		}
 
+		$pfoa_compat_mains    .= '<main class="pfoa-cat-single">' . $compat_html . '</main>';
 		$pfoa_compat_rendered = true;
 
 	endwhile;
 
-	get_footer();
+	// Phase 2: emit page output only after full validation succeeded.
+	if ( $pfoa_compat_rendered ) {
+		get_header();
+		echo $pfoa_compat_mains; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- captured validated renderer output.
+		get_footer();
+	}
 }
 
 if ( ! $pfoa_compat_rendered ) {
