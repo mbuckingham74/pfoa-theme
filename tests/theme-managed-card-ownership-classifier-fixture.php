@@ -84,6 +84,74 @@ function oc_unclosed_heading_card() {
 	return '<article class="note"><h3>Unclosed heading</article>';
 }
 
+function oc_thumb_img( $slug ) {
+	return '<img src="https://example.test/' . $slug . '.jpg" class="pfoa-cat-card-thumb" alt="">';
+}
+
+function oc_complete_thumb_card( $id, $slug, $title ) {
+	return '<article class="pfoa-cat-card" data-pfoa-profile-id="' . $id . '">'
+		. '<a class="pfoa-cat-card-media" href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '">' . oc_thumb_img( $slug ) . '</a>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '">' . $title . '</a></h3>'
+		. '</article>';
+}
+
+function oc_complete_status_card( $id, $slug, $title, $status ) {
+	return '<article class="pfoa-cat-card" data-pfoa-profile-id="' . $id . '">'
+		. '<a class="pfoa-cat-card-media" href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '">' . oc_thumb_img( $slug ) . '</a>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '">' . $title . '</a></h3>'
+		. '<p class="pfoa-cat-card-status">' . $status . '</p>'
+		. '</article>';
+}
+
+function oc_incomplete_card( $id, $slug, $title, $status = null ) {
+	$html = '<article class="pfoa-cat-card pfoa-cat-card-incomplete" data-pfoa-profile-id="' . $id . '">';
+	$html .= '<div class="pfoa-cat-card-media">' . oc_thumb_img( $slug ) . '</div>';
+	$html .= '<h3 class="pfoa-cat-card-title">' . $title . '</h3>';
+	if ( null !== $status ) {
+		$html .= '<p class="pfoa-cat-card-status">' . $status . '</p>';
+	}
+	$html .= '<p class="pfoa-cat-card-note">Full profile coming soon.</p>';
+	return $html . '</article>';
+}
+
+function oc_incomplete_pair_card( $id, $side, $slug, $title ) {
+	$pair = 'left' === $side ? ' pfoa-cat-pair-left' : ' pfoa-cat-pair-right';
+	return '<article class="pfoa-cat-card pfoa-cat-card-incomplete' . $pair . '" data-pfoa-profile-id="' . $id . '">'
+		. '<div class="pfoa-cat-card-media">' . oc_thumb_img( $slug ) . '</div>'
+		. '<h3 class="pfoa-cat-card-title">' . $title . '</h3>'
+		. '<p class="pfoa-cat-card-note">Full profile coming soon.</p>'
+		. '</article>';
+}
+
+function oc_incomplete_dialog_card( $id, $slug, $title ) {
+	return '<article class="pfoa-cat-card pfoa-cat-card-incomplete" data-pfoa-profile-id="' . $id . '">'
+		. '<div class="pfoa-cat-card-media">' . oc_thumb_img( $slug ) . '</div>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '">' . $title . '</a></h3>'
+		. '<p class="pfoa-cat-card-note">Full profile coming soon.</p>'
+		. '</article>';
+}
+
+function oc_spoofed_suffix_card() {
+	return '<article class="pfoa-cat-card pfoa-cat-card-xyz" data-pfoa-profile-id="101">'
+		. '<a class="pfoa-cat-card-media" href="https://example.test/fluffy/" data-pfoa-cat-dialog="fluffy">' . oc_thumb_img( 'fluffy' ) . '</a>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/fluffy/" data-pfoa-cat-dialog="fluffy">Fluffy</a></h3>'
+		. '</article>';
+}
+
+function oc_spoofed_media_card() {
+	return '<article class="pfoa-cat-card" data-pfoa-profile-id="101">'
+		. '<a class="pfoa-cat-card-media-evil" href="https://example.test/fluffy/" data-pfoa-cat-dialog="fluffy">' . oc_thumb_img( 'fluffy' ) . '</a>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/fluffy/" data-pfoa-cat-dialog="fluffy">Fluffy</a></h3>'
+		. '</article>';
+}
+
+function oc_spoofed_thumb_card() {
+	return '<article class="pfoa-cat-card" data-pfoa-profile-id="101">'
+		. '<a class="pfoa-cat-card-media" href="https://example.test/fluffy/" data-pfoa-cat-dialog="fluffy"><img src="https://example.test/fluffy.jpg" class="pfoa-cat-card-thumb-evil" alt=""></a>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/fluffy/" data-pfoa-cat-dialog="fluffy">Fluffy</a></h3>'
+		. '</article>';
+}
+
 function oc_proof( $card, $profile_id, $slot, $slug = null ) {
 	$proof = array(
 		'start'       => $card['start'],
@@ -370,6 +438,93 @@ foreach ( $bad_proofs as $label => $bad ) {
 oc_assert_failure( oc_classify( 20323, $single_inv, array( 'slot-a' => $good_proof ), $single_content ), 'invalid_proofs', 'q-non-list' );
 oc_assert_failure( oc_classify( 20323, $single_inv, 'nope', $single_content ), 'invalid_proofs', 'q-proofs-not-array' );
 
+// (t) Complete single with real thumbnail class stays ID-owned.
+$t_content = oc_wrap_cards( oc_complete_thumb_card( 101, 'fluffy', 'Fluffy' ) );
+$t_inv     = oc_inventory_ok( $t_content, 't-thumb' );
+$t_result  = oc_classify( 20323, $t_inv, array( oc_proof( $t_inv['cards'][0], 101, 'slot-a' ) ), $t_content );
+oc_assert( true === $t_result['ok'], 't-thumb: ok' );
+oc_assert( 'id-owned' === $t_result['owned'][0]['kind'], 't-thumb: kind' );
+oc_assert( '101' === $t_result['owned'][0]['profile_id'], 't-thumb: profile' );
+
+// (u) Complete single with status paragraph stays ID-owned.
+$u_content = oc_wrap_cards( oc_complete_status_card( 101, 'fluffy', 'Fluffy', 'Napping' ) );
+$u_inv     = oc_inventory_ok( $u_content, 'u-status' );
+$u_result  = oc_classify( 20323, $u_inv, array( oc_proof( $u_inv['cards'][0], 101, 'slot-a' ) ), $u_content );
+oc_assert( true === $u_result['ok'], 'u-status: ok' );
+oc_assert( 'id-owned' === $u_result['owned'][0]['kind'], 'u-status: kind' );
+oc_assert( '101' === $u_result['owned'][0]['profile_id'], 'u-status: profile' );
+
+// (v) Incomplete single is ID-owned.
+$v_content = oc_wrap_cards( oc_incomplete_card( 102, 'shadow', 'Shadow' ) );
+$v_inv     = oc_inventory_ok( $v_content, 'v-incomplete' );
+$v_result  = oc_classify( 20323, $v_inv, array( oc_proof( $v_inv['cards'][0], 102, 'slot-a' ) ), $v_content );
+oc_assert( true === $v_result['ok'], 'v-incomplete: ok' );
+oc_assert( 1 === $v_result['count_owned'], 'v-incomplete: count' );
+oc_assert( 'id-owned' === $v_result['owned'][0]['kind'], 'v-incomplete: kind' );
+oc_assert( '102' === $v_result['owned'][0]['profile_id'], 'v-incomplete: profile' );
+oc_assert( array( 'start', 'end', 'slice', 'profile_id', 'slot', 'kind' ) === array_keys( $v_result['owned'][0] ), 'v-incomplete: owned keys exact' );
+
+// Incomplete single with status paragraph stays ID-owned.
+$vs_content = oc_wrap_cards( oc_incomplete_card( 102, 'shadow', 'Shadow', 'Resting' ) );
+$vs_inv     = oc_inventory_ok( $vs_content, 'v-incomplete-status' );
+$vs_result  = oc_classify( 20323, $vs_inv, array( oc_proof( $vs_inv['cards'][0], 102, 'slot-a' ) ), $vs_content );
+oc_assert( true === $vs_result['ok'], 'v-status: ok' );
+oc_assert( 'id-owned' === $vs_result['owned'][0]['kind'], 'v-status: kind' );
+
+// (w) Incomplete two-member grouped pair shares one profile with distinct slots.
+$w_content = oc_wrap_cards( oc_incomplete_pair_card( 105, 'left', 'tom', 'Tom' ) . oc_incomplete_pair_card( 105, 'right', 'jerry', 'Jerry' ) );
+$w_inv     = oc_inventory_ok( $w_content, 'w-pair' );
+$w_proofs  = array(
+	oc_proof( $w_inv['cards'][0], 105, 'slot-left' ),
+	oc_proof( $w_inv['cards'][1], 105, 'slot-right' ),
+);
+$w_result  = oc_classify( 20323, $w_inv, $w_proofs, $w_content );
+oc_assert( true === $w_result['ok'], 'w-pair: ok' );
+oc_assert( 2 === $w_result['count_owned'], 'w-pair: count' );
+oc_assert( 'id-owned' === $w_result['owned'][0]['kind'] && 'id-owned' === $w_result['owned'][1]['kind'], 'w-pair: kinds' );
+oc_assert( '105' === $w_result['owned'][0]['profile_id'] && '105' === $w_result['owned'][1]['profile_id'], 'w-pair: shared profile' );
+
+// Incomplete pair card carrying a status paragraph fails (status is single only).
+$pair_status_inner = '<article class="pfoa-cat-card pfoa-cat-card-incomplete pfoa-cat-pair-left" data-pfoa-profile-id="105">'
+	. '<div class="pfoa-cat-card-media">' . oc_thumb_img( 'tom' ) . '</div>'
+	. '<h3 class="pfoa-cat-card-title">Tom</h3>'
+	. '<p class="pfoa-cat-card-status">Resting</p>'
+	. '<p class="pfoa-cat-card-note">Full profile coming soon.</p>'
+	. '</article>';
+$pair_status_content = oc_wrap_cards( $pair_status_inner );
+$pair_status_inv     = oc_inventory_ok( $pair_status_content, 'w-pair-status' );
+oc_assert_failure( oc_classify( 20323, $pair_status_inv, array(), $pair_status_content ), 'ambiguous_card', 'w-pair-status' );
+
+// (x) Incomplete without trusted proof fails; proof profile mismatch fails.
+oc_assert_failure( oc_classify( 20323, $v_inv, array(), $v_content ), 'missing_proof', 'x-incomplete-missing' );
+oc_assert_failure( oc_classify( 20323, $v_inv, array( oc_proof( $v_inv['cards'][0], 999, 'slot-a' ) ), $v_content ), 'conflicting_claims', 'x-incomplete-mismatch' );
+
+// Unmarked incomplete cards are never owned (no ID marker fails closed).
+$bare_incomplete_inner = '<article class="pfoa-cat-card pfoa-cat-card-incomplete">'
+	. '<div class="pfoa-cat-card-media">' . oc_thumb_img( 'tom' ) . '</div>'
+	. '<h3 class="pfoa-cat-card-title">Tom</h3>'
+	. '<p class="pfoa-cat-card-note">Full profile coming soon.</p>'
+	. '</article>';
+$bare_incomplete_content = oc_wrap_cards( $bare_incomplete_inner );
+$bare_incomplete_inv     = oc_inventory_ok( $bare_incomplete_content, 'x-bare-incomplete' );
+oc_assert_failure( oc_classify( 20323, $bare_incomplete_inv, array(), $bare_incomplete_content ), 'ambiguous_card', 'x-bare-incomplete' );
+
+// (y) Incomplete with unexpected dialog anchor fails.
+$y_content = oc_wrap_cards( oc_incomplete_dialog_card( 102, 'shadow', 'Shadow' ) );
+$y_inv     = oc_inventory_ok( $y_content, 'y-dialog' );
+oc_assert_failure( oc_classify( 20323, $y_inv, array(), $y_content ), 'ambiguous_card', 'y-incomplete-dialog' );
+
+// (z) Spoofed suffixed generated classes fail.
+$z1_content = oc_wrap_cards( oc_spoofed_suffix_card() );
+$z1_inv     = oc_inventory_ok( $z1_content, 'z-spoof-suffix' );
+oc_assert_failure( oc_classify( 20323, $z1_inv, array(), $z1_content ), 'spoofed_marker', 'z-spoof-suffix' );
+$z2_content = oc_wrap_cards( oc_spoofed_media_card() );
+$z2_inv     = oc_inventory_ok( $z2_content, 'z-spoof-media' );
+oc_assert_failure( oc_classify( 20323, $z2_inv, array(), $z2_content ), 'spoofed_marker', 'z-spoof-media' );
+$z3_content = oc_wrap_cards( oc_spoofed_thumb_card() );
+$z3_inv     = oc_inventory_ok( $z3_content, 'z-spoof-thumb' );
+oc_assert_failure( oc_classify( 20323, $z3_inv, array(), $z3_content ), 'spoofed_marker', 'z-spoof-thumb' );
+
 // (r) No hooks/queries/writes: static file-content bans on the classifier file.
 $classifier_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-ownership-classifier.php' );
 foreach ( array( 'add_action', 'add_filter', 'add_shortcode', 'WP_Query', 'get_posts', 'get_option', 'update_option', 'wp_insert', 'wp_update', '$wpdb', 'file_put_contents', 'unlink', 'get_post', 'meta', 'placement', 'bond', 'composition', 'lifecycle', 'resolver' ) as $needle ) {
@@ -380,4 +535,4 @@ foreach ( array( 'add_action', 'add_filter', 'add_shortcode', 'WP_Query', 'get_p
 $functions_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
 oc_assert( false === strpos( $functions_source, 'theme-managed-card-ownership-classifier' ), 'functions.php does not require classifier file' );
 
-fwrite( STDOUT, "PASS: theme managed card ownership classifier fixture (valid id-owned, proven legacy, manual untouched, mixed order, shared profile distinct slots, duplicate/conflicting claims, missing/stale proofs, conflicting slugs, malformed/spoofed markers and classes, unicode byte and fingerprint checks, orphan proofs, unsupported structure, source/content/inventory/proof guards, no hooks/queries/writes)\n" );
+fwrite( STDOUT, "PASS: theme managed card ownership classifier fixture (valid id-owned, proven legacy, manual untouched, mixed order, shared profile distinct slots, duplicate/conflicting claims, missing/stale proofs, conflicting slugs, malformed/spoofed markers and classes, generated complete with thumbnail and status, generated incomplete single with and without status, incomplete grouped pair, incomplete missing/mismatched proofs, unmarked incomplete fails closed, incomplete dialog ambiguity, spoofed generated classes, unicode byte and fingerprint checks, orphan proofs, unsupported structure, source/content/inventory/proof guards, no hooks/queries/writes)\n" );

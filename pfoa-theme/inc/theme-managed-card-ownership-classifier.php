@@ -44,9 +44,16 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 	 * slice is checked for exact markers, exact class tokens and the
 	 * recognized generated structure:
 	 *
-	 * - ID-owned: exactly one valid quoted numeric marker on the article
-	 *   open tag, article carries the card token, and both the media anchor
-	 *   and the title heading anchor carry valid dialog slugs that agree.
+	 * - ID-owned complete: exactly one valid quoted numeric marker on
+	 *   the article open tag, article carries the card token, and both the
+	 *   media anchor and the title heading anchor carry valid dialog slugs
+	 *   that agree.
+	 * - ID-owned incomplete: exactly one valid quoted numeric marker on
+	 *   the article open tag, article carries the card and incomplete
+	 *   tokens, a media division holds a thumbnail image, the title
+	 *   heading is plain (no anchor), a note paragraph is present, an
+	 *   optional status paragraph is allowed on single cards only, and no
+	 *   dialog anchor is present anywhere.
 	 * - Proven legacy: no valid marker, article carries the card token, and
 	 *   both anchors carry valid dialog slugs that agree on one slug, plus
 	 *   a trusted proof carrying that same slug.
@@ -185,12 +192,15 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 			}
 		}
 
-		$allowed_tokens = array( 'pfoa-cat-card', 'pfoa-cat-card-media', 'pfoa-cat-card-title' );
+		$allowed_tokens = array( 'pfoa-cat-card', 'pfoa-cat-card-media', 'pfoa-cat-card-title', 'pfoa-cat-card-thumb', 'pfoa-cat-card-status', 'pfoa-cat-card-note', 'pfoa-cat-card-incomplete', 'pfoa-cat-pair-left', 'pfoa-cat-pair-right' );
 		$id_pattern     = '/(?<![A-Za-z0-9_-])data-pfoa-profile-id\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>\/]+)/i';
 		$class_pattern  = '/class\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>\/]+)/i';
 		$anchor_pattern = '/<a\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i';
 		$dialog_pattern = '/(?<![A-Za-z0-9_-])data-pfoa-cat-dialog\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>\/]+)/i';
 		$h3_pattern     = '/<h3\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i';
+		$div_pattern    = '/<div\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i';
+		$p_pattern      = '/<p\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i';
+		$img_pattern    = '/<img\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i';
 		$slug_pattern   = '/\A[a-z0-9-]+\z/';
 
 		$derived = array();
@@ -285,16 +295,32 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 				}
 			}
 
-			$article_has_token = false;
-			if ( 1 === preg_match( $class_pattern, $open_tag, $article_class_match ) ) {
-				$token = (string) $article_class_match[1];
-				$first = strlen( $token ) > 0 ? $token[0] : '';
-				$inner = ( '"' === $first || '\'' === $first ) ? substr( $token, 1, strlen( $token ) - 2 ) : $token;
-				$parts = preg_split( '/\s+/', $inner );
-				if ( is_array( $parts ) && in_array( 'pfoa-cat-card', $parts, true ) ) {
+		$article_has_token     = false;
+		$article_parts         = array();
+		if ( 1 === preg_match( $class_pattern, $open_tag, $article_class_match ) ) {
+			$token = (string) $article_class_match[1];
+			$first = strlen( $token ) > 0 ? $token[0] : '';
+			$inner = ( '"' === $first || '\'' === $first ) ? substr( $token, 1, strlen( $token ) - 2 ) : $token;
+			$parts = preg_split( '/\s+/', $inner );
+			if ( is_array( $parts ) ) {
+				foreach ( $parts as $part ) {
+					if ( '' !== (string) $part ) {
+						$article_parts[] = (string) $part;
+					}
+				}
+				if ( in_array( 'pfoa-cat-card', $article_parts, true ) ) {
 					$article_has_token = true;
 				}
 			}
+		}
+		$article_is_incomplete = in_array( 'pfoa-cat-card-incomplete', $article_parts, true );
+		$article_pair_count    = 0;
+		if ( in_array( 'pfoa-cat-pair-left', $article_parts, true ) ) {
+			$article_pair_count++;
+		}
+		if ( in_array( 'pfoa-cat-pair-right', $article_parts, true ) ) {
+			$article_pair_count++;
+		}
 
 			$anchor_count = preg_match_all( $anchor_pattern, $slice, $anchor_matches, PREG_OFFSET_CAPTURE );
 			if ( false === $anchor_count ) {
@@ -341,8 +367,9 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 			if ( false === $raw_h3_count || $raw_h3_count !== $h3_count ) {
 				return $fail( 'unsupported_structure', 'Card headings cannot be read.' );
 			}
-			$title_valid = false;
-			$h3_tags     = isset( $h3_matches[0] ) && is_array( $h3_matches[0] ) ? $h3_matches[0] : array();
+		$title_valid = false;
+		$title_plain = false;
+		$h3_tags     = isset( $h3_matches[0] ) && is_array( $h3_matches[0] ) ? $h3_matches[0] : array();
 			foreach ( $h3_tags as $h3_match ) {
 				$h3_tag    = (string) $h3_match[0];
 				$h3_offset = (int) $h3_match[1];
@@ -365,6 +392,9 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 					continue;
 				}
 				$inner = substr( $slice, $h3_end, $close_pos - $h3_end );
+			if ( 0 === preg_match( '/<a(?![A-Za-z0-9])/i', $inner ) ) {
+				$title_plain = true;
+			}
 				if ( preg_match_all( $anchor_pattern, $inner, $inner_anchors, PREG_SET_ORDER ) ) {
 					foreach ( $inner_anchors as $inner_one ) {
 						$inner_tag = (string) $inner_one[0];
@@ -384,7 +414,81 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 				}
 			}
 
-			$agreed = null;
+			$div_count = preg_match_all( $div_pattern, $slice, $div_matches, PREG_OFFSET_CAPTURE );
+		if ( false === $div_count ) {
+			return $fail( 'unsupported_structure', 'Card media cannot be read.' );
+		}
+		$raw_div_count = preg_match_all( '/<div(?![A-Za-z0-9])/i', $slice, $raw_div_matches );
+		if ( false === $raw_div_count || $raw_div_count !== $div_count ) {
+			return $fail( 'unsupported_structure', 'Card media cannot be read.' );
+		}
+		$p_count = preg_match_all( $p_pattern, $slice, $p_matches, PREG_SET_ORDER );
+		if ( false === $p_count ) {
+			return $fail( 'unsupported_structure', 'Card notes cannot be read.' );
+		}
+		$raw_p_count = preg_match_all( '/<p(?![A-Za-z0-9])/i', $slice, $raw_p_matches );
+		if ( false === $raw_p_count || $raw_p_count !== $p_count ) {
+			return $fail( 'unsupported_structure', 'Card notes cannot be read.' );
+		}
+		$img_count = preg_match_all( $img_pattern, $slice, $img_matches );
+		if ( false === $img_count ) {
+			return $fail( 'unsupported_structure', 'Card images cannot be read.' );
+		}
+		$raw_img_count = preg_match_all( '/<img(?![A-Za-z0-9])/i', $slice, $raw_img_matches );
+		if ( false === $raw_img_count || $raw_img_count !== $img_count ) {
+			return $fail( 'unsupported_structure', 'Card images cannot be read.' );
+		}
+
+		$media_div_ok = false;
+		$div_tags     = isset( $div_matches[0] ) && is_array( $div_matches[0] ) ? $div_matches[0] : array();
+		foreach ( $div_tags as $div_match ) {
+			$div_tag = (string) $div_match[0];
+			$div_off = (int) $div_match[1];
+			if ( 1 !== preg_match( $class_pattern, $div_tag, $div_class_match ) ) {
+				continue;
+			}
+			$dctoken = (string) $div_class_match[1];
+			$dcfirst = strlen( $dctoken ) > 0 ? $dctoken[0] : '';
+			$dcinner = ( '"' === $dcfirst || '\'' === $dcfirst ) ? substr( $dctoken, 1, strlen( $dctoken ) - 2 ) : $dctoken;
+			$dcparts = preg_split( '/\s+/', $dcinner );
+			if ( ! is_array( $dcparts ) || ! in_array( 'pfoa-cat-card-media', $dcparts, true ) ) {
+				continue;
+			}
+			$div_end        = $div_off + strlen( $div_tag );
+			$div_close_pos  = stripos( $slice, '</div', $div_end );
+			if ( false === $div_close_pos ) {
+				continue;
+			}
+			$div_inner = substr( $slice, $div_end, $div_close_pos - $div_end );
+			if ( 1 === preg_match( $img_pattern, $div_inner ) ) {
+				$media_div_ok = true;
+				break;
+			}
+		}
+
+		$note_found   = false;
+		$status_found = false;
+		foreach ( $p_matches as $p_one ) {
+			$p_tag = (string) $p_one[0];
+			if ( 1 !== preg_match( $class_pattern, $p_tag, $p_class_match ) ) {
+				continue;
+			}
+			$pctoken = (string) $p_class_match[1];
+			$pcfirst = strlen( $pctoken ) > 0 ? $pctoken[0] : '';
+			$pcinner = ( '"' === $pcfirst || '\'' === $pcfirst ) ? substr( $pctoken, 1, strlen( $pctoken ) - 2 ) : $pctoken;
+			$pcparts = preg_split( '/\s+/', $pcinner );
+			if ( ! is_array( $pcparts ) ) {
+				continue;
+			}
+			if ( in_array( 'pfoa-cat-card-note', $pcparts, true ) ) {
+				$note_found = true;
+			}
+			if ( in_array( 'pfoa-cat-card-status', $pcparts, true ) ) {
+				$status_found = true;
+			}
+		}
+
+		$agreed = null;
 			if ( count( $dialog_nonempty ) >= 2 && 1 === count( array_unique( $dialog_nonempty ) ) ) {
 				$candidate = (string) $dialog_nonempty[0];
 				if ( 1 === preg_match( $slug_pattern, $candidate ) ) {
@@ -392,11 +496,32 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 				}
 			}
 
-			$stored_id = count( $open_valid ) === 1 ? (string) $open_valid[0] : null;
-			if ( null !== $stored_id ) {
-				if ( ! $article_has_token || ! $media_valid || ! $title_valid || null === $agreed ) {
+		$stored_id = count( $open_valid ) === 1 ? (string) $open_valid[0] : null;
+		if ( null !== $stored_id ) {
+			if ( $article_is_incomplete ) {
+				if ( ! $article_has_token
+					|| $article_pair_count > 1
+					|| 0 !== count( $dialog_all )
+					|| $media_valid
+					|| $title_valid
+					|| ! $media_div_ok
+					|| ! $title_plain
+					|| ! $note_found
+					|| ( $status_found && $article_pair_count > 0 )
+				) {
 					return $fail( 'ambiguous_card', 'Card ownership cannot be settled.' );
 				}
+				$derived[] = array(
+					'start'     => $start,
+					'end'       => $end,
+					'slice'     => $slice,
+					'stored_id' => $stored_id,
+					'agreed'    => null,
+					'category'  => 'id-incomplete',
+				);
+			} elseif ( ! $article_has_token || ! $media_valid || ! $title_valid || null === $agreed ) {
+				return $fail( 'ambiguous_card', 'Card ownership cannot be settled.' );
+			} else {
 				$derived[] = array(
 					'start'     => $start,
 					'end'       => $end,
@@ -405,7 +530,8 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 					'agreed'    => $agreed,
 					'category'  => 'id',
 				);
-			} elseif ( $article_has_token && $media_valid && $title_valid && null !== $agreed ) {
+			}
+		} elseif ( $article_has_token && $media_valid && $title_valid && null !== $agreed ) {
 				$derived[] = array(
 					'start'     => $start,
 					'end'       => $end,
@@ -468,8 +594,8 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 			if ( 1 !== count( $matches ) ) {
 				return $fail( 'conflicting_claims', 'A card span carries conflicting trusted claims.' );
 			}
-			$proof = $matches[0];
-			if ( 'id' === $item['category'] ) {
+		$proof = $matches[0];
+		if ( 'id' === $item['category'] || 'id-incomplete' === $item['category'] ) {
 				if ( $proof['profile_id'] !== $item['stored_id'] ) {
 					return $fail( 'conflicting_claims', 'Trusted claim disagrees with the stored marker.' );
 				}
@@ -487,8 +613,8 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 				'end'        => $item['end'],
 				'slice'      => $item['slice'],
 				'profile_id' => (string) $proof['profile_id'],
-				'slot'       => (string) $proof['slot'],
-				'kind'       => 'id' === $item['category'] ? 'id-owned' : 'legacy-proven',
+			'slot'       => (string) $proof['slot'],
+			'kind'       => ( 'id' === $item['category'] || 'id-incomplete' === $item['category'] ) ? 'id-owned' : 'legacy-proven',
 			);
 		}
 
