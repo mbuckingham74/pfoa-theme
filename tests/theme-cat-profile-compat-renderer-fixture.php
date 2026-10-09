@@ -166,6 +166,7 @@ function fixture_base_complete( $post_id = 42 ) {
 		'post_id'         => $post_id,
 		'post_type'       => 'pfoa_cat',
 		'description_raw' => '<p>Hello</p>',
+		'record_status'   => '',
 		'publication'     => array( 'complete' => true, 'templated' => false, 'has_required_card_image' => true ),
 		'lifecycle'       => array( 'effectively_pending' => false ),
 		'youtube_id'      => '',
@@ -179,6 +180,7 @@ function fixture_base_incomplete( $post_id = 43 ) {
 		'post_id'         => $post_id,
 		'post_type'       => 'pfoa_cat',
 		'description_raw' => '',
+		'record_status'   => 'Available',
 		'publication'     => array( 'complete' => false, 'templated' => false, 'has_required_card_image' => false ),
 		'lifecycle'       => array( 'effectively_pending' => false ),
 		'youtube_id'      => '',
@@ -208,7 +210,7 @@ fixture_assert( false === strpos( $html, '<article' ), 'complete: no article she
 fixture_assert( false === strpos( $html, '<header' ), 'complete: no header shell' );
 fixture_assert( false === strpos( $html, 'entry-content' ), 'complete: no entry-content shell' );
 
-// (2) Incomplete with legacy present.
+// (2) Incomplete with legacy present (record_status drives status).
 $profile = fixture_base_incomplete( 43 );
 $html    = pfoa_theme_render_cat_profile_compat( $profile );
 fixture_assert( false !== strpos( $html, '<h1 class="pfoa-cat-profile-title">Mittens</h1>' ), 'incomplete: title' );
@@ -220,21 +222,53 @@ fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-profile-note">Full 
 fixture_assert( false === strpos( $html, 'pfoa-cat-profile-image' ), 'incomplete: no image' );
 fixture_assert( false === strpos( $html, 'pfoa-cat-profile-description' ), 'incomplete: no description' );
 
-// (3) Incomplete legacy null: status/members omitted (fail-closed limitation proof).
-$profile           = fixture_base_incomplete( 43 );
-$profile['legacy'] = null;
-$html              = pfoa_theme_render_cat_profile_compat( $profile );
+// (2b) Grouped incomplete with record_status='Pending' and matching legacy.status.
+$profile                  = fixture_base_incomplete( 43 );
+$profile['record_status']  = 'Pending';
+$profile['legacy']['status'] = 'Pending';
+$html = pfoa_theme_render_cat_profile_compat( $profile );
+fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-profile-status">Pending</p>' ), 'grouped-pending: status shown' );
+fixture_assert( false !== strpos( $html, '<ul class="pfoa-cat-profile-members"' ), 'grouped-pending: members ul' );
+fixture_assert( false !== strpos( $html, '<li>Alpha</li>' ), 'grouped-pending: member Alpha' );
+fixture_assert( false !== strpos( $html, '<li>Beta</li>' ), 'grouped-pending: member Beta' );
+fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-profile-note">Full profile coming soon.</p>' ), 'grouped-pending: coming-soon note' );
+
+// (3) Incomplete legacy null with populated record_status: status + note rendered, members omitted.
+$profile                 = fixture_base_incomplete( 43 );
+$profile['record_status'] = 'Available';
+$profile['legacy']       = null;
+$html                    = pfoa_theme_render_cat_profile_compat( $profile );
 fixture_assert( false !== strpos( $html, '<h1 class="pfoa-cat-profile-title">Mittens</h1>' ), 'legacy-null: title still present' );
-fixture_assert( false === strpos( $html, 'pfoa-cat-profile-status' ), 'legacy-null: status omitted' );
+fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-profile-status">Available</p>' ), 'legacy-null: status rendered from record_status' );
 fixture_assert( false === strpos( $html, 'pfoa-cat-profile-members' ), 'legacy-null: members omitted' );
 fixture_assert( false !== strpos( $html, 'Full profile coming soon.' ), 'legacy-null: coming-soon still present' );
 
-// (3b) Incomplete legacy present but empty status/members: both omitted, note remains.
-$profile           = fixture_base_incomplete( 43 );
-$profile['legacy'] = array( 'status' => '', 'members' => array() );
-$html              = pfoa_theme_render_cat_profile_compat( $profile );
+// (3b) Incomplete legacy present but empty record_status/members: both omitted, note remains.
+$profile                  = fixture_base_incomplete( 43 );
+$profile['record_status']  = '';
+$profile['legacy']        = array( 'status' => '', 'members' => array() );
+$html                     = pfoa_theme_render_cat_profile_compat( $profile );
 fixture_assert( false === strpos( $html, 'pfoa-cat-profile-status' ), 'legacy-empty: status omitted when empty string' );
 fixture_assert( false === strpos( $html, 'pfoa-cat-profile-members' ), 'legacy-empty: members omitted when empty list' );
+fixture_assert( false !== strpos( $html, 'Full profile coming soon.' ), 'legacy-empty: coming-soon still present' );
+
+// (3c) Empty record_status with legacy null: no status <p>, note remains, members omitted.
+$profile                  = fixture_base_incomplete( 43 );
+$profile['record_status']  = '';
+$profile['legacy']        = null;
+$html                     = pfoa_theme_render_cat_profile_compat( $profile );
+fixture_assert( false === strpos( $html, 'pfoa-cat-profile-status' ), 'empty-status-null-legacy: no status p' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-profile-members' ), 'empty-status-null-legacy: members omitted' );
+fixture_assert( false !== strpos( $html, 'Full profile coming soon.' ), 'empty-status-null-legacy: coming-soon still present' );
+
+// (3d) Empty record_status with legacy present: no status <p>, members still render, note remains.
+$profile                  = fixture_base_incomplete( 43 );
+$profile['record_status']  = '';
+$profile['legacy']        = array( 'status' => 'Available', 'members' => array( 'Alpha', 'Beta' ) );
+$html                     = pfoa_theme_render_cat_profile_compat( $profile );
+fixture_assert( false === strpos( $html, 'pfoa-cat-profile-status' ), 'empty-status-with-legacy: no status p' );
+fixture_assert( false !== strpos( $html, '<li>Alpha</li>' ), 'empty-status-with-legacy: members still render' );
+fixture_assert( false !== strpos( $html, 'Full profile coming soon.' ), 'empty-status-with-legacy: coming-soon still present' );
 
 // (4) Templated does not fork markup.
 $plain_complete = fixture_base_complete( 42 );
@@ -331,6 +365,7 @@ fixture_assert( false === strpos( $html, '<script>' ), 'xss: raw script absent i
 fixture_assert( false !== strpos( $html, esc_html( '<script>alert("t")</script>' ) ), 'xss: title escaped' );
 fixture_assert( false !== strpos( $html, 'data-pfoa-cat-profile="a&quot;b&lt;c&gt;"' ), 'xss: slug attr escaped' );
 $profile = fixture_base_incomplete( 46 );
+$profile['record_status'] = '<b>Bad</b>';
 $profile['legacy'] = array(
 	'status'  => '<b>Bad</b>',
 	'members' => array( '<img src=x onerror=alert(1)>' ),
@@ -377,10 +412,16 @@ foreach ( array( 'add_action', 'add_filter', 'add_shortcode', 'register_' ) as $
 foreach ( array( 'update_option', 'wp_insert', 'update_post_meta', 'delete_' ) as $needle ) {
 	fixture_assert( false === strpos( $source, $needle ), 'file source has no ' . $needle );
 }
-foreach ( array( 'pfoa_cat_', 'get_post_meta', 'metadata_exists', '_pfoa_cat_' ) as $needle ) {
+foreach ( array( 'pfoa_cat_', 'get_post_meta', 'metadata_exists', '_pfoa_cat_', '_pfoa_' ) as $needle ) {
+	fixture_assert( false === strpos( $source, $needle ), 'file source has no ' . $needle );
+}
+foreach ( array( 'post_status', 'do_action', '$wpdb' ) as $needle ) {
+	fixture_assert( false === strpos( $source, $needle ), 'file source has no ' . $needle );
+}
+foreach ( array( 'wp_insert', 'wp_update', 'wp_delete' ) as $needle ) {
 	fixture_assert( false === strpos( $source, $needle ), 'file source has no ' . $needle );
 }
 $functions_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
 fixture_assert( false === strpos( $functions_source, 'theme-cat-profile-compat-renderer' ), 'functions.php does not require new file' );
 
-fwrite( STDOUT, "PASS: theme cat profile compat renderer fixture (complete, incomplete, templated, legacy-null, pending, image, description, gallery, video, escaping, missing, heading, no-writes, no-hooks)\n" );
+fwrite( STDOUT, "PASS: theme cat profile compat renderer fixture (complete, incomplete record_status, grouped pending, legacy-null status, empty status, templated, pending, image, description, gallery, video, escaping, missing, heading, no-writes, no-hooks)\n" );

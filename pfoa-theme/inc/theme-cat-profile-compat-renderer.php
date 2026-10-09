@@ -15,17 +15,18 @@
  *     'post_id'         => int,
  *     'post_type'       => 'pfoa_cat',
  *     'description_raw' => string,
+ *     'record_status'   => string, // Raw status text, '' when none; never null.
  *     'publication'     => array( 'complete' => bool, 'templated' => bool ),
  *     'lifecycle'       => array( 'effectively_pending' => bool ),
  *     'youtube_id'      => string,
  *     'legacy'          => array(
- *       'status'  => string,
+ *       'status'  => string, // Duplicates top-level record_status.
  *       'members' => string[],
- *     )|null, // null = no grouped data: status and members omitted.
+ *     )|null, // null = no grouped data: members omitted, status still from record_status.
  *   )
  *
- * Known limitation: when legacy is null the incomplete branch omits status
- * and members entirely (fail-closed, nothing invented).
+ * Incomplete status is read from top-level record_status only ('' omits the
+ * status line); members still come only from legacy when present.
  *
  * @package PFOA
  */
@@ -46,8 +47,8 @@ if ( ! function_exists( 'pfoa_theme_render_cat_profile_compat' ) ) {
 	 *
 	 * Defensive and side-effect free: validates schema, id, and type;
 	 * emits only the detail wrapper (single/content shells stay with the
-	 * calling template); incomplete records render title plus grouped data
-	 * when present plus a coming-soon note; complete records render title,
+	 * calling template); incomplete records render title plus record_status
+	 * when present plus grouped members when present plus a coming-soon note; complete records render title,
 	 * pending badge, primary image, filtered description, delegated gallery,
 	 * and validated video. Templated flag does not fork markup.
 	 *
@@ -93,19 +94,19 @@ if ( ! function_exists( 'pfoa_theme_render_cat_profile_compat' ) ) {
 				esc_html( $title )
 			);
 
-			$legacy = isset( $profile_data['legacy'] ) && is_array( $profile_data['legacy'] )
-				? $profile_data['legacy']
-				: null;
+		$record_status = isset( $profile_data['record_status'] ) ? (string) $profile_data['record_status'] : '';
+		if ( '' !== $record_status ) {
+			$html .= sprintf( '<p class="pfoa-cat-profile-status">%s</p>', esc_html( $record_status ) );
+		}
 
-			if ( null !== $legacy ) {
-				$status = isset( $legacy['status'] ) ? (string) $legacy['status'] : '';
-				if ( '' !== $status ) {
-					$html .= sprintf( '<p class="pfoa-cat-profile-status">%s</p>', esc_html( $status ) );
-				}
+		$legacy = isset( $profile_data['legacy'] ) && is_array( $profile_data['legacy'] )
+			? $profile_data['legacy']
+			: null;
 
-				$members = isset( $legacy['members'] ) && is_array( $legacy['members'] )
-					? $legacy['members']
-					: array();
+		if ( null !== $legacy ) {
+			$members = isset( $legacy['members'] ) && is_array( $legacy['members'] )
+				? $legacy['members']
+				: array();
 
 				if ( array() !== $members ) {
 					$html .= '<ul class="pfoa-cat-profile-members" aria-label="' . esc_attr__( 'Members', 'pfoa-theme' ) . '">';
