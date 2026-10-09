@@ -26,6 +26,7 @@ if ( ! defined( 'PFOA_CAT_PROFILE_DATA_SCHEMA_VERSION' ) ) {
 $GLOBALS['fixture_db_touched']      = false;
 $GLOBALS['fixture_hook_registered'] = false;
 $GLOBALS['fixture_forbidden_read']  = false;
+$GLOBALS['fixture_baseline_helper_called'] = false;
 $GLOBALS['fixture_posts']           = array();
 $GLOBALS['fixture_snapshots']       = array();
 
@@ -173,6 +174,8 @@ function metadata_exists( $type, $id, $key ) {
 }
 
 function pfoa_cat_migrated_baseline_slugs() {
+	$GLOBALS['fixture_baseline_helper_called'] = true;
+
 	return array(
 		'mary-paul',
 		'bongo',
@@ -407,11 +410,69 @@ fixture_seed_pool();
 $selector_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/inc/theme-cat-cards-compat-selector.php' );
 fixture_assert( false !== strpos( $selector_source, "class_exists( 'WP_Query' )" ), 'missing dep: guards query layer' );
 fixture_assert( false !== strpos( $selector_source, "function_exists( 'pfoa_cat_get_profile_data' )" ), 'missing dep: guards neutral provider' );
-fixture_assert( false !== strpos( $selector_source, 'pfoa_cat_migrated_baseline_slugs' ), 'baseline: prefers provider baseline helper' );
+fixture_assert( false === strpos( $selector_source, 'pfoa_cat_migrated_baseline_slugs' ), 'baseline: no provider helper reference' );
 fixture_assert( false !== strpos( $selector_source, "'sable-mom'" ), 'baseline: internal fallback copy present' );
+fixture_assert( false !== strpos( $selector_source, "'mary-paul'" ), 'baseline: theme-owned order present' );
+fixture_assert( false === $GLOBALS['fixture_baseline_helper_called'], 'baseline: helper never called' );
 fixture_assert( false !== strpos( $selector_source, "'posts_per_page' => -1" ), 'query: unbounded count base arg present' );
 fixture_assert( false !== strpos( $selector_source, "'no_found_rows'" ), 'query: no-totals base arg present' );
 fixture_assert( false !== strpos( $selector_source, "'post_name__in'" ), 'query: seeded slug arg present' );
+
+// (14b) Declared provider schema 2.0 fails the whole selection closed even
+// with valid 1.0 snapshots (isolated subprocess; constants cannot be
+// redefined in-process).
+$declared_selector_path = dirname( __DIR__ ) . '/pfoa-theme/inc/theme-cat-cards-compat-selector.php';
+$declared_sub_script = <<<'SUBPHP'
+<?php
+declare(strict_types=1);
+define( 'ABSPATH', sys_get_temp_dir() . '/' );
+define( 'PFOA_CAT_PROFILE_DATA_SCHEMA_VERSION', '2.0' );
+class WP_Post {
+	public $ID = 1;
+	public $post_name = 'mary-paul';
+	public $post_title = 'Mary Paul';
+	public $post_type = 'pfoa_cat';
+	public $post_status = 'publish';
+	public $post_date = '2026-01-01 10:00:00';
+}
+class WP_Query {
+	public $posts = array();
+	public function __construct( $args = array() ) {
+		$post = new WP_Post();
+		$this->posts = array( $post );
+	}
+}
+function pfoa_cat_get_profile_data( $post_id ) {
+	return array(
+		'schema_version' => '1.0',
+		'post_id'        => 1,
+		'post_type'      => 'pfoa_cat',
+		'post_status'    => 'publish',
+		'name'           => 'Mary Paul',
+		'publication'    => array( 'has_required_card_image' => true ),
+		'lifecycle'      => array( 'eligible_for_adoptable' => true ),
+	);
+}
+require $argv[1];
+$result = pfoa_theme_select_compat_cards( array() );
+if ( 'failure' === $result['status'] && array() === $result['snapshots'] ) {
+	echo "DECLARED_SCHEMA_FAIL_CLOSED_PASS\n";
+	exit( 0 );
+}
+fwrite( STDERR, "declared schema did not fail closed\n" );
+exit( 1 );
+SUBPHP;
+$declared_tmp = tempnam( sys_get_temp_dir(), 'pfoa_decl_schema_' );
+fixture_assert( false !== $declared_tmp, 'declared schema: temp file created' );
+file_put_contents( $declared_tmp, $declared_sub_script );
+$declared_cmd = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( $declared_tmp ) . ' ' . escapeshellarg( $declared_selector_path ) . ' 2>&1';
+$declared_output = array();
+$declared_code = 1;
+exec( $declared_cmd, $declared_output, $declared_code );
+@unlink( $declared_tmp );
+$declared_joined = implode( "\n", $declared_output );
+fixture_assert( 0 === $declared_code, 'declared schema 2.0: subprocess exit 0' );
+fixture_assert( false !== strpos( $declared_joined, 'DECLARED_SCHEMA_FAIL_CLOSED_PASS' ), 'declared schema 2.0: fail-closed PASS marker' );
 
 // (15) No hooks, writes, or forbidden reads at require/select time.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during selection' );

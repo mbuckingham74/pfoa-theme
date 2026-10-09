@@ -14,11 +14,10 @@
  * only, never membership restrictions: every other eligible record is
  * appended so newly published profiles appear without editing the page.
  *
- * Baseline choice: the fixed migrated baseline order is taken from the
- * provider baseline helper whenever that helper exists; otherwise an internal
- * fallback copy of the same fixed list is used. A missing or malformed
- * provider list fails the whole selection closed instead of silently
- * substituting an ad-hoc order.
+ * Baseline choice: the fixed migrated baseline order is theme-owned in the
+ * exact fixed order listed in this file. No provider helper is consulted;
+ * newcomers sort first in query order and baseline records follow in this
+ * fixed theme-owned order.
  *
  * Pending records stay listed: pending-style flags are never used as
  * filters. Lifecycle state is honoured only through the single
@@ -82,45 +81,29 @@ if ( ! function_exists( 'pfoa_theme_select_compat_cards' ) ) {
 			);
 		}
 
-		if ( function_exists( 'pfoa_cat_migrated_baseline_slugs' ) ) {
-			$provided = pfoa_cat_migrated_baseline_slugs();
-
-			if ( ! is_array( $provided ) || array() === $provided ) {
-				return array(
-					'status'    => 'failure',
-					'snapshots' => array(),
-					'error'     => 'baseline-unavailable',
-				);
-			}
-
-			foreach ( $provided as $candidate ) {
-				if ( ! is_string( $candidate ) || '' === trim( $candidate ) ) {
-					return array(
-						'status'    => 'failure',
-						'snapshots' => array(),
-						'error'     => 'baseline-unavailable',
-					);
-				}
-			}
-
-			$baseline_slugs = array_values( $provided );
-		} else {
-			$baseline_slugs = array(
-				'mary-paul',
-				'bongo',
-				'athena-hunter',
-				'sonny',
-				'shadow',
-				'oliver-isaac',
-				'spencer-thompson-wilbur',
-				'sugar-spice',
-				'picasso',
-				'martone',
-				'newest-kittens',
-				'storm-tempest',
-				'sable-mom',
+		if ( defined( 'PFOA_CAT_PROFILE_DATA_SCHEMA_VERSION' ) && '1.0' !== constant( 'PFOA_CAT_PROFILE_DATA_SCHEMA_VERSION' ) ) {
+			return array(
+				'status'    => 'failure',
+				'snapshots' => array(),
+				'error'     => 'invalid-snapshot',
 			);
 		}
+
+		$baseline_slugs = array(
+			'mary-paul',
+			'bongo',
+			'athena-hunter',
+			'sonny',
+			'shadow',
+			'oliver-isaac',
+			'spencer-thompson-wilbur',
+			'sugar-spice',
+			'picasso',
+			'martone',
+			'newest-kittens',
+			'storm-tempest',
+			'sable-mom',
+		);
 
 		if ( array() === $baseline_slugs ) {
 			return array(
@@ -263,16 +246,6 @@ if ( ! function_exists( 'pfoa_theme_select_compat_cards' ) ) {
 			$is_explicit = true;
 		}
 
-		$expected_schema = '1.0';
-
-		if ( defined( 'PFOA_CAT_PROFILE_DATA_SCHEMA_VERSION' ) ) {
-			$declared = constant( 'PFOA_CAT_PROFILE_DATA_SCHEMA_VERSION' );
-
-			if ( is_string( $declared ) && '' !== $declared ) {
-				$expected_schema = $declared;
-			}
-		}
-
 		$eligible = array();
 
 		foreach ( $ordered_posts as $post ) {
@@ -288,9 +261,7 @@ if ( ! function_exists( 'pfoa_theme_select_compat_cards' ) ) {
 				);
 			}
 
-			$schema = isset( $snapshot['schema_version'] ) ? $snapshot['schema_version'] : null;
-
-			if ( '1.0' !== $schema && $schema !== $expected_schema ) {
+			if ( ! isset( $snapshot['schema_version'] ) || '1.0' !== $snapshot['schema_version'] ) {
 				return array(
 					'status'    => 'failure',
 					'snapshots' => array(),
