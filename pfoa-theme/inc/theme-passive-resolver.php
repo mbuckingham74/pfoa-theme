@@ -145,6 +145,7 @@ if ( ! function_exists( 'pfoa_theme_resolve_presentation_readiness' ) ) {
 		$cat_passive_available = (
 			is_array( $cat_caps )
 			&& array_key_exists( 'capabilities_version', $cat_caps )
+			&& '1.0' === $cat_caps['capabilities_version']
 		);
 
 		$cat_ownership = $cat_passive_available && isset( $cat_caps['public_ownership'] ) && is_string( $cat_caps['public_ownership'] )
@@ -152,9 +153,12 @@ if ( ! function_exists( 'pfoa_theme_resolve_presentation_readiness' ) ) {
 			: '';
 		$cat_passive_satisfied = (
 			$cat_passive_available
+			&& '1.0' === $cat_caps['capabilities_version']
 			&& array_key_exists( 'neutral_only', $cat_caps )
 			&& true === $cat_caps['neutral_only']
-			&& in_array( $cat_ownership, array( 'neutral', 'theme-neutral' ), true )
+			&& 'neutral-only' === $cat_ownership
+			&& array_key_exists( 'legacy_public_renderers_registered', $cat_caps )
+			&& false === $cat_caps['legacy_public_renderers_registered']
 		);
 
 		// Neutral data is satisfied only when the schema is present and the
@@ -187,6 +191,7 @@ if ( ! function_exists( 'pfoa_theme_resolve_presentation_readiness' ) ) {
 		$gallery_available = (
 			is_array( $gallery_caps )
 			&& array_key_exists( 'capabilities_version', $gallery_caps )
+			&& '1.0' === $gallery_caps['capabilities_version']
 		);
 
 		$gallery_ownership = $gallery_available && isset( $gallery_caps['cat_profile_ownership'] ) && is_string( $gallery_caps['cat_profile_ownership'] )
@@ -198,8 +203,11 @@ if ( ! function_exists( 'pfoa_theme_resolve_presentation_readiness' ) ) {
 			&& true === $gallery_caps['ordinary_gallery_available']
 			&& array_key_exists( 'cat_profile_gallery_owned', $gallery_caps )
 			&& true === $gallery_caps['cat_profile_gallery_owned']
-			&& in_array( $gallery_ownership, array( 'neutral', 'theme-neutral', 'theme' ), true )
-			&& ( ! array_key_exists( 'photobox_dependency_verified', $gallery_caps ) || true === $gallery_caps['photobox_dependency_verified'] )
+			&& 'ordinary+profile' === $gallery_ownership
+			&& array_key_exists( 'dynamic_fragment_support', $gallery_caps )
+			&& true === $gallery_caps['dynamic_fragment_support']
+			&& array_key_exists( 'photobox_dependency_verified', $gallery_caps )
+			&& true === $gallery_caps['photobox_dependency_verified']
 		);
 
 		// e) Bundle: incomplete theme bundles are never ready in this cut.

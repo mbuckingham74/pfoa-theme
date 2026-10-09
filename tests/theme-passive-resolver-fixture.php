@@ -345,7 +345,96 @@ fixture_assert( in_array( 'legacy-plugin-owns-output', $legacy['incompatible_cap
 fixture_assert( 'unavailable' === $legacy['readiness'], 'legacy ownership keeps readiness unavailable' );
 fixture_assert( false === $legacy['compat_ready'] && false === $legacy['current_ready'], 'legacy ownership keeps compat/current false' );
 
+// (8) Future capability contracts via overrides (no function redefinition).
+$future_cat = array(
+	'capabilities_version'               => '1.0',
+	'neutral_schema'                     => '1.0',
+	'neutral_data_available'             => true,
+	'public_ownership'                   => 'neutral-only',
+	'neutral_only'                       => true,
+	'legacy_public_renderers_registered' => false,
+);
+$future_gallery = array(
+	'capabilities_version'        => '1.0',
+	'ordinary_gallery_available'  => true,
+	'cat_profile_gallery_owned'   => true,
+	'cat_profile_ownership'       => 'ordinary+profile',
+	'dynamic_fragment_support'    => true,
+	'photobox_dependency_verified' => true,
+);
+$future = pfoa_theme_resolve_presentation_readiness( null, null, $future_cat, $future_gallery );
+fixture_assert( true === $future['cat_passive_available'], 'future cat passive available with version 1.0' );
+fixture_assert( true === $future['gallery_available'], 'future gallery available with version 1.0' );
+fixture_assert( true === $future['cat_passive_satisfied'], 'future cat passive satisfied under neutral-only contract' );
+fixture_assert( true === $future['gallery_satisfied'], 'future gallery satisfied under ordinary+profile contract' );
+fixture_assert( true === $future['cat_neutral_satisfied'], 'future neutral satisfied when schema present + neutral data available' );
+fixture_assert( 'unavailable' === $future['readiness'], 'future contracts keep readiness unavailable' );
+fixture_assert( false === $future['compat_ready'] && false === $future['current_ready'], 'future contracts keep compat/current false' );
+
+// Future contracts fail closed on missing/false/wrong values.
+$cat_mutations = array(
+	array( 'label' => 'cat-missing-version', 'key' => 'capabilities_version', 'mode' => 'unset' ),
+	array( 'label' => 'cat-version-0.9', 'key' => 'capabilities_version', 'mode' => 'set', 'value' => '0.9' ),
+	array( 'label' => 'cat-version-2.0', 'key' => 'capabilities_version', 'mode' => 'set', 'value' => '2.0' ),
+	array( 'label' => 'cat-missing-ownership', 'key' => 'public_ownership', 'mode' => 'unset' ),
+	array( 'label' => 'cat-ownership-legacy', 'key' => 'public_ownership', 'mode' => 'set', 'value' => 'legacy-plugin' ),
+	array( 'label' => 'cat-ownership-neutral', 'key' => 'public_ownership', 'mode' => 'set', 'value' => 'neutral' ),
+	array( 'label' => 'cat-ownership-theme-neutral', 'key' => 'public_ownership', 'mode' => 'set', 'value' => 'theme-neutral' ),
+	array( 'label' => 'cat-missing-neutral-only', 'key' => 'neutral_only', 'mode' => 'unset' ),
+	array( 'label' => 'cat-neutral-only-false', 'key' => 'neutral_only', 'mode' => 'set', 'value' => false ),
+	array( 'label' => 'cat-missing-legacy-flag', 'key' => 'legacy_public_renderers_registered', 'mode' => 'unset' ),
+	array( 'label' => 'cat-legacy-flag-true', 'key' => 'legacy_public_renderers_registered', 'mode' => 'set', 'value' => true ),
+);
+foreach ( $cat_mutations as $mutation ) {
+	$variant = $future_cat;
+	if ( 'unset' === $mutation['mode'] ) {
+		unset( $variant[ $mutation['key'] ] );
+	} else {
+		$variant[ $mutation['key'] ] = $mutation['value'];
+	}
+	$seen = pfoa_theme_resolve_presentation_readiness( null, null, $variant, $future_gallery );
+	fixture_assert( false === $seen['cat_passive_satisfied'], $mutation['label'] . ': cat satisfied false' );
+	fixture_assert( 'unavailable' === $seen['readiness'], $mutation['label'] . ': readiness unavailable' );
+	fixture_assert( false === $seen['compat_ready'] && false === $seen['current_ready'], $mutation['label'] . ': compat/current stay false' );
+	if ( 'capabilities_version' === $mutation['key'] ) {
+		fixture_assert( false === $seen['cat_passive_available'], $mutation['label'] . ': cat available false on wrong/missing version' );
+	}
+}
+
+$gallery_mutations = array(
+	array( 'label' => 'gallery-missing-version', 'key' => 'capabilities_version', 'mode' => 'unset' ),
+	array( 'label' => 'gallery-version-0.9', 'key' => 'capabilities_version', 'mode' => 'set', 'value' => '0.9' ),
+	array( 'label' => 'gallery-version-2.0', 'key' => 'capabilities_version', 'mode' => 'set', 'value' => '2.0' ),
+	array( 'label' => 'gallery-missing-ownership', 'key' => 'cat_profile_ownership', 'mode' => 'unset' ),
+	array( 'label' => 'gallery-ownership-ordinary-only', 'key' => 'cat_profile_ownership', 'mode' => 'set', 'value' => 'ordinary-only' ),
+	array( 'label' => 'gallery-ownership-neutral', 'key' => 'cat_profile_ownership', 'mode' => 'set', 'value' => 'neutral' ),
+	array( 'label' => 'gallery-ownership-theme', 'key' => 'cat_profile_ownership', 'mode' => 'set', 'value' => 'theme' ),
+	array( 'label' => 'gallery-missing-owned', 'key' => 'cat_profile_gallery_owned', 'mode' => 'unset' ),
+	array( 'label' => 'gallery-owned-false', 'key' => 'cat_profile_gallery_owned', 'mode' => 'set', 'value' => false ),
+	array( 'label' => 'gallery-missing-ordinary', 'key' => 'ordinary_gallery_available', 'mode' => 'unset' ),
+	array( 'label' => 'gallery-ordinary-false', 'key' => 'ordinary_gallery_available', 'mode' => 'set', 'value' => false ),
+	array( 'label' => 'gallery-missing-fragment', 'key' => 'dynamic_fragment_support', 'mode' => 'unset' ),
+	array( 'label' => 'gallery-fragment-false', 'key' => 'dynamic_fragment_support', 'mode' => 'set', 'value' => false ),
+	array( 'label' => 'gallery-missing-photobox', 'key' => 'photobox_dependency_verified', 'mode' => 'unset' ),
+	array( 'label' => 'gallery-photobox-false', 'key' => 'photobox_dependency_verified', 'mode' => 'set', 'value' => false ),
+);
+foreach ( $gallery_mutations as $mutation ) {
+	$variant = $future_gallery;
+	if ( 'unset' === $mutation['mode'] ) {
+		unset( $variant[ $mutation['key'] ] );
+	} else {
+		$variant[ $mutation['key'] ] = $mutation['value'];
+	}
+	$seen = pfoa_theme_resolve_presentation_readiness( null, null, $future_cat, $variant );
+	fixture_assert( false === $seen['gallery_satisfied'], $mutation['label'] . ': gallery satisfied false' );
+	fixture_assert( 'unavailable' === $seen['readiness'], $mutation['label'] . ': readiness unavailable' );
+	fixture_assert( false === $seen['compat_ready'] && false === $seen['current_ready'], $mutation['label'] . ': compat/current stay false' );
+	if ( 'capabilities_version' === $mutation['key'] ) {
+		fixture_assert( false === $seen['gallery_available'], $mutation['label'] . ': gallery available false on wrong/missing version' );
+	}
+}
+
 // No storage/enqueue residue across every resolver path above.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'resolver leaves no DB/enqueue residue' );
 
-fwrite( STDOUT, "PASS: theme passive resolver fixture (switch x4, missing cat/gallery, legacy ownership, bundle, determinism, hooks, freeze)\n" );
+fwrite( STDOUT, "PASS: theme passive resolver fixture (switch x4, missing cat/gallery, legacy ownership, future contracts, bundle, determinism, hooks, freeze)\n" );
