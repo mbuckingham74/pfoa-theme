@@ -269,6 +269,16 @@ $profile = fixture_base_single( 43, false );
 $profile['publication']['has_required_card_image'] = false;
 fixture_assert( '' === pfoa_theme_render_cat_card_compat( $profile ), 'single-incomplete: unmet card image requirement yields empty string' );
 
+// (3c) Fail-closed: missing/invalid flag yields '' even when complete.
+$profile = fixture_base_single( 42, true );
+unset( $profile['publication']['has_required_card_image'] );
+fixture_assert( '' === pfoa_theme_render_cat_card_compat( $profile ), 'single: missing card image flag yields empty string' );
+foreach ( array( 0, '', null, 1, '1' ) as $bad_flag ) {
+	$profile = fixture_base_single( 42, true );
+	$profile['publication']['has_required_card_image'] = $bad_flag;
+	fixture_assert( '' === pfoa_theme_render_cat_card_compat( $profile ), 'single: non-true card image flag yields empty string' );
+}
+
 // (4) Multi complete pair: stored order, explicit + fallback labels, pair classes, no status/note.
 $profile = fixture_base_multi( 42, true, array( 'Alpha', 'Beta' ), array( 101, 102 ), array( 'Alfie', '' ) );
 $html    = pfoa_theme_render_cat_card_compat( $profile );

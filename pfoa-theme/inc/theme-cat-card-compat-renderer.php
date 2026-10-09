@@ -17,7 +17,8 @@
  *     'record_status'  => string, // Raw status text, '' when none; never null.
  *     'publication'    => array(
  *       'complete'               => bool,
- *       'has_required_card_image' => bool, // False = nothing renderable.
+ *       'has_required_card_image' => bool, // Must be exactly true (fail-closed:
+ *                                          // missing/invalid = nothing renderable).
  *     ),
  *     'card_image_id'  => int, // Single-cat Card Image; rendered via the
  *                              // post thumbnail, never read directly here.
@@ -83,7 +84,7 @@ if ( ! function_exists( 'pfoa_theme_render_cat_card_compat' ) ) {
 			: array();
 		$complete    = isset( $publication['complete'] ) ? (bool) $publication['complete'] : false;
 
-		if ( array_key_exists( 'has_required_card_image', $publication ) && false === (bool) $publication['has_required_card_image'] ) {
+		if ( ! array_key_exists( 'has_required_card_image', $publication ) || true !== $publication['has_required_card_image'] ) {
 			return '';
 		}
 
