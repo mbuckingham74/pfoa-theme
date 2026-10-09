@@ -9,6 +9,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+if ( ! defined( 'PFOA_THEME_PASSIVE_RESOLVER_LOADED' ) ) {
+	$resolver_file = __DIR__ . '/inc/theme-passive-resolver.php';
+	if ( file_exists( $resolver_file ) ) {
+		require_once $resolver_file;
+	}
+}
+
 /**
  * Configure theme supports and menu locations.
  *
