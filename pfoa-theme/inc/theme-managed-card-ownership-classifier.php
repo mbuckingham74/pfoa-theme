@@ -333,6 +333,7 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 
 			$dialog_all      = array();
 			$dialog_nonempty = array();
+			$dialog_invalid  = false;
 			$media_valid     = false;
 			$anchor_tags     = isset( $anchor_matches[0] ) && is_array( $anchor_matches[0] ) ? $anchor_matches[0] : array();
 		foreach ( $anchor_tags as $anchor_match ) {
@@ -359,6 +360,7 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 					}
 				}
 			} else {
+				$dialog_invalid = true;
 				$evidence = isset( $dialog_read['values'] ) && is_array( $dialog_read['values'] ) ? $dialog_read['values'] : array( '' );
 				if ( 0 === count( $evidence ) ) {
 					$evidence = array( '' );
@@ -529,7 +531,7 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 					'agreed'    => null,
 					'category'  => 'id-incomplete',
 				);
-			} elseif ( ! $article_has_token || ! $media_valid || ! $title_valid || null === $agreed ) {
+			} elseif ( ! $article_has_token || ! $media_valid || ! $title_valid || null === $agreed || $dialog_invalid ) {
 				return $fail( 'ambiguous_card', 'Card ownership cannot be settled.' );
 			} else {
 				$derived[] = array(
@@ -541,7 +543,7 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 					'category'  => 'id',
 				);
 			}
-		} elseif ( $article_has_token && $media_valid && $title_valid && null !== $agreed ) {
+		} elseif ( $article_has_token && $media_valid && $title_valid && null !== $agreed && ! $dialog_invalid ) {
 				$derived[] = array(
 					'start'     => $start,
 					'end'       => $end,

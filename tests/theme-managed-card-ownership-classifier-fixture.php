@@ -609,6 +609,87 @@ $ac_uq_inv     = oc_inventory_ok( $ac_uq_content, 'ac-unquoted' );
 $ac_uq_result  = oc_classify( 20323, $ac_uq_inv, array( oc_proof( $ac_uq_inv['cards'][0], 101, 'slot-a' ) ), $ac_uq_content );
 oc_assert( true === $ac_uq_result['ok'] && 1 === $ac_uq_result['count_owned'] && 'id-owned' === $ac_uq_result['owned'][0]['kind'], 'ac-unquoted: owned' );
 
+// (ae) Valid complete plus one extra anchor: poisoned dialog claims fail
+// closed through the real pipeline; an unrelated dialog-free link still owns.
+function oc_id_card_extra( $id, $slug, $title, $extra ) {
+	return '<article class="pfoa-cat-card" data-pfoa-profile-id="' . $id . '">'
+		. '<a class="pfoa-cat-card-media" href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '"><img src="https://example.test/' . $slug . '.jpg" alt=""></a>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '">' . $title . '</a></h3>'
+		. $extra . '</article>';
+}
+
+function oc_legacy_card_extra( $slug, $title, $extra ) {
+	return '<article class="pfoa-cat-card">'
+		. '<a class="pfoa-cat-card-media" href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '"><img src="https://example.test/' . $slug . '.jpg" alt=""></a>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '">' . $title . '</a></h3>'
+		. $extra . '</article>';
+}
+
+function oc_extra_fail( $inner, $proofs, $label ) {
+	$content = oc_wrap_cards( $inner );
+	$inv     = oc_inventory_ok( $content, $label );
+	oc_assert_failure( oc_classify( 20323, $inv, $proofs( $inv ), $content ), 'ambiguous_card', $label );
+}
+
+$ae_dup       = '<a href="https://example.test/x/" data-pfoa-cat-dialog="fluffy" data-pfoa-cat-dialog="fluffy">x</a>';
+$ae_prefixed  = '<a href="https://example.test/x/" x:data-pfoa-cat-dialog="fluffy">x</a>';
+$ae_malformed = '<a href="https://example.test/x/" data-pfoa-cat-dialog=fluffy/intruder>x</a>';
+$ae_unrelated = '<a href="https://example.test/read-more/">read more</a>';
+
+// Valid complete controls with the same builder (no extra anchor) still own.
+$ae_valid_id_content = oc_wrap_cards( oc_id_card_extra( 101, 'fluffy', 'Fluffy', '' ) );
+$ae_valid_id_inv     = oc_inventory_ok( $ae_valid_id_content, 'ae-valid-id' );
+$ae_valid_id_result  = oc_classify( 20323, $ae_valid_id_inv, array( oc_proof( $ae_valid_id_inv['cards'][0], 101, 'slot-a' ) ), $ae_valid_id_content );
+oc_assert( true === $ae_valid_id_result['ok'] && 'id-owned' === $ae_valid_id_result['owned'][0]['kind'], 'ae-valid-id: owned' );
+$ae_valid_legacy_content = oc_wrap_cards( oc_legacy_card_extra( 'fluffy', 'Fluffy', '' ) );
+$ae_valid_legacy_inv     = oc_inventory_ok( $ae_valid_legacy_content, 'ae-valid-legacy' );
+$ae_valid_legacy_result  = oc_classify( 20323, $ae_valid_legacy_inv, array( oc_proof( $ae_valid_legacy_inv['cards'][0], 77, 'slot-a', 'fluffy' ) ), $ae_valid_legacy_content );
+oc_assert( true === $ae_valid_legacy_result['ok'] && 'legacy-proven' === $ae_valid_legacy_result['owned'][0]['kind'], 'ae-valid-legacy: owned' );
+
+// ID-owned complete plus one extra poisoned anchor fails closed.
+oc_extra_fail(
+	oc_id_card_extra( 101, 'fluffy', 'Fluffy', $ae_dup ),
+	function ( $inv ) { return array( oc_proof( $inv['cards'][0], 101, 'slot-a' ) ); },
+	'ae-id-extra-dup-attrs'
+);
+oc_extra_fail(
+	oc_id_card_extra( 101, 'fluffy', 'Fluffy', $ae_prefixed ),
+	function ( $inv ) { return array( oc_proof( $inv['cards'][0], 101, 'slot-a' ) ); },
+	'ae-id-extra-prefixed'
+);
+oc_extra_fail(
+	oc_id_card_extra( 101, 'fluffy', 'Fluffy', $ae_malformed ),
+	function ( $inv ) { return array( oc_proof( $inv['cards'][0], 101, 'slot-a' ) ); },
+	'ae-id-extra-malformed-unquoted'
+);
+
+// Proven legacy complete plus one extra poisoned anchor fails closed.
+oc_extra_fail(
+	oc_legacy_card_extra( 'fluffy', 'Fluffy', $ae_dup ),
+	function ( $inv ) { return array( oc_proof( $inv['cards'][0], 77, 'slot-a', 'fluffy' ) ); },
+	'ae-legacy-extra-dup-attrs'
+);
+oc_extra_fail(
+	oc_legacy_card_extra( 'fluffy', 'Fluffy', $ae_prefixed ),
+	function ( $inv ) { return array( oc_proof( $inv['cards'][0], 77, 'slot-a', 'fluffy' ) ); },
+	'ae-legacy-extra-prefixed'
+);
+oc_extra_fail(
+	oc_legacy_card_extra( 'fluffy', 'Fluffy', $ae_malformed ),
+	function ( $inv ) { return array( oc_proof( $inv['cards'][0], 77, 'slot-a', 'fluffy' ) ); },
+	'ae-legacy-extra-malformed-unquoted'
+);
+
+// An unrelated extra link with no dialog claim still owns.
+$ae_rel_id_content = oc_wrap_cards( oc_id_card_extra( 101, 'fluffy', 'Fluffy', $ae_unrelated ) );
+$ae_rel_id_inv     = oc_inventory_ok( $ae_rel_id_content, 'ae-id-extra-unrelated' );
+$ae_rel_id_result  = oc_classify( 20323, $ae_rel_id_inv, array( oc_proof( $ae_rel_id_inv['cards'][0], 101, 'slot-a' ) ), $ae_rel_id_content );
+oc_assert( true === $ae_rel_id_result['ok'] && 'id-owned' === $ae_rel_id_result['owned'][0]['kind'], 'ae-id-extra-unrelated: owned' );
+$ae_rel_legacy_content = oc_wrap_cards( oc_legacy_card_extra( 'fluffy', 'Fluffy', $ae_unrelated ) );
+$ae_rel_legacy_inv     = oc_inventory_ok( $ae_rel_legacy_content, 'ae-legacy-extra-unrelated' );
+$ae_rel_legacy_result  = oc_classify( 20323, $ae_rel_legacy_inv, array( oc_proof( $ae_rel_legacy_inv['cards'][0], 77, 'slot-a', 'fluffy' ) ), $ae_rel_legacy_content );
+oc_assert( true === $ae_rel_legacy_result['ok'] && 'legacy-proven' === $ae_rel_legacy_result['owned'][0]['kind'], 'ae-legacy-extra-unrelated: owned' );
+
 // (ad) The dialog reader file stays inactive: no hooks, and functions.php must not require it.
 $aa_reader_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-dialog-attribute.php' );
 foreach ( array( 'add_action', 'add_filter', 'add_shortcode', 'WP_Query', '$wpdb', 'file_put_contents', 'unlink', 'get_post' ) as $aa_needle ) {

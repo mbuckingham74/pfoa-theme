@@ -507,6 +507,110 @@ pv_assert( true === $inv_sqk['ok'], '10k-sq: inventory ok' );
 $trusted_sqk = pv_trusted( $content_sqk, array( pv_proof( $inv_sqk['cards'][0], 77, 'slot-legacy', 'history' ) ), '10k-sq' );
 pv_assert_success( pv_validate( 20323, $trusted_sqk, array( pv_placement( $trusted_sqk['owned'][0], 'history' ) ), $content_sqk ), '10k-single-quoted-legacy' );
 
+// (10l) Valid complete plus one extra anchor end-to-end: poisoned dialog
+// claims fail closed (classifier ambiguous_card; legacy hand-built span fails
+// unproven_legacy); an unrelated dialog-free link still owns and validates.
+function pv_id_card_extra( $id, $slug, $title, $extra ) {
+	return '<article class="pfoa-cat-card" data-pfoa-profile-id="' . $id . '">'
+		. '<a class="pfoa-cat-card-media" href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '"><img src="https://example.test/' . $slug . '.jpg" alt=""></a>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '">' . $title . '</a></h3>'
+		. $extra . '</article>';
+}
+
+function pv_legacy_card_extra( $slug, $title, $extra ) {
+	return '<article class="pfoa-cat-card">'
+		. '<a class="pfoa-cat-card-media" href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '"><img src="https://example.test/' . $slug . '.jpg" alt=""></a>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog="' . $slug . '">' . $title . '</a></h3>'
+		. $extra . '</article>';
+}
+
+function pv_extra_classifier_fail( $content, $proofs, $label ) {
+	$inv = pfoa_theme_inventory_managed_cards( 20323, $content );
+	pv_assert( true === $inv['ok'], $label . ': inventory ok' );
+	$cls = pfoa_theme_classify_managed_card_ownership( 20323, $inv, $proofs( $inv ), $content );
+	pv_assert( is_array( $cls ) && array_key_exists( 'ok', $cls ) && false === $cls['ok'], $label . ': classifier rejects' );
+	pv_assert( 'ambiguous_card' === $cls['error']['code'], $label . ': classifier code ambiguous_card got ' . $cls['error']['code'] );
+}
+
+function pv_extra_legacy_validator_fail( $card, $label ) {
+	$content = pv_wrap( $card );
+	$class   = pv_hand_classification( array( pv_hand_owned( $content, $card, 77, 'slot-legacy', 'legacy-proven' ) ), array() );
+	pv_assert_failure( pv_validate( 20323, $class, array( pv_placement( $class['owned'][0], 'fluffy' ) ), $content ), 'unproven_legacy', $label );
+}
+
+$pl_dup       = '<a href="https://example.test/x/" data-pfoa-cat-dialog="fluffy" data-pfoa-cat-dialog="fluffy">x</a>';
+$pl_prefixed  = '<a href="https://example.test/x/" x:data-pfoa-cat-dialog="fluffy">x</a>';
+$pl_malformed = '<a href="https://example.test/x/" data-pfoa-cat-dialog=fluffy/intruder>x</a>';
+$pl_unrelated = '<a href="https://example.test/read-more/">read more</a>';
+
+// Valid complete controls with the same builder still own and validate.
+$pl_valid_id_content = pv_wrap( pv_id_card_extra( 101, 'fluffy', 'Fluffy', '' ) );
+$pl_valid_id_inv     = pfoa_theme_inventory_managed_cards( 20323, $pl_valid_id_content );
+pv_assert( true === $pl_valid_id_inv['ok'], '10l-valid-id: inventory ok' );
+$pl_valid_id_trusted = pv_trusted( $pl_valid_id_content, array( pv_proof( $pl_valid_id_inv['cards'][0], 101, 'slot-a' ) ), '10l-valid-id' );
+pv_assert_success( pv_validate( 20323, $pl_valid_id_trusted, array( pv_placement( $pl_valid_id_trusted['owned'][0] ) ), $pl_valid_id_content ), '10l-valid-id' );
+$pl_valid_legacy_content = pv_wrap( pv_legacy_card_extra( 'fluffy', 'Fluffy', '' ) );
+$pl_valid_legacy_inv     = pfoa_theme_inventory_managed_cards( 20323, $pl_valid_legacy_content );
+pv_assert( true === $pl_valid_legacy_inv['ok'], '10l-valid-legacy: inventory ok' );
+$pl_valid_legacy_trusted = pv_trusted( $pl_valid_legacy_content, array( pv_proof( $pl_valid_legacy_inv['cards'][0], 77, 'slot-legacy', 'fluffy' ) ), '10l-valid-legacy' );
+pv_assert_success( pv_validate( 20323, $pl_valid_legacy_trusted, array( pv_placement( $pl_valid_legacy_trusted['owned'][0], 'fluffy' ) ), $pl_valid_legacy_content ), '10l-valid-legacy' );
+
+// ID-owned complete plus one extra poisoned anchor: classifier rejects.
+$pl_id_dup_content = pv_wrap( pv_id_card_extra( 101, 'fluffy', 'Fluffy', $pl_dup ) );
+pv_extra_classifier_fail(
+	$pl_id_dup_content,
+	function ( $inv ) { return array( pv_proof( $inv['cards'][0], 101, 'slot-a' ) ); },
+	'10l-id-extra-dup-attrs'
+);
+$pl_id_fx_content = pv_wrap( pv_id_card_extra( 101, 'fluffy', 'Fluffy', $pl_prefixed ) );
+pv_extra_classifier_fail(
+	$pl_id_fx_content,
+	function ( $inv ) { return array( pv_proof( $inv['cards'][0], 101, 'slot-a' ) ); },
+	'10l-id-extra-prefixed'
+);
+$pl_id_mx_content = pv_wrap( pv_id_card_extra( 101, 'fluffy', 'Fluffy', $pl_malformed ) );
+pv_extra_classifier_fail(
+	$pl_id_mx_content,
+	function ( $inv ) { return array( pv_proof( $inv['cards'][0], 101, 'slot-a' ) ); },
+	'10l-id-extra-malformed-unquoted'
+);
+
+// Legacy complete plus one extra poisoned anchor: classifier rejects and the
+// hand-built span fails the validator end-to-end contract.
+$pl_legacy_dup_card = pv_legacy_card_extra( 'fluffy', 'Fluffy', $pl_dup );
+pv_extra_classifier_fail(
+	pv_wrap( $pl_legacy_dup_card ),
+	function ( $inv ) { return array( pv_proof( $inv['cards'][0], 77, 'slot-legacy', 'fluffy' ) ); },
+	'10l-legacy-extra-dup-attrs-classifier'
+);
+pv_extra_legacy_validator_fail( $pl_legacy_dup_card, '10l-legacy-extra-dup-attrs-validator' );
+$pl_legacy_fx_card = pv_legacy_card_extra( 'fluffy', 'Fluffy', $pl_prefixed );
+pv_extra_classifier_fail(
+	pv_wrap( $pl_legacy_fx_card ),
+	function ( $inv ) { return array( pv_proof( $inv['cards'][0], 77, 'slot-legacy', 'fluffy' ) ); },
+	'10l-legacy-extra-prefixed-classifier'
+);
+pv_extra_legacy_validator_fail( $pl_legacy_fx_card, '10l-legacy-extra-prefixed-validator' );
+$pl_legacy_mx_card = pv_legacy_card_extra( 'fluffy', 'Fluffy', $pl_malformed );
+pv_extra_classifier_fail(
+	pv_wrap( $pl_legacy_mx_card ),
+	function ( $inv ) { return array( pv_proof( $inv['cards'][0], 77, 'slot-legacy', 'fluffy' ) ); },
+	'10l-legacy-extra-malformed-classifier'
+);
+pv_extra_legacy_validator_fail( $pl_legacy_mx_card, '10l-legacy-extra-malformed-validator' );
+
+// An unrelated extra link with no dialog claim still owns and validates.
+$pl_rel_id_content = pv_wrap( pv_id_card_extra( 101, 'fluffy', 'Fluffy', $pl_unrelated ) );
+$pl_rel_id_inv     = pfoa_theme_inventory_managed_cards( 20323, $pl_rel_id_content );
+pv_assert( true === $pl_rel_id_inv['ok'], '10l-id-unrelated: inventory ok' );
+$pl_rel_id_trusted = pv_trusted( $pl_rel_id_content, array( pv_proof( $pl_rel_id_inv['cards'][0], 101, 'slot-a' ) ), '10l-id-unrelated' );
+pv_assert_success( pv_validate( 20323, $pl_rel_id_trusted, array( pv_placement( $pl_rel_id_trusted['owned'][0] ) ), $pl_rel_id_content ), '10l-id-extra-unrelated' );
+$pl_rel_legacy_content = pv_wrap( pv_legacy_card_extra( 'fluffy', 'Fluffy', $pl_unrelated ) );
+$pl_rel_legacy_inv     = pfoa_theme_inventory_managed_cards( 20323, $pl_rel_legacy_content );
+pv_assert( true === $pl_rel_legacy_inv['ok'], '10l-legacy-unrelated: inventory ok' );
+$pl_rel_legacy_trusted = pv_trusted( $pl_rel_legacy_content, array( pv_proof( $pl_rel_legacy_inv['cards'][0], 77, 'slot-legacy', 'fluffy' ) ), '10l-legacy-unrelated' );
+pv_assert_success( pv_validate( 20323, $pl_rel_legacy_trusted, array( pv_placement( $pl_rel_legacy_trusted['owned'][0], 'fluffy' ) ), $pl_rel_legacy_content ), '10l-legacy-extra-unrelated' );
+
 $fnk_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
 pv_assert( false === strpos( $fnk_source, 'theme-managed-card-dialog-attribute' ), 'functions.php does not require dialog reader file' );
 
