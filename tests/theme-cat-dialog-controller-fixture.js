@@ -48,8 +48,8 @@ function GALLERY_FRAG(slug) {
   return '<div class="pfoa-cat-profile" data-pfoa-cat-profile="' + slug + '">' +
     '<h2 class="pfoa-cat-profile-title">T</h2>' +
     '<div data-pfoa-cat-gallery=""><dl><dt>' +
-    '<a href="https://example.test/cats/' + slug + '/photo.jpg">' +
-    '<img src="https://example.test/cats/' + slug + '/photo.jpg" alt="C"></a>' +
+    '<a href="https://example.test/pfoa-cat/' + slug + '/photo.jpg">' +
+    '<img src="https://example.test/pfoa-cat/' + slug + '/photo.jpg" alt="C"></a>' +
     '</dt><dd>Cap</dd></dl><br style="clear: both"></div></div>';
 }
 function YOUTUBE_FRAG(slug) {
@@ -239,8 +239,34 @@ function parseFragHtml(html) {
 }
 class StubDOMParser {
   parseFromString(text, type) {
-    const kids = parseFragHtml(String(text));
-    return { body: { children: kids, childNodes: kids } };
+    const s = String(text);
+    const hasDoctype = /<!doctype/i.test(s);
+    const doctype = hasDoctype ? { name: 'html' } : null;
+    let headKids = [];
+    const headM = /<head[^<>]*>([\s\S]*?)<\/head>/i.exec(s);
+    if (headM) {
+      headKids = parseFragHtml(headM[1]);
+    } else if (/<head[\s>/]/i.test(s)) {
+      headKids = parseFragHtml('<meta>');
+    }
+    let bodyKids;
+    const bodyM = /<body[^<>]*>([\s\S]*?)<\/body>/i.exec(s);
+    if (bodyM) {
+      bodyKids = parseFragHtml(bodyM[1]);
+    } else if (/<html[\s>/]/i.test(s) || /<head[\s>/]/i.test(s) || hasDoctype) {
+      const stripped = s
+        .replace(/<!doctype[^<>]*>/gi, '')
+        .replace(/<\/?html[^<>]*>/gi, '')
+        .replace(/<head[^<>]*>[\s\S]*?<\/head>/gi, '')
+        .replace(/<\/?head[^<>]*>/gi, '');
+      bodyKids = parseFragHtml(stripped);
+    } else {
+      bodyKids = parseFragHtml(s);
+    }
+    const head = { children: headKids, childNodes: headKids };
+    const body = { children: bodyKids, childNodes: bodyKids };
+    const documentElement = /<html[\s>/]/i.test(s) ? { tagName: 'HTML' } : null;
+    return { doctype, documentElement, head, body };
   }
 }
 
@@ -317,11 +343,11 @@ function makeHost(opts) {
   host.dlgBody = dlgBody;
   host.closeBtn = closeBtn;
 
-  const linkA = h('a', { href: 'https://example.test/cats/mittens/', 'data-pfoa-cat-dialog': 'mittens' });
-  const linkB = h('a', { href: 'https://example.test/cats/tiger/', 'data-pfoa-cat-dialog': 'tiger' });
-  const badSlug = h('a', { href: 'https://example.test/cats/x/', 'data-pfoa-cat-dialog': 'Bad_Slug!' });
+  const linkA = h('a', { href: 'https://example.test/pfoa-cat/mittens/', 'data-pfoa-cat-dialog': 'mittens' });
+  const linkB = h('a', { href: 'https://example.test/pfoa-cat/tiger/', 'data-pfoa-cat-dialog': 'tiger' });
+  const badSlug = h('a', { href: 'https://example.test/pfoa-cat/x/', 'data-pfoa-cat-dialog': 'Bad_Slug!' });
   const noHref = h('a', { 'data-pfoa-cat-dialog': 'ghost' });
-  const noSlug = h('a', { href: 'https://example.test/cats/plain/' });
+  const noSlug = h('a', { href: 'https://example.test/pfoa-cat/plain/' });
   body.append(linkA);
   body.append(linkB);
   body.append(badSlug);
@@ -483,7 +509,7 @@ async function testOneClickOneGet() {
   check(call.init && call.init.method === 'GET', 'fragment request uses GET');
   check(call.init && call.init.credentials === 'same-origin', 'fragment request uses same-origin credentials');
   check(call.init && 'signal' in call.init, 'fragment request carries abort signal');
-  check(call.url === 'https://example.test/cats/mittens/?pfoa_cat_fragment=mittens',
+  check(call.url === 'https://example.test/pfoa-cat/mittens/?pfoa_cat_fragment=mittens',
     'fragment URL is canonical base plus encoded slug');
   check(host.dialog.hidden === false, 'eligible open unhides dialog');
 }
@@ -598,7 +624,7 @@ async function testFailedFragmentPreservesCanonical() {
   await tick();
   check(host.dialog.hidden === false, 'failed fragment keeps dialog open');
   check(host.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'failed fragment shows fallback message');
-  check(fallbackHref(host.dlgBody.innerHTML) === 'https://example.test/cats/mittens/',
+  check(fallbackHref(host.dlgBody.innerHTML) === 'https://example.test/pfoa-cat/mittens/',
     'fallback anchors canonical href');
   check(host.providerCalls.init.length === 1, 'failed fragment never initializes galleries');
 
@@ -608,7 +634,7 @@ async function testFailedFragmentPreservesCanonical() {
   host2.pending[0].reject(new Error('boom'));
   await tick();
   check(host2.dialog.hidden === false, 'thrown fetch keeps dialog open');
-  check(fallbackHref(host2.dlgBody.innerHTML) === 'https://example.test/cats/mittens/',
+  check(fallbackHref(host2.dlgBody.innerHTML) === 'https://example.test/pfoa-cat/mittens/',
     'thrown fetch falls back with canonical link');
   check(host2.providerCalls.init.length === 1, 'thrown fetch never initializes galleries');
 }
@@ -749,7 +775,7 @@ async function testInitThrowsFallback() {
   await tick();
   check(host.dlgBody.innerHTML.indexOf('INIT-BOOM') === -1, 'init throw leaves no successful fragment');
   check(host.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'init throw shows fallback');
-  check(fallbackHref(host.dlgBody.innerHTML) === 'https://example.test/cats/mittens/',
+  check(fallbackHref(host.dlgBody.innerHTML) === 'https://example.test/pfoa-cat/mittens/',
     'init throw fallback carries canonical href');
 }
 
@@ -802,7 +828,7 @@ async function testRapidCloseReopen() {
 async function testUnsafeCanonicalLinks() {
   const host = makeHost();
   host.api.start({ documentEpoch: 'e1' });
-  const evil = new El('a', { href: 'https://evil.test/cats/mittens/', 'data-pfoa-cat-dialog': 'mittens' });
+  const evil = new El('a', { href: 'https://evil.test/pfoa-cat/mittens/', 'data-pfoa-cat-dialog': 'mittens' });
   host.body.append(evil);
   const e1 = clickEl(host, evil);
   check(e1.defaultPrevented === false, 'cross-origin slug mismatch does not prevent default');
@@ -814,7 +840,7 @@ async function testUnsafeCanonicalLinks() {
   host.body.append(dl);
   const e3 = clickEl(host, dl);
   check(e3.defaultPrevented === false, 'unsafe data protocol does not prevent default');
-  const mismatch = new El('a', { href: 'https://example.test/cats/tiger/', 'data-pfoa-cat-dialog': 'mittens' });
+  const mismatch = new El('a', { href: 'https://example.test/pfoa-cat/tiger/', 'data-pfoa-cat-dialog': 'mittens' });
   host.body.append(mismatch);
   const e4 = clickEl(host, mismatch);
   check(e4.defaultPrevented === false, 'slug-vs-URL mismatch does not prevent default');
@@ -826,7 +852,7 @@ async function testTargetAndDownloadLinks() {
   const host = makeHost();
   host.api.start({ documentEpoch: 'e1' });
   const t = new El('a', {
-    href: 'https://example.test/cats/mittens/',
+    href: 'https://example.test/pfoa-cat/mittens/',
     'data-pfoa-cat-dialog': 'mittens',
     target: '_blank',
   });
@@ -834,7 +860,7 @@ async function testTargetAndDownloadLinks() {
   const e1 = clickEl(host, t);
   check(e1.defaultPrevented === false, 'target blank does not intercept');
   const d = new El('a', {
-    href: 'https://example.test/cats/mittens/',
+    href: 'https://example.test/pfoa-cat/mittens/',
     'data-pfoa-cat-dialog': 'mittens',
     download: '',
   });
@@ -844,7 +870,7 @@ async function testTargetAndDownloadLinks() {
   check(host.fetchCalls.length === 0, 'target/download perform no fetch');
   check(host.dialog.hidden === true, 'target/download open no dialog');
   const self = new El('a', {
-    href: 'https://example.test/cats/mittens/',
+    href: 'https://example.test/pfoa-cat/mittens/',
     'data-pfoa-cat-dialog': 'mittens',
     target: '_self',
   });
@@ -965,6 +991,82 @@ async function testStartAfterDestroy() {
   check(host.fetchCalls.length === 1, 'fresh controller after destroy fetches');
 }
 
+async function testPfoaCatRouteIntercepts() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  const ev = clickEl(host, host.linkA);
+  check(ev.defaultPrevented === true, 'valid pfoa-cat route prevents default');
+  check(host.fetchCalls.length === 1, 'valid pfoa-cat route fetches');
+  check(host.fetchCalls[0].url === 'https://example.test/pfoa-cat/mittens/?pfoa_cat_fragment=mittens',
+    'valid pfoa-cat route fetch URL is canonical');
+  check(host.dialog.hidden === false, 'valid pfoa-cat route opens dialog');
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'ROUTE-OK') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('ROUTE-OK') !== -1, 'valid pfoa-cat route inserts');
+}
+
+async function testOldRouteRejected() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  const oldSeg = '/' + 'ca' + 'ts' + '/';
+  const oldLink = new El('a', { href: 'https://example.test' + oldSeg + 'mittens/', 'data-pfoa-cat-dialog': 'mittens' });
+  host.body.append(oldLink);
+  const e1 = clickEl(host, oldLink);
+  check(e1.defaultPrevented === false, 'superseded route does not prevent default');
+  check(host.fetchCalls.length === 0, 'superseded route performs no fetch');
+  check(host.dialog.hidden === true, 'superseded route opens no dialog');
+}
+
+async function testMissingOriginFailsClosed() {
+  const host = makeHost();
+  host.win.location = undefined;
+  host.doc.baseURI = '';
+  host.doc.URL = '';
+  host.api.start({ documentEpoch: 'e1' });
+  const ev = clickEl(host, host.linkA);
+  check(ev.defaultPrevented === false, 'missing origin does not prevent default');
+  check(host.fetchCalls.length === 0, 'missing origin performs no fetch');
+  check(host.dialog.hidden === true, 'missing origin opens no dialog');
+}
+
+async function testUnusableOriginFailsClosed() {
+  for (const bad of ['not a url', 'about:blank', '']) {
+    const host = makeHost();
+    host.win.location = { href: bad, origin: '' };
+    host.doc.baseURI = '';
+    host.doc.URL = '';
+    host.api.start({ documentEpoch: 'e1' });
+    const ev = clickEl(host, host.linkA);
+    check(ev.defaultPrevented === false, 'unusable origin (' + (bad === '' ? 'empty' : bad) + ') does not prevent default');
+    check(host.fetchCalls.length === 0, 'unusable origin (' + (bad === '' ? 'empty' : bad) + ') performs no fetch');
+    check(host.dialog.hidden === true, 'unusable origin (' + (bad === '' ? 'empty' : bad) + ') opens no dialog');
+  }
+}
+
+async function testFullDocumentDoctypeEmptyHeadRejected() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({
+    ok: true,
+    epoch: 'e1',
+    text: '<!DOCTYPE html><div class="pfoa-cat-profile" data-pfoa-cat-profile="mittens"><p>Hi</p></div>',
+  }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'doctype with empty head shows fallback');
+  check(host.providerCalls.init.length === 1, 'doctype with empty head never inits');
+}
+
+async function testBareValidStillInserts() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'BARE-OK') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('BARE-OK') !== -1, 'bare valid fragment inserts');
+  check(host.providerCalls.init.length === 2, 'bare valid fragment inits galleries');
+}
+
 (async () => {
   await testInertLoad();
   await testIdempotentStart();
@@ -996,6 +1098,12 @@ async function testStartAfterDestroy() {
   await testInjectionRejected();
   await testValidGalleryAndYouTube();
   await testStartAfterDestroy();
+  await testPfoaCatRouteIntercepts();
+  await testOldRouteRejected();
+  await testMissingOriginFailsClosed();
+  await testUnusableOriginFailsClosed();
+  await testFullDocumentDoctypeEmptyHeadRejected();
+  await testBareValidStillInserts();
   if (failures > 0) {
     process.stdout.write('CAT-DIALOG-CONTROLLER FIXTURE: ' + failures + ' FAILURE(S)\n');
     process.exit(1);

@@ -59,8 +59,10 @@
  * instead); no epoch is required pre-open so open+fetch still occur.
  *
  * Canonical link validation: only same-origin HTTP(S) Cat Profile canonical
- * URLs are eligible (`/cats/<slug>/` with matching slug, `_self` or missing
- * target, no `download`). Unsafe links fail closed pre-open and never reach
+ * URLs are eligible (`/pfoa-cat/<slug>/` with matching slug, `_self` or missing
+ * target, no `download`). A usable established document origin is required:
+ * when the base is missing, unparseable, non-http(s), or has no valid origin,
+ * validation fails closed. Unsafe links fail closed pre-open and never reach
  * fetch or fallback construction. Fallbacks reuse only the originally
  * validated safe href.
  *
@@ -87,7 +89,7 @@
   var SLUG_RE = /^[a-z0-9-]+$/;
   var EPOCH_HEADER = 'X-PFOA-Presentation-Epoch';
   var DEFAULT_DIALOG_ID = 'pfoa-cat-dialog';
-  var CATS_PATH_RE = /^\/cats\/([a-z0-9-]+)\/?$/;
+  var PFOA_CAT_PATH_RE = /^\/pfoa-cat\/([a-z0-9-]+)\/?$/;
 
   var FRAG_ALLOWED_TAGS = {
     DIV: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, P: 1,
@@ -418,6 +420,30 @@
       return null;
     }
 
+    function getValidBase() {
+      var base = getBase();
+      if (!isNonEmptyString(base)) {
+        return null;
+      }
+      var C = urlCtor();
+      if (!C) {
+        return null;
+      }
+      try {
+        var bp = new C(base);
+        var proto = String(bp.protocol || '').toLowerCase();
+        if (proto !== 'http:' && proto !== 'https:') {
+          return null;
+        }
+        if (!bp.origin || bp.origin === 'null') {
+          return null;
+        }
+        return { href: base, origin: bp.origin };
+      } catch (err) {
+        return null;
+      }
+    }
+
     function isEligibleHref(href, slug) {
       if (!isNonEmptyString(href) || !isNonEmptyString(slug)) {
         return false;
@@ -426,10 +452,13 @@
       if (!C) {
         return false;
       }
-      var base = getBase();
+      var validBase = getValidBase();
+      if (!validBase) {
+        return false;
+      }
       var parsed = null;
       try {
-        parsed = base ? new C(href, base) : new C(href);
+        parsed = new C(href, validBase.href);
       } catch (err) {
         return false;
       }
@@ -445,16 +474,12 @@
       if (proto !== 'http:' && proto !== 'https:') {
         return false;
       }
-      if (base) {
-        try {
-          var baseParsed = new C(base);
-          var baseOrigin = baseParsed.origin;
-          if (!baseOrigin || parsed.origin !== baseOrigin) {
-            return false;
-          }
-        } catch (err) {
+      try {
+        if (!parsed.origin || parsed.origin === 'null' || parsed.origin !== validBase.origin) {
           return false;
         }
+      } catch (err) {
+        return false;
       }
       var pathname = '';
       try {
@@ -462,7 +487,7 @@
       } catch (err) {
         return false;
       }
-      var m = CATS_PATH_RE.exec(pathname);
+      var m = PFOA_CAT_PATH_RE.exec(pathname);
       if (!m || m[1] !== slug) {
         return false;
       }
@@ -741,7 +766,7 @@
       return nodeGetAttr(node, name) !== null;
     }
 
-    function parseTopNodes(text) {
+    function parseFragmentDoc(text) {
       var DP = null;
       try {
         DP = (win && win.DOMParser) ? win.DOMParser : null;
@@ -761,19 +786,28 @@
         try {
           var parser = new DP();
           var parsedDoc = parser.parseFromString(text, 'text/html');
-          var b = parsedDoc && parsedDoc.body ? parsedDoc.body : null;
-          var ch = b ? (b.children || b.childNodes || null) : null;
-          if (ch && typeof ch.length === 'number') {
-            var arr = [];
-            for (var i = 0; i < ch.length; i++) {
-              arr.push(ch[i]);
-            }
-            return arr;
+          if (!parsedDoc) {
+            return null;
           }
+          var b = parsedDoc.body || null;
+          var ch = b ? (b.children || b.childNodes || null) : null;
+          if (!ch || typeof ch.length !== 'number') {
+            return null;
+          }
+          var arr = [];
+          for (var i = 0; i < ch.length; i++) {
+            arr.push(ch[i]);
+          }
+          return {
+            top: arr,
+            doctype: parsedDoc.doctype || null,
+            head: parsedDoc.head || null,
+            body: b,
+            documentElement: parsedDoc.documentElement || null
+          };
         } catch (err) {
           return null;
         }
-        return null;
       }
       try {
         if (doc && typeof doc.createElement === 'function') {
@@ -797,7 +831,7 @@
                 for (var k = 0; k < cc.length; k++) {
                   a2.push(cc[k]);
                 }
-                return a2;
+                return { top: a2, doctype: null, head: null, body: null, documentElement: null };
               }
             } catch (err) {
               /* fall through to div */
@@ -822,7 +856,7 @@
                 for (var q = 0; q < kids.length; q++) {
                   a3.push(kids[q]);
                 }
-                return a3;
+                return { top: a3, doctype: null, head: null, body: null, documentElement: null };
               }
             } catch (err) {
               return null;
@@ -841,10 +875,50 @@
       if (!isNonEmptyString(bodyText) || !isNonEmptyString(expectedSlug)) {
         return false;
       }
-      var top = parseTopNodes(bodyText);
-      if (!top) {
+      // Fail-closed raw-text guard (not sanitization): full-document wrappers
+      // never validate as fragments. DOM inspection below still applies.
+      var lowRaw = String(bodyText).toLowerCase();
+      if (lowRaw.indexOf('<!doctype') !== -1 || lowRaw.indexOf('<html') !== -1 ||
+        lowRaw.indexOf('<head') !== -1 || lowRaw.indexOf('<body') !== -1) {
         return false;
       }
+      var parsed = parseFragmentDoc(bodyText);
+      if (!parsed || !parsed.top) {
+        return false;
+      }
+      if (parsed.doctype) {
+        return false;
+      }
+      if (parsed.head) {
+        var hk = null;
+        try {
+          hk = parsed.head.children || parsed.head.childNodes || [];
+        } catch (err) {
+          hk = [];
+        }
+        for (var hi = 0; hi < hk.length; hi++) {
+          var hn = hk[hi];
+          if (!hn) {
+            continue;
+          }
+          if (hn.nodeType === 1) {
+            return false;
+          }
+          if (hn.nodeType === 3) {
+            if (!isBlank(nodeText(hn))) {
+              return false;
+            }
+            continue;
+          }
+          if (hn.nodeType === 8) {
+            continue;
+          }
+          if (nodeTag(hn) !== '') {
+            return false;
+          }
+        }
+      }
+      var top = parsed.top;
       var elementRoots = [];
       for (var i = 0; i < top.length; i++) {
         var n = top[i];
