@@ -3397,11 +3397,40 @@ function pfoa_present_adoption_events( $content ) {
 			continue;
 		}
 
+		// PFOA 0.1.120 — presentation only: optional legacy-gallery anchor
+		// image ID read per event (never written, never inferred). The
+		// canonical reader is preferred when present; otherwise the raw
+		// `_pfoa_event_legacy_anchor_image_id` meta is used. Non-numeric,
+		// zero, and negative values all normalize to 0 (no anchor), which
+		// keeps the pre-0.1.120 rendering path. Conflict validation
+		// (anchor==member, shared anchor) runs fail-closed below after
+		// ordering; a missing DOM node falls back naturally at placement.
+		if ( function_exists( 'pfoa_adoption_event_get_legacy_anchor_image_id' ) ) {
+			$anchor_raw = pfoa_adoption_event_get_legacy_anchor_image_id( $event_id );
+		} else {
+			$anchor_raw = get_post_meta( $event_id, '_pfoa_event_legacy_anchor_image_id', true );
+		}
+
+		$legacy_anchor = 0;
+
+		if ( is_string( $anchor_raw ) ) {
+			$anchor_raw = trim( $anchor_raw );
+		}
+
+		if ( is_int( $anchor_raw ) || is_float( $anchor_raw ) || ( is_string( $anchor_raw ) && is_numeric( $anchor_raw ) ) ) {
+			$legacy_anchor = (int) abs( (float) $anchor_raw );
+
+			if ( 0 >= $legacy_anchor ) {
+				$legacy_anchor = 0;
+			}
+		}
+
 		$events[] = array(
-			'id'      => $event_id,
-			'date'    => trim( (string) $event_date ),
-			'uuid'    => $event_uuid,
-			'members' => $members,
+			'id'            => $event_id,
+			'date'          => trim( (string) $event_date ),
+			'uuid'          => $event_uuid,
+			'members'       => $members,
+			'legacy_anchor' => $legacy_anchor,
 		);
 	}
 
@@ -3427,6 +3456,51 @@ function pfoa_present_adoption_events( $content ) {
 			return (int) $b['id'] > (int) $a['id'] ? 1 : -1;
 		}
 	);
+
+	// PFOA 0.1.120 — presentation only: fail-closed conflict validation
+	// for the optional legacy anchors read above (no throws, no writes).
+	// An anchor equal to any member image_id in ANY event is invalid (the
+	// anchor must be a standalone legacy node, never a member image), and
+	// an anchor shared by two events invalidates both (first-wins would
+	// otherwise merge two events at one node). Invalidated anchors reset
+	// to 0 so those events render exactly as before (member-order anchor
+	// + fallback). Member claiming ($claimed_ids) is untouched.
+	$all_member_ids = array();
+
+	foreach ( $events as $event ) {
+		foreach ( $event['members'] as $event_member ) {
+			if ( is_array( $event_member ) && isset( $event_member['image_id'] ) && 0 < (int) $event_member['image_id'] ) {
+				$all_member_ids[ (int) $event_member['image_id'] ] = true;
+			}
+		}
+	}
+
+	$anchor_counts = array();
+
+	foreach ( $events as $event ) {
+		$event_anchor = isset( $event['legacy_anchor'] ) ? (int) $event['legacy_anchor'] : 0;
+
+		if ( 0 < $event_anchor && ! isset( $all_member_ids[ $event_anchor ] ) ) {
+			$anchor_counts[ $event_anchor ] = isset( $anchor_counts[ $event_anchor ] ) ? (int) $anchor_counts[ $event_anchor ] + 1 : 1;
+		}
+	}
+
+	foreach ( $events as $event_index => $event ) {
+		$event_anchor = isset( $event['legacy_anchor'] ) ? (int) $event['legacy_anchor'] : 0;
+
+		if ( 0 >= $event_anchor ) {
+			continue;
+		}
+
+		if ( isset( $all_member_ids[ $event_anchor ] ) ) {
+			$events[ $event_index ]['legacy_anchor'] = 0;
+			continue;
+		}
+
+		if ( ! isset( $anchor_counts[ $event_anchor ] ) || 1 !== (int) $anchor_counts[ $event_anchor ] ) {
+			$events[ $event_index ]['legacy_anchor'] = 0;
+		}
+	}
 
 	// Step 3: build event markup from snapshots and collect the claimed
 	// snapshot image IDs for legacy suppression below.
@@ -3561,6 +3635,32 @@ function pfoa_present_adoption_events( $content ) {
 
 	$events_html .= '</section>';
 
+	// PFOA 0.1.120 — presentation only: collect the validated explicit
+	// anchors (member $claimed_ids stays untouched). Anchors join discovery
+	// + removal + placement only, so a valid anchor's standalone
+	// .gallery-item is suppressed while the grouped event still renders
+	// its own member images inside .pfoa-adoption-event. Media Library
+	// attachments are never deleted, only DOM-removed.
+	$anchor_ids   = array();
+	$anchor_event = array();
+
+	foreach ( $events as $event ) {
+		$event_anchor = isset( $event['legacy_anchor'] ) ? (int) $event['legacy_anchor'] : 0;
+
+		if ( 0 >= $event_anchor || isset( $anchor_ids[ $event_anchor ] ) ) {
+			continue;
+		}
+
+		$anchor_ids[ $event_anchor ]   = true;
+		$anchor_event[ $event_anchor ] = $event['uuid'];
+	}
+
+	$discovery_ids = $claimed_ids;
+
+	foreach ( $anchor_ids as $anchor_id => $ignored ) {
+		$discovery_ids[ $anchor_id ] = true;
+	}
+
 	// Step 4: suppress claimed figures from the rendered legacy gallery
 	// (exact attachment-ID match only) and insert each event wrapper at
 	// its earliest claimed snapshot position inside the same legacy
@@ -3627,7 +3727,7 @@ function pfoa_present_adoption_events( $content ) {
 	$claimed_anchors = array();
 	$scan_order      = 0;
 
-	if ( ! empty( $claimed_ids ) ) {
+	if ( ! empty( $discovery_ids ) ) {
 		$item_list = $xpath->query(
 			'.//*[contains(concat(" ", normalize-space(@class), " "), " gallery-item ")]',
 			$wrapper
@@ -3705,7 +3805,11 @@ function pfoa_present_adoption_events( $content ) {
 
 				$attachment_id = 0 < $from_caption ? $from_caption : $from_img;
 
-				if ( 0 < $attachment_id && isset( $claimed_ids[ $attachment_id ] ) ) {
+				// PFOA 0.1.120 — presentation only: discovery/removal covers
+				// member claims plus validated explicit anchors (same
+				// attachment-ID rules; anchors never collide with member IDs
+				// after the fail-closed validation above).
+				if ( 0 < $attachment_id && isset( $discovery_ids[ $attachment_id ] ) ) {
 					$removable[] = $item_node;
 
 					if ( ! isset( $claimed_anchors[ $attachment_id ] ) ) {
@@ -3756,7 +3860,26 @@ function pfoa_present_adoption_events( $content ) {
 
 	// event UUID => earliest claimed snapshot anchor (min document order
 	// over that event's member image IDs actually found in the gallery).
+	// PFOA 0.1.120 — presentation only: a valid explicit legacy anchor
+	// found in the DOM wins over the min-member-order derivation for its
+	// owning event. An anchor absent from the DOM falls through to the
+	// existing derivation + fallback below (natural fallback, byte-identical
+	// to the no-anchor path).
 	$event_anchors = array();
+
+	foreach ( $events as $event ) {
+		$event_anchor = isset( $event['legacy_anchor'] ) ? (int) $event['legacy_anchor'] : 0;
+
+		if ( 0 >= $event_anchor || isset( $event_anchors[ $event['uuid'] ] ) ) {
+			continue;
+		}
+
+		if ( isset( $claimed_anchors[ $event_anchor ] )
+			&& isset( $anchor_event[ $event_anchor ] )
+			&& $anchor_event[ $event_anchor ] === $event['uuid'] ) {
+			$event_anchors[ $event['uuid'] ] = $claimed_anchors[ $event_anchor ];
+		}
+	}
 
 	foreach ( $claimed_anchors as $anchor_id => $anchor ) {
 		if ( ! isset( $claimed_event[ $anchor_id ] ) ) {
@@ -3765,9 +3888,11 @@ function pfoa_present_adoption_events( $content ) {
 
 		$anchor_uuid = $claimed_event[ $anchor_id ];
 
-		if ( ! isset( $event_anchors[ $anchor_uuid ] ) || $anchor['order'] < $event_anchors[ $anchor_uuid ]['order'] ) {
-			$event_anchors[ $anchor_uuid ] = $anchor;
+		if ( isset( $event_anchors[ $anchor_uuid ] ) ) {
+			continue;
 		}
+
+		$event_anchors[ $anchor_uuid ] = $anchor;
 	}
 
 	// Import each event wrapper individually through a second document so
