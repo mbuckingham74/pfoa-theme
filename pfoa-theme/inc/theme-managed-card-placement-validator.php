@@ -371,22 +371,26 @@ if ( ! function_exists( 'pfoa_theme_validate_managed_card_placement' ) ) {
 			return $fail( 'orphan_placement', 'A placement matches no owned span.' );
 		}
 
-		$agreed_slug = function ( $slice ) use ( $slug_pattern ) {
-			$found = array();
-			$anchor_count = preg_match_all( '/<a\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i', $slice, $anchor_matches );
-			if ( false === $anchor_count || ! isset( $anchor_matches[0] ) || ! is_array( $anchor_matches[0] ) ) {
+	$dialog_reader_ok = function_exists( 'pfoa_theme_read_dialog_attribute' );
+	$agreed_slug = function ( $slice ) use ( $slug_pattern, $dialog_reader_ok ) {
+		$found = array();
+		$anchor_count = preg_match_all( '/<a\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i', $slice, $anchor_matches );
+		if ( false === $anchor_count || ! isset( $anchor_matches[0] ) || ! is_array( $anchor_matches[0] ) ) {
+			return null;
+		}
+		if ( ! $dialog_reader_ok ) {
+			return null;
+		}
+		foreach ( $anchor_matches[0] as $anchor_tag ) {
+			$read = pfoa_theme_read_dialog_attribute( (string) $anchor_tag );
+			if ( ! is_array( $read ) || ! isset( $read['status'] ) || 'none' === $read['status'] ) {
+				continue;
+			}
+			if ( 'single' !== $read['status'] || ! isset( $read['slug'] ) || ! is_string( $read['slug'] ) ) {
 				return null;
 			}
-			foreach ( $anchor_matches[0] as $anchor_tag ) {
-				if ( 1 === preg_match( '/(?<![A-Za-z0-9_-])data-pfoa-cat-dialog\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>\/]+)/i', (string) $anchor_tag, $dialog_match ) ) {
-					$token = (string) $dialog_match[1];
-					$first = strlen( $token ) > 0 ? $token[0] : '';
-					$inner = ( '"' === $first || '\'' === $first ) ? substr( $token, 1, strlen( $token ) - 2 ) : $token;
-					if ( '' !== $inner ) {
-						$found[] = $inner;
-					}
-				}
-			}
+			$found[] = $read['slug'];
+		}
 			if ( count( $found ) < 2 ) {
 				return null;
 			}

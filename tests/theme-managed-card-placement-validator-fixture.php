@@ -21,6 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-inventory.php';
+require dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-dialog-attribute.php';
 require dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-ownership-classifier.php';
 require dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-placement-validator.php';
 
@@ -168,6 +169,7 @@ function pv_validate( $source, $classification, $placements, $content ) {
 pv_assert( function_exists( 'pfoa_theme_validate_managed_card_placement' ), 'validator function exists' );
 pv_assert( function_exists( 'pfoa_theme_classify_managed_card_ownership' ), 'classifier function exists' );
 pv_assert( function_exists( 'pfoa_theme_inventory_managed_cards' ), 'inventory function exists' );
+pv_assert( function_exists( 'pfoa_theme_read_dialog_attribute' ), 'dialog reader function exists' );
 
 // (1) Valid single id-owned passes with exact keys/order/count.
 $card_a  = pv_id_card( 101, 'fluffy', 'Fluffy' );
@@ -460,6 +462,54 @@ foreach ( $result_j['placements'] as $accepted_entry ) {
 }
 pv_assert_success( pv_validate( 20323, $trusted_j, $normalized, $content_j ), '10j-renormalized' );
 
+// (10k) Dialog attribute boundary correction: duplicates, quoted-value fakes,
+// colon/dot prefixes, unquoted slash values and malformed syntax all fail
+// unproven_legacy on hand-built legacy spans; single-quoted valid legacy passes.
+function pv_legacy_wrap( $media_attrs, $title_attrs ) {
+	return '<article class="pfoa-cat-card">'
+		. '<a class="pfoa-cat-card-media" href="https://example.test/history/" ' . $media_attrs . '><img src="https://example.test/history.jpg" alt=""></a>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/history/" ' . $title_attrs . '>History</a></h3>'
+		. '</article>';
+}
+
+function pv_legacy_fail( $media_attrs, $title_attrs, $label ) {
+	$card    = pv_legacy_wrap( $media_attrs, $title_attrs );
+	$content = pv_wrap( $card );
+	$class   = pv_hand_classification( array( pv_hand_owned( $content, $card, 77, 'slot-legacy', 'legacy-proven' ) ), array() );
+	pv_assert_failure( pv_validate( 20323, $class, array( pv_placement( $class['owned'][0], 'history' ) ), $content ), 'unproven_legacy', $label );
+}
+
+$pv_v = 'data-pfoa-cat-dialog="history"';
+pv_legacy_fail( $pv_v . ' data-pfoa-cat-dialog="intruder"', $pv_v, '10k-media-dup-conflict' );
+pv_legacy_fail( $pv_v, $pv_v . ' data-pfoa-cat-dialog="intruder"', '10k-title-dup-conflict' );
+pv_legacy_fail( $pv_v . ' ' . $pv_v, $pv_v, '10k-media-dup-same' );
+pv_legacy_fail( $pv_v, $pv_v . ' ' . $pv_v, '10k-title-dup-same' );
+pv_legacy_fail( 'title=\'data-pfoa-cat-dialog="history"\'', $pv_v, '10k-media-fake-quoted' );
+pv_legacy_fail( $pv_v, 'title=\'data-pfoa-cat-dialog="history"\'', '10k-title-fake-quoted' );
+pv_legacy_fail( 'x:data-pfoa-cat-dialog="history"', $pv_v, '10k-media-colon-prefix' );
+pv_legacy_fail( $pv_v, 'x:data-pfoa-cat-dialog="history"', '10k-title-colon-prefix' );
+pv_legacy_fail( 'x.data-pfoa-cat-dialog="history"', $pv_v, '10k-media-dot-prefix' );
+pv_legacy_fail( $pv_v, 'x.data-pfoa-cat-dialog="history"', '10k-title-dot-prefix' );
+pv_legacy_fail( 'data-pfoa-cat-dialog=history/intruder', $pv_v, '10k-media-unquoted-slash' );
+pv_legacy_fail( $pv_v, 'data-pfoa-cat-dialog=history/intruder', '10k-title-unquoted-slash' );
+pv_legacy_fail( $pv_v, 'data-pfoa-cat-dialog="intruder"', '10k-conflicting-slugs' );
+pv_legacy_fail( 'data-pfoa-cat-dialog', $pv_v, '10k-media-no-equals' );
+pv_legacy_fail( $pv_v, 'data-pfoa-cat-dialog', '10k-title-no-equals' );
+pv_legacy_fail( 'data-pfoa-cat-dialog=', $pv_v, '10k-media-empty-value' );
+pv_legacy_fail( $pv_v, 'data-pfoa-cat-dialog=', '10k-title-empty-value' );
+pv_legacy_fail( 'data-pfoa-cat-dialog="history', $pv_v, '10k-media-unclosed-quote' );
+pv_legacy_fail( $pv_v, 'data-pfoa-cat-dialog="history', '10k-title-unclosed-quote' );
+
+$card_sqk    = pv_legacy_wrap( "data-pfoa-cat-dialog='history'", "data-pfoa-cat-dialog='history'" );
+$content_sqk = pv_wrap( $card_sqk );
+$inv_sqk     = pfoa_theme_inventory_managed_cards( 20323, $content_sqk );
+pv_assert( true === $inv_sqk['ok'], '10k-sq: inventory ok' );
+$trusted_sqk = pv_trusted( $content_sqk, array( pv_proof( $inv_sqk['cards'][0], 77, 'slot-legacy', 'history' ) ), '10k-sq' );
+pv_assert_success( pv_validate( 20323, $trusted_sqk, array( pv_placement( $trusted_sqk['owned'][0], 'history' ) ), $content_sqk ), '10k-single-quoted-legacy' );
+
+$fnk_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
+pv_assert( false === strpos( $fnk_source, 'theme-managed-card-dialog-attribute' ), 'functions.php does not require dialog reader file' );
+
 // (r) No hooks/reads/writes: static file-content bans on the validator file.
 $validator_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-placement-validator.php' );
 foreach ( array( 'add_action', 'add_filter', 'add_shortcode', 'WP_Query', 'get_posts', 'get_option', 'update_option', 'wp_insert', '$wpdb', 'file_put_contents', 'file_get_contents', 'unlink', 'get_post' ) as $needle ) {
@@ -470,4 +520,4 @@ foreach ( array( 'add_action', 'add_filter', 'add_shortcode', 'WP_Query', 'get_p
 $functions_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
 pv_assert( false === strpos( $functions_source, 'theme-managed-card-placement-validator' ), 'functions.php does not require validator file' );
 
-fwrite( STDOUT, "PASS: theme managed card placement validator fixture (valid single id-owned, multiple stored order, shuffled ordering mismatch, legacy slug proven/missing/wrong, id slug conflict, manual preserved and claimed, duplicate identity/anchor, missing/wrong/extra placements, stale shifted anchors and edited content, invalid source/classification/placements/malformed records, fail-closed shapes, shared-slug conflicting claims, same-profile shared slug, unquoted legacy attrs, malformed/prefixed/conflicting dialog attrs, duplicate/partial/nested manual overlap, adjacent manual, historical slug in accepted output, null slug for id-owned, renormalized accepted output, no hooks/reads/writes)\n" );
+fwrite( STDOUT, "PASS: theme managed card placement validator fixture (valid single id-owned, multiple stored order, shuffled ordering mismatch, legacy slug proven/missing/wrong, id slug conflict, manual preserved and claimed, duplicate identity/anchor, missing/wrong/extra placements, stale shifted anchors and edited content, invalid source/classification/placements/malformed records, fail-closed shapes, shared-slug conflicting claims, same-profile shared slug, unquoted legacy attrs, malformed/prefixed/conflicting dialog attrs, dialog boundary correction (duplicate/fake-quoted/colon-dot-prefixed/unquoted-slash/malformed signals fail unproven_legacy, single-quoted legacy passes), duplicate/partial/nested manual overlap, adjacent manual, historical slug in accepted output, null slug for id-owned, renormalized accepted output, no hooks/reads/writes)\n" );

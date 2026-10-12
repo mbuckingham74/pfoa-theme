@@ -19,6 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-inventory.php';
+require dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-dialog-attribute.php';
 require dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-ownership-classifier.php';
 
 function oc_assert( $condition, $message ) {
@@ -179,6 +180,7 @@ function oc_classify( $source, $inv, $proofs, $content ) {
 
 oc_assert( function_exists( 'pfoa_theme_classify_managed_card_ownership' ), 'classifier function exists' );
 oc_assert( function_exists( 'pfoa_theme_inventory_managed_cards' ), 'inventory function exists' );
+oc_assert( function_exists( 'pfoa_theme_read_dialog_attribute' ), 'dialog reader function exists' );
 
 // (a) Valid ID-owned single card.
 $content = oc_wrap_cards( oc_id_card( 101, 'fluffy', 'Fluffy' ) );
@@ -525,6 +527,96 @@ $z3_content = oc_wrap_cards( oc_spoofed_thumb_card() );
 $z3_inv     = oc_inventory_ok( $z3_content, 'z-spoof-thumb' );
 oc_assert_failure( oc_classify( 20323, $z3_inv, array(), $z3_content ), 'spoofed_marker', 'z-spoof-thumb' );
 
+// (aa) Dialog attribute boundary correction: shared reader unit contract.
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" data-pfoa-cat-dialog="history">' );
+oc_assert( 'single' === $aa_unit['status'] && 'history' === $aa_unit['slug'] && 1 === $aa_unit['hits'], 'aa-unit-double-quoted' );
+$aa_unit = pfoa_theme_read_dialog_attribute( "<a href=\"https://example.test/x/\" data-pfoa-cat-dialog='history'>" );
+oc_assert( 'single' === $aa_unit['status'] && 'history' === $aa_unit['slug'], 'aa-unit-single-quoted' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" data-pfoa-cat-dialog=history>' );
+oc_assert( 'single' === $aa_unit['status'] && 'history' === $aa_unit['slug'], 'aa-unit-unquoted' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" DATA-PFOA-CAT-DIALOG="history">' );
+oc_assert( 'single' === $aa_unit['status'] && 'history' === $aa_unit['slug'], 'aa-unit-name-case' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" data-pfoa-cat-dialog="history" data-pfoa-cat-dialog="intruder">' );
+oc_assert( 'duplicate' === $aa_unit['status'] && null === $aa_unit['slug'], 'aa-unit-dup-conflict' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" data-pfoa-cat-dialog="history" data-pfoa-cat-dialog="history">' );
+oc_assert( 'duplicate' === $aa_unit['status'] && null === $aa_unit['slug'], 'aa-unit-dup-same' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" title=\'data-pfoa-cat-dialog="history"\'>' );
+oc_assert( 'none' === $aa_unit['status'], 'aa-unit-fake-quoted' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" x:data-pfoa-cat-dialog="history">' );
+oc_assert( 'malformed' === $aa_unit['status'], 'aa-unit-colon-prefix' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" x.data-pfoa-cat-dialog="history">' );
+oc_assert( 'malformed' === $aa_unit['status'], 'aa-unit-dot-prefix' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" x-data-pfoa-cat-dialog="history">' );
+oc_assert( 'malformed' === $aa_unit['status'], 'aa-unit-dash-prefix' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" data-pfoa-cat-dialog-extra="history">' );
+oc_assert( 'malformed' === $aa_unit['status'], 'aa-unit-suffix-name' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" data-pfoa-cat-dialog=history/intruder>' );
+oc_assert( 'malformed' === $aa_unit['status'], 'aa-unit-unquoted-slash' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" data-pfoa-cat-dialog="History">' );
+oc_assert( 'malformed' === $aa_unit['status'], 'aa-unit-bad-slug-case' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" data-pfoa-cat-dialog>' );
+oc_assert( 'malformed' === $aa_unit['status'], 'aa-unit-no-equals' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" data-pfoa-cat-dialog=>' );
+oc_assert( 'malformed' === $aa_unit['status'], 'aa-unit-empty-value' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/" data-pfoa-cat-dialog="history>' );
+oc_assert( 'malformed' === $aa_unit['status'], 'aa-unit-unclosed-quote' );
+$aa_unit = pfoa_theme_read_dialog_attribute( '<a href="https://example.test/x/">' );
+oc_assert( 'none' === $aa_unit['status'] && 0 === $aa_unit['hits'], 'aa-unit-none' );
+
+// (ab) Dialog boundary attacks fail closed through the real pipeline
+// (inventory + classifier with genuine trusted proofs).
+function oc_dlg_id_card( $media_attrs, $title_attrs ) {
+	return '<article class="pfoa-cat-card" data-pfoa-profile-id="101">'
+		. '<a class="pfoa-cat-card-media" href="https://example.test/history/" ' . $media_attrs . '><img src="https://example.test/history.jpg" alt=""></a>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/history/" ' . $title_attrs . '>History</a></h3>'
+		. '</article>';
+}
+
+function oc_dlg_fail( $media_attrs, $title_attrs, $code, $label ) {
+	$content = oc_wrap_cards( oc_dlg_id_card( $media_attrs, $title_attrs ) );
+	$inv     = oc_inventory_ok( $content, $label );
+	oc_assert_failure( oc_classify( 20323, $inv, array( oc_proof( $inv['cards'][0], 101, 'slot-a' ) ), $content ), $code, $label );
+}
+
+$ab_v = 'data-pfoa-cat-dialog="history"';
+oc_dlg_fail( $ab_v . ' data-pfoa-cat-dialog="intruder"', $ab_v, 'ambiguous_card', 'ab-media-dup-conflict' );
+oc_dlg_fail( $ab_v, $ab_v . ' data-pfoa-cat-dialog="intruder"', 'ambiguous_card', 'ab-title-dup-conflict' );
+oc_dlg_fail( $ab_v . ' ' . $ab_v, $ab_v, 'ambiguous_card', 'ab-media-dup-same' );
+oc_dlg_fail( $ab_v, $ab_v . ' ' . $ab_v, 'ambiguous_card', 'ab-title-dup-same' );
+oc_dlg_fail( 'title=\'data-pfoa-cat-dialog="history"\'', $ab_v, 'ambiguous_card', 'ab-media-fake-quoted' );
+oc_dlg_fail( $ab_v, 'title=\'data-pfoa-cat-dialog="history"\'', 'ambiguous_card', 'ab-title-fake-quoted' );
+oc_dlg_fail( 'x:data-pfoa-cat-dialog="history"', $ab_v, 'ambiguous_card', 'ab-media-colon-prefix' );
+oc_dlg_fail( $ab_v, 'x:data-pfoa-cat-dialog="history"', 'ambiguous_card', 'ab-title-colon-prefix' );
+oc_dlg_fail( 'x.data-pfoa-cat-dialog="history"', $ab_v, 'ambiguous_card', 'ab-media-dot-prefix' );
+oc_dlg_fail( $ab_v, 'x.data-pfoa-cat-dialog="history"', 'ambiguous_card', 'ab-title-dot-prefix' );
+oc_dlg_fail( 'data-pfoa-cat-dialog=history/intruder', $ab_v, 'ambiguous_card', 'ab-media-unquoted-slash' );
+oc_dlg_fail( $ab_v, 'data-pfoa-cat-dialog=history/intruder', 'ambiguous_card', 'ab-title-unquoted-slash' );
+oc_dlg_fail( $ab_v, 'data-pfoa-cat-dialog="intruder"', 'ambiguous_card', 'ab-conflicting-slugs' );
+oc_dlg_fail( 'data-pfoa-cat-dialog', $ab_v, 'ambiguous_card', 'ab-media-no-equals' );
+oc_dlg_fail( $ab_v, 'data-pfoa-cat-dialog', 'ambiguous_card', 'ab-title-no-equals' );
+oc_dlg_fail( 'data-pfoa-cat-dialog=', $ab_v, 'ambiguous_card', 'ab-media-empty-value' );
+oc_dlg_fail( $ab_v, 'data-pfoa-cat-dialog=', 'ambiguous_card', 'ab-title-empty-value' );
+oc_dlg_fail( 'data-pfoa-cat-dialog="history', $ab_v, 'unsupported_structure', 'ab-media-unclosed-quote' );
+oc_dlg_fail( $ab_v, 'data-pfoa-cat-dialog="history', 'unsupported_structure', 'ab-title-unclosed-quote' );
+
+// (ac) Positive controls: single-quoted and unquoted valid slugs still own.
+$ac_sq_content = oc_wrap_cards( oc_dlg_id_card( "data-pfoa-cat-dialog='history'", "data-pfoa-cat-dialog='history'" ) );
+$ac_sq_inv     = oc_inventory_ok( $ac_sq_content, 'ac-single-quoted' );
+$ac_sq_result  = oc_classify( 20323, $ac_sq_inv, array( oc_proof( $ac_sq_inv['cards'][0], 101, 'slot-a' ) ), $ac_sq_content );
+oc_assert( true === $ac_sq_result['ok'] && 1 === $ac_sq_result['count_owned'] && 'id-owned' === $ac_sq_result['owned'][0]['kind'], 'ac-single-quoted: owned' );
+$ac_uq_content = oc_wrap_cards( oc_dlg_id_card( 'data-pfoa-cat-dialog=history', 'data-pfoa-cat-dialog=history' ) );
+$ac_uq_inv     = oc_inventory_ok( $ac_uq_content, 'ac-unquoted' );
+$ac_uq_result  = oc_classify( 20323, $ac_uq_inv, array( oc_proof( $ac_uq_inv['cards'][0], 101, 'slot-a' ) ), $ac_uq_content );
+oc_assert( true === $ac_uq_result['ok'] && 1 === $ac_uq_result['count_owned'] && 'id-owned' === $ac_uq_result['owned'][0]['kind'], 'ac-unquoted: owned' );
+
+// (ad) The dialog reader file stays inactive: no hooks, and functions.php must not require it.
+$aa_reader_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-dialog-attribute.php' );
+foreach ( array( 'add_action', 'add_filter', 'add_shortcode', 'WP_Query', '$wpdb', 'file_put_contents', 'unlink', 'get_post' ) as $aa_needle ) {
+	oc_assert( false === strpos( $aa_reader_source, $aa_needle ), 'dialog reader file has no ' . $aa_needle );
+}
+$aa_functions_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
+oc_assert( false === strpos( $aa_functions_source, 'theme-managed-card-dialog-attribute' ), 'functions.php does not require dialog reader file' );
+
 // (r) No hooks/queries/writes: static file-content bans on the classifier file.
 $classifier_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-ownership-classifier.php' );
 foreach ( array( 'add_action', 'add_filter', 'add_shortcode', 'WP_Query', 'get_posts', 'get_option', 'update_option', 'wp_insert', 'wp_update', '$wpdb', 'file_put_contents', 'unlink', 'get_post', 'meta', 'placement', 'bond', 'composition', 'lifecycle', 'resolver' ) as $needle ) {
@@ -535,4 +627,4 @@ foreach ( array( 'add_action', 'add_filter', 'add_shortcode', 'WP_Query', 'get_p
 $functions_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
 oc_assert( false === strpos( $functions_source, 'theme-managed-card-ownership-classifier' ), 'functions.php does not require classifier file' );
 
-fwrite( STDOUT, "PASS: theme managed card ownership classifier fixture (valid id-owned, proven legacy, manual untouched, mixed order, shared profile distinct slots, duplicate/conflicting claims, missing/stale proofs, conflicting slugs, malformed/spoofed markers and classes, generated complete with thumbnail and status, generated incomplete single with and without status, incomplete grouped pair, incomplete missing/mismatched proofs, unmarked incomplete fails closed, incomplete dialog ambiguity, spoofed generated classes, unicode byte and fingerprint checks, orphan proofs, unsupported structure, source/content/inventory/proof guards, no hooks/queries/writes)\n" );
+fwrite( STDOUT, "PASS: theme managed card ownership classifier fixture (valid id-owned, proven legacy, manual untouched, mixed order, shared profile distinct slots, duplicate/conflicting claims, missing/stale proofs, conflicting slugs, malformed/spoofed markers and classes, generated complete with thumbnail and status, generated incomplete single with and without status, incomplete grouped pair, incomplete missing/mismatched proofs, unmarked incomplete fails closed, incomplete dialog ambiguity, dialog attribute boundary correction (duplicate/fake-quoted/prefixed/unquoted-slash/conflicting/malformed signals fail closed, quoted valid forms still own), spoofed generated classes, unicode byte and fingerprint checks, orphan proofs, unsupported structure, source/content/inventory/proof guards, no hooks/queries/writes)\n" );

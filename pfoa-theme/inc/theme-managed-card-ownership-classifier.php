@@ -196,12 +196,12 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 		$id_pattern     = '/(?<![A-Za-z0-9_-])data-pfoa-profile-id\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>\/]+)/i';
 		$class_pattern  = '/class\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>\/]+)/i';
 		$anchor_pattern = '/<a\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i';
-		$dialog_pattern = '/(?<![A-Za-z0-9_-])data-pfoa-cat-dialog\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>\/]+)/i';
 		$h3_pattern     = '/<h3\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i';
 		$div_pattern    = '/<div\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i';
 		$p_pattern      = '/<p\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i';
 		$img_pattern    = '/<img\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i';
-		$slug_pattern   = '/\A[a-z0-9-]+\z/';
+		$slug_pattern       = '/\A[a-z0-9-]+\z/';
+		$dialog_reader_ok   = function_exists( 'pfoa_theme_read_dialog_attribute' );
 
 		$derived = array();
 		foreach ( $cards as $card ) {
@@ -335,29 +335,39 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 			$dialog_nonempty = array();
 			$media_valid     = false;
 			$anchor_tags     = isset( $anchor_matches[0] ) && is_array( $anchor_matches[0] ) ? $anchor_matches[0] : array();
-			foreach ( $anchor_tags as $anchor_match ) {
-				$anchor_tag = (string) $anchor_match[0];
-				if ( 1 === preg_match( $dialog_pattern, $anchor_tag, $dialog_match ) ) {
-					$token = (string) $dialog_match[1];
-					$first = strlen( $token ) > 0 ? $token[0] : '';
-					$slug  = ( '"' === $first || '\'' === $first ) ? substr( $token, 1, strlen( $token ) - 2 ) : $token;
-					$dialog_all[] = $slug;
-					if ( '' !== $slug ) {
-						$dialog_nonempty[] = $slug;
-					}
-					if ( 1 === preg_match( $slug_pattern, $slug )
-						&& 1 === preg_match( $class_pattern, $anchor_tag, $anchor_class_match )
-					) {
-						$ctoken = (string) $anchor_class_match[1];
-						$cfirst = strlen( $ctoken ) > 0 ? $ctoken[0] : '';
-						$cinner = ( '"' === $cfirst || '\'' === $cfirst ) ? substr( $ctoken, 1, strlen( $ctoken ) - 2 ) : $ctoken;
-						$cparts = preg_split( '/\s+/', $cinner );
-						if ( is_array( $cparts ) && in_array( 'pfoa-cat-card-media', $cparts, true ) ) {
-							$media_valid = true;
-						}
+		foreach ( $anchor_tags as $anchor_match ) {
+			$anchor_tag = (string) $anchor_match[0];
+			if ( $dialog_reader_ok ) {
+				$dialog_read = pfoa_theme_read_dialog_attribute( $anchor_tag );
+			} else {
+				$dialog_read = array( 'status' => 'malformed', 'slug' => null, 'values' => array( '' ) );
+			}
+			if ( ! is_array( $dialog_read ) || ! isset( $dialog_read['status'] ) || 'none' === $dialog_read['status'] ) {
+				continue;
+			}
+			if ( 'single' === $dialog_read['status'] && isset( $dialog_read['slug'] ) && is_string( $dialog_read['slug'] ) ) {
+				$slug = $dialog_read['slug'];
+				$dialog_all[] = $slug;
+				$dialog_nonempty[] = $slug;
+				if ( 1 === preg_match( $class_pattern, $anchor_tag, $anchor_class_match ) ) {
+					$ctoken = (string) $anchor_class_match[1];
+					$cfirst = strlen( $ctoken ) > 0 ? $ctoken[0] : '';
+					$cinner = ( '"' === $cfirst || '\'' === $cfirst ) ? substr( $ctoken, 1, strlen( $ctoken ) - 2 ) : $ctoken;
+					$cparts = preg_split( '/\s+/', $cinner );
+					if ( is_array( $cparts ) && in_array( 'pfoa-cat-card-media', $cparts, true ) ) {
+						$media_valid = true;
 					}
 				}
+			} else {
+				$evidence = isset( $dialog_read['values'] ) && is_array( $dialog_read['values'] ) ? $dialog_read['values'] : array( '' );
+				if ( 0 === count( $evidence ) ) {
+					$evidence = array( '' );
+				}
+				foreach ( $evidence as $one ) {
+					$dialog_all[] = is_string( $one ) ? $one : '';
+				}
 			}
+		}
 
 			$h3_count = preg_match_all( $h3_pattern, $slice, $h3_matches, PREG_OFFSET_CAPTURE );
 			if ( false === $h3_count ) {
@@ -396,18 +406,18 @@ if ( ! function_exists( 'pfoa_theme_classify_managed_card_ownership' ) ) {
 				$title_plain = true;
 			}
 				if ( preg_match_all( $anchor_pattern, $inner, $inner_anchors, PREG_SET_ORDER ) ) {
-					foreach ( $inner_anchors as $inner_one ) {
-						$inner_tag = (string) $inner_one[0];
-						if ( 1 === preg_match( $dialog_pattern, $inner_tag, $inner_dialog ) ) {
-							$itoken = (string) $inner_dialog[1];
-							$ifirst = strlen( $itoken ) > 0 ? $itoken[0] : '';
-							$islug  = ( '"' === $ifirst || '\'' === $ifirst ) ? substr( $itoken, 1, strlen( $itoken ) - 2 ) : $itoken;
-							if ( 1 === preg_match( $slug_pattern, $islug ) ) {
-								$title_valid = true;
-								break;
-							}
-						}
+				foreach ( $inner_anchors as $inner_one ) {
+					$inner_tag = (string) $inner_one[0];
+					if ( $dialog_reader_ok ) {
+						$inner_read = pfoa_theme_read_dialog_attribute( $inner_tag );
+					} else {
+						$inner_read = array( 'status' => 'malformed' );
 					}
+					if ( is_array( $inner_read ) && isset( $inner_read['status'] ) && 'single' === $inner_read['status'] ) {
+						$title_valid = true;
+						break;
+					}
+				}
 				}
 				if ( $title_valid ) {
 					break;
