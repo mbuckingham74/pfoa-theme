@@ -44,12 +44,17 @@ function pv_assert_success( $result, $label ) {
 		pv_assert( $list_key === $position, $label . ': placements sequential' );
 		$position++;
 		pv_assert( is_array( $entry ), $label . ': entry array' );
-		pv_assert( array( 'profile_id', 'slot', 'start', 'end', 'order', 'kind' ) === array_keys( $entry ), $label . ': entry keys exact' );
+		pv_assert( array( 'profile_id', 'slot', 'start', 'end', 'slug', 'order', 'kind' ) === array_keys( $entry ), $label . ': entry keys exact' );
 		pv_assert( is_string( $entry['profile_id'] ), $label . ': profile string' );
 		pv_assert( is_string( $entry['slot'] ), $label . ': slot string' );
 		pv_assert( is_int( $entry['start'] ) && is_int( $entry['end'] ), $label . ': offsets int' );
 		pv_assert( $position - 1 === $entry['order'], $label . ': order stored' );
 		pv_assert( 'id-owned' === $entry['kind'] || 'legacy-proven' === $entry['kind'], $label . ': kind known' );
+		if ( 'legacy-proven' === $entry['kind'] ) {
+			pv_assert( is_string( $entry['slug'] ) && 1 === preg_match( '/\A[a-z0-9-]+\z/', $entry['slug'] ), $label . ': legacy slug preserved' );
+		} else {
+			pv_assert( null === $entry['slug'], $label . ': id-owned slug null' );
+		}
 	}
 }
 
@@ -79,6 +84,41 @@ function pv_legacy_card( $slug, $title ) {
 
 function pv_manual_card() {
 	return '<article class="note"><p>Editorial note</p></article>';
+}
+
+function pv_legacy_card_unquoted( $slug, $title ) {
+	return '<article class="pfoa-cat-card">'
+		. '<a class="pfoa-cat-card-media" href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog=' . $slug . '><img src="https://example.test/' . $slug . '.jpg" alt=""></a>'
+		. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/' . $slug . '/" data-pfoa-cat-dialog=' . $slug . '>' . $title . '</a></h3>'
+		. '</article>';
+}
+
+function pv_manual_card_text( $text ) {
+	return '<article class="note"><p>' . $text . '</p></article>';
+}
+
+function pv_hand_owned( $content, $slice_html, $profile_id, $slot, $kind ) {
+	$start = strpos( $content, $slice_html );
+	pv_assert( false !== $start, 'hand owned anchor found' );
+	return array(
+		'start'      => $start,
+		'end'        => $start + strlen( $slice_html ),
+		'slice'      => $slice_html,
+		'profile_id' => (string) $profile_id,
+		'slot'       => (string) $slot,
+		'kind'       => (string) $kind,
+	);
+}
+
+function pv_hand_classification( $owned_entries, $manual_entries ) {
+	return array(
+		'ok'             => true,
+		'source_page_id' => 20323,
+		'owned'          => $owned_entries,
+		'manual'         => $manual_entries,
+		'count_owned'    => count( $owned_entries ),
+		'count_manual'   => count( $manual_entries ),
+	);
 }
 
 function pv_wrap( $inner ) {
@@ -147,6 +187,7 @@ pv_assert( 'id-owned' === $result['placements'][0]['kind'], '1: kind' );
 pv_assert( $trusted['owned'][0]['start'] === $result['placements'][0]['start'], '1: start byte exact' );
 pv_assert( $trusted['owned'][0]['end'] === $result['placements'][0]['end'], '1: end byte exact' );
 pv_assert( false !== strpos( $content, substr( $content, $result['placements'][0]['start'], $result['placements'][0]['end'] - $result['placements'][0]['start'] ) ), '1: anchor inside content' );
+pv_assert( array_key_exists( 'slug', $result['placements'][0] ) && null === $result['placements'][0]['slug'], '1: id-owned accepted slug null' );
 
 // Digit-string source is accepted.
 pv_assert_success( pv_validate( '20323', $trusted, $placements, $content ), '1-string-source' );
@@ -173,7 +214,9 @@ $inv3     = pfoa_theme_inventory_managed_cards( 20323, $content3 );
 pv_assert( true === $inv3['ok'], '3: inventory ok' );
 $trusted3 = pv_trusted( $content3, array( pv_proof( $inv3['cards'][0], 77, 'slot-legacy', 'shadow' ) ), '3' );
 pv_assert( 'legacy-proven' === $trusted3['owned'][0]['kind'], '3: trusted kind' );
-pv_assert_success( pv_validate( 20323, $trusted3, array( pv_placement( $trusted3['owned'][0], 'shadow' ) ), $content3 ), '3-legacy-slug' );
+$result3 = pv_validate( 20323, $trusted3, array( pv_placement( $trusted3['owned'][0], 'shadow' ) ), $content3 );
+pv_assert_success( $result3, '3-legacy-slug' );
+pv_assert( 'shadow' === $result3['placements'][0]['slug'], '3: legacy accepted slug is historical dialog slug' );
 pv_assert_failure( pv_validate( 20323, $trusted3, array( pv_placement( $trusted3['owned'][0] ) ), $content3 ), 'unproven_legacy', '3-legacy-missing-slug' );
 pv_assert_failure( pv_validate( 20323, $trusted3, array( pv_placement( $trusted3['owned'][0], 'fluffy' ) ), $content3 ), 'unproven_legacy', '3-legacy-wrong-slug' );
 
@@ -289,6 +332,134 @@ pv_assert_failure( pv_validate( 20323, $trusted, array( $bad_slug ), $content ),
 // (9) Fail-closed shape is asserted for every failure above via pv_assert_failure
 // (exact ok+error keys, ok false, code match, non-empty message, no placements key).
 
+// (10a) Two different profile IDs sharing one legacy slug fail conflicting_claims.
+$card_l1      = pv_legacy_card( 'shadow', 'Shadow One' );
+$card_l2      = pv_legacy_card( 'shadow', 'Shadow Two' );
+$content_ab   = pv_wrap( $card_l1 . $card_l2 );
+$inv_ab       = pfoa_theme_inventory_managed_cards( 20323, $content_ab );
+pv_assert( true === $inv_ab['ok'], '10a: inventory ok' );
+$trusted_ab   = pv_trusted( $content_ab, array( pv_proof( $inv_ab['cards'][0], 77, 'slot-a', 'shadow' ), pv_proof( $inv_ab['cards'][1], 88, 'slot-b', 'shadow' ) ), '10a' );
+$placements_ab = array( pv_placement( $trusted_ab['owned'][0], 'shadow' ), pv_placement( $trusted_ab['owned'][1], 'shadow' ) );
+pv_assert_failure( pv_validate( 20323, $trusted_ab, $placements_ab, $content_ab ), 'conflicting_claims', '10a-shared-slug-diff-profile' );
+
+// (10b) Same profile + same slug in distinct valid slots passes.
+$trusted_ab2 = pv_trusted( $content_ab, array( pv_proof( $inv_ab['cards'][0], 77, 'slot-a', 'shadow' ), pv_proof( $inv_ab['cards'][1], 77, 'slot-b', 'shadow' ) ), '10b' );
+$result_ab2  = pv_validate( 20323, $trusted_ab2, array( pv_placement( $trusted_ab2['owned'][0], 'shadow' ), pv_placement( $trusted_ab2['owned'][1], 'shadow' ) ), $content_ab );
+pv_assert_success( $result_ab2, '10b-same-profile-shared-slug' );
+pv_assert( 'shadow' === $result_ab2['placements'][0]['slug'] && 'shadow' === $result_ab2['placements'][1]['slug'], '10b: both historical slugs preserved' );
+
+// (10c) Unquoted valid legacy dialog attributes pass.
+$card_uq    = pv_legacy_card_unquoted( 'shadow', 'Shadow' );
+$content_uq = pv_wrap( $card_uq );
+$inv_uq     = pfoa_theme_inventory_managed_cards( 20323, $content_uq );
+pv_assert( true === $inv_uq['ok'], '10c: inventory ok' );
+$trusted_uq = pv_trusted( $content_uq, array( pv_proof( $inv_uq['cards'][0], 77, 'slot-legacy', 'shadow' ) ), '10c' );
+pv_assert( 'legacy-proven' === $trusted_uq['owned'][0]['kind'], '10c: trusted kind' );
+$result_uq = pv_validate( 20323, $trusted_uq, array( pv_placement( $trusted_uq['owned'][0], 'shadow' ) ), $content_uq );
+pv_assert_success( $result_uq, '10c-unquoted-legacy' );
+pv_assert( 'shadow' === $result_uq['placements'][0]['slug'], '10c: unquoted slug preserved' );
+
+// (10d) Malformed / prefixed / conflicting dialog attributes fail unproven_legacy.
+$prefixed_card = '<article class="pfoa-cat-card">'
+	. '<a class="pfoa-cat-card-media" href="https://example.test/shadow/" x-data-pfoa-cat-dialog="shadow"><img src="https://example.test/shadow.jpg" alt=""></a>'
+	. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/shadow/" x-data-pfoa-cat-dialog="shadow">Shadow</a></h3>'
+	. '</article>';
+$content_fx = pv_wrap( $prefixed_card );
+$class_fx   = pv_hand_classification( array( pv_hand_owned( $content_fx, $prefixed_card, 77, 'slot-legacy', 'legacy-proven' ) ), array() );
+pv_assert_failure( pv_validate( 20323, $class_fx, array( pv_placement( $class_fx['owned'][0], 'shadow' ) ), $content_fx ), 'unproven_legacy', '10d-prefixed-attr' );
+$suffixed_card = '<article class="pfoa-cat-card">'
+	. '<a class="pfoa-cat-card-media" href="https://example.test/shadow/" data-pfoa-cat-dialog-extra="shadow"><img src="https://example.test/shadow.jpg" alt=""></a>'
+	. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/shadow/" data-pfoa-cat-dialog-extra="shadow">Shadow</a></h3>'
+	. '</article>';
+$content_sx = pv_wrap( $suffixed_card );
+$class_sx   = pv_hand_classification( array( pv_hand_owned( $content_sx, $suffixed_card, 77, 'slot-legacy', 'legacy-proven' ) ), array() );
+pv_assert_failure( pv_validate( 20323, $class_sx, array( pv_placement( $class_sx['owned'][0], 'shadow' ) ), $content_sx ), 'unproven_legacy', '10d-suffixed-attr' );
+$conflict_card = '<article class="pfoa-cat-card">'
+	. '<a class="pfoa-cat-card-media" href="https://example.test/shadow/" data-pfoa-cat-dialog="shadow"><img src="https://example.test/shadow.jpg" alt=""></a>'
+	. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/mittens/" data-pfoa-cat-dialog="mittens">Mittens</a></h3>'
+	. '</article>';
+$content_cx = pv_wrap( $conflict_card );
+$class_cx   = pv_hand_classification( array( pv_hand_owned( $content_cx, $conflict_card, 77, 'slot-legacy', 'legacy-proven' ) ), array() );
+pv_assert_failure( pv_validate( 20323, $class_cx, array( pv_placement( $class_cx['owned'][0], 'shadow' ) ), $content_cx ), 'unproven_legacy', '10d-conflicting-dialog' );
+$badslug_card = '<article class="pfoa-cat-card">'
+	. '<a class="pfoa-cat-card-media" href="https://example.test/shadow/" data-pfoa-cat-dialog="Shadow!"><img src="https://example.test/shadow.jpg" alt=""></a>'
+	. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/shadow/" data-pfoa-cat-dialog="Shadow!">Shadow</a></h3>'
+	. '</article>';
+$content_bx = pv_wrap( $badslug_card );
+$class_bx   = pv_hand_classification( array( pv_hand_owned( $content_bx, $badslug_card, 77, 'slot-legacy', 'legacy-proven' ) ), array() );
+pv_assert_failure( pv_validate( 20323, $class_bx, array( pv_placement( $class_bx['owned'][0], 'shadow' ) ), $content_bx ), 'unproven_legacy', '10d-bad-slug-pattern' );
+$single_card = '<article class="pfoa-cat-card">'
+	. '<a class="pfoa-cat-card-media" href="https://example.test/shadow/" data-pfoa-cat-dialog="shadow"><img src="https://example.test/shadow.jpg" alt=""></a>'
+	. '<h3 class="pfoa-cat-card-title"><a href="https://example.test/shadow/">Shadow</a></h3>'
+	. '</article>';
+$content_gx = pv_wrap( $single_card );
+$class_gx   = pv_hand_classification( array( pv_hand_owned( $content_gx, $single_card, 77, 'slot-legacy', 'legacy-proven' ) ), array() );
+pv_assert_failure( pv_validate( 20323, $class_gx, array( pv_placement( $class_gx['owned'][0], 'shadow' ) ), $content_gx ), 'unproven_legacy', '10d-single-dialog' );
+
+// (10e) Duplicate manual spans fail ambiguous_ownership.
+$dup_manual_class = $trusted4;
+$dup_manual_class['manual'][] = $trusted4['manual'][0];
+$dup_manual_class['count_manual'] = 2;
+pv_assert_failure( pv_validate( 20323, $dup_manual_class, array( pv_placement( $trusted4['owned'][0] ) ), $content4 ), 'ambiguous_ownership', '10e-dup-manual' );
+
+// (10f) Partial-overlap and nested manual spans fail ambiguous_ownership.
+$base_manual  = $trusted4['manual'][0];
+$partial_span = array(
+	'start' => $base_manual['start'] + 2,
+	'end'   => $base_manual['end'] + 5,
+	'slice' => substr( $content4, $base_manual['start'] + 2, ( $base_manual['end'] + 5 ) - ( $base_manual['start'] + 2 ) ),
+);
+$partial_class = $trusted4;
+$partial_class['manual'][] = $partial_span;
+$partial_class['count_manual'] = 2;
+pv_assert_failure( pv_validate( 20323, $partial_class, array( pv_placement( $trusted4['owned'][0] ) ), $content4 ), 'ambiguous_ownership', '10f-partial-manual' );
+$nested_span = array(
+	'start' => $base_manual['start'] + 2,
+	'end'   => $base_manual['end'] - 2,
+	'slice' => substr( $content4, $base_manual['start'] + 2, ( $base_manual['end'] - 2 ) - ( $base_manual['start'] + 2 ) ),
+);
+$nested_class = $trusted4;
+$nested_class['manual'][] = $nested_span;
+$nested_class['count_manual'] = 2;
+pv_assert_failure( pv_validate( 20323, $nested_class, array( pv_placement( $trusted4['owned'][0] ) ), $content4 ), 'ambiguous_ownership', '10f-nested-manual' );
+
+// (10g) Adjacent non-overlapping manual spans stay valid.
+$note1     = pv_manual_card_text( 'First note' );
+$note2     = pv_manual_card_text( 'Second note' );
+$content_g = pv_wrap( $card_a . $note1 . $note2 );
+$inv_g     = pfoa_theme_inventory_managed_cards( 20323, $content_g );
+pv_assert( true === $inv_g['ok'], '10g: inventory ok' );
+$trusted_g = pv_trusted( $content_g, array( pv_proof( $inv_g['cards'][0], 101, 'slot-a' ) ), '10g' );
+pv_assert( 2 === $trusted_g['count_manual'], '10g: two manual spans' );
+pv_assert( $trusted_g['manual'][0]['end'] === $trusted_g['manual'][1]['start'], '10g: manual spans edge-touch' );
+$result_g = pv_validate( 20323, $trusted_g, array( pv_placement( $trusted_g['owned'][0] ) ), $content_g );
+pv_assert_success( $result_g, '10g-adjacent-manual' );
+pv_assert( 2 === $result_g['manual_count'], '10g: manual count reported' );
+
+// (10h) Accepted legacy output carries the historical dialog slug (asserted in 3/10b/10c above).
+
+// (10i) Accepted id-owned output carries a null slug (asserted in 1 above via pv_assert_success).
+
+// (10j) Normalized accepted output (profile_id/slot/start/end/slug) revalidates.
+$content_j = pv_wrap( $card_a . $card_l );
+$inv_j     = pfoa_theme_inventory_managed_cards( 20323, $content_j );
+pv_assert( true === $inv_j['ok'], '10j: inventory ok' );
+$trusted_j = pv_trusted( $content_j, array( pv_proof( $inv_j['cards'][0], 101, 'slot-a' ), pv_proof( $inv_j['cards'][1], 77, 'slot-legacy', 'shadow' ) ), '10j' );
+$result_j  = pv_validate( 20323, $trusted_j, array( pv_placement( $trusted_j['owned'][0] ), pv_placement( $trusted_j['owned'][1], 'shadow' ) ), $content_j );
+pv_assert_success( $result_j, '10j-mixed' );
+pv_assert( null === $result_j['placements'][0]['slug'] && 'shadow' === $result_j['placements'][1]['slug'], '10j: mixed slugs' );
+$normalized = array();
+foreach ( $result_j['placements'] as $accepted_entry ) {
+	$normalized[] = array(
+		'profile_id' => $accepted_entry['profile_id'],
+		'slot'       => $accepted_entry['slot'],
+		'start'      => $accepted_entry['start'],
+		'end'        => $accepted_entry['end'],
+		'slug'       => $accepted_entry['slug'],
+	);
+}
+pv_assert_success( pv_validate( 20323, $trusted_j, $normalized, $content_j ), '10j-renormalized' );
+
 // (r) No hooks/reads/writes: static file-content bans on the validator file.
 $validator_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/inc/theme-managed-card-placement-validator.php' );
 foreach ( array( 'add_action', 'add_filter', 'add_shortcode', 'WP_Query', 'get_posts', 'get_option', 'update_option', 'wp_insert', '$wpdb', 'file_put_contents', 'file_get_contents', 'unlink', 'get_post' ) as $needle ) {
@@ -299,4 +470,4 @@ foreach ( array( 'add_action', 'add_filter', 'add_shortcode', 'WP_Query', 'get_p
 $functions_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
 pv_assert( false === strpos( $functions_source, 'theme-managed-card-placement-validator' ), 'functions.php does not require validator file' );
 
-fwrite( STDOUT, "PASS: theme managed card placement validator fixture (valid single id-owned, multiple stored order, shuffled ordering mismatch, legacy slug proven/missing/wrong, id slug conflict, manual preserved and claimed, duplicate identity/anchor, missing/wrong/extra placements, stale shifted anchors and edited content, invalid source/classification/placements/malformed records, fail-closed shapes, no hooks/reads/writes)\n" );
+fwrite( STDOUT, "PASS: theme managed card placement validator fixture (valid single id-owned, multiple stored order, shuffled ordering mismatch, legacy slug proven/missing/wrong, id slug conflict, manual preserved and claimed, duplicate identity/anchor, missing/wrong/extra placements, stale shifted anchors and edited content, invalid source/classification/placements/malformed records, fail-closed shapes, shared-slug conflicting claims, same-profile shared slug, unquoted legacy attrs, malformed/prefixed/conflicting dialog attrs, duplicate/partial/nested manual overlap, adjacent manual, historical slug in accepted output, null slug for id-owned, renormalized accepted output, no hooks/reads/writes)\n" );

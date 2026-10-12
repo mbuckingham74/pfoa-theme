@@ -247,6 +247,18 @@ if ( ! function_exists( 'pfoa_theme_validate_managed_card_placement' ) ) {
 			}
 		}
 
+		$ranked_manual = $manual;
+		usort( $ranked_manual, $by_start );
+		$prev_end = 0;
+		$first    = true;
+		foreach ( $ranked_manual as $span ) {
+			if ( ! $first && $span['start'] < $prev_end ) {
+				return $fail( 'ambiguous_ownership', 'Classified manual spans overlap.' );
+			}
+			$first    = false;
+			$prev_end = $span['end'];
+		}
+
 		if ( ! is_array( $placements ) ) {
 			return $fail( 'invalid_placements', 'Placements must be a list of placement records.' );
 		}
@@ -366,9 +378,10 @@ if ( ! function_exists( 'pfoa_theme_validate_managed_card_placement' ) ) {
 				return null;
 			}
 			foreach ( $anchor_matches[0] as $anchor_tag ) {
-				if ( 1 === preg_match( '/data-pfoa-cat-dialog\s*=\s*("[^"]*"|\'[^\']*\')/i', (string) $anchor_tag, $dialog_match ) ) {
+				if ( 1 === preg_match( '/(?<![A-Za-z0-9_-])data-pfoa-cat-dialog\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>\/]+)/i', (string) $anchor_tag, $dialog_match ) ) {
 					$token = (string) $dialog_match[1];
-					$inner = substr( $token, 1, strlen( $token ) - 2 );
+					$first = strlen( $token ) > 0 ? $token[0] : '';
+					$inner = ( '"' === $first || '\'' === $first ) ? substr( $token, 1, strlen( $token ) - 2 ) : $token;
 					if ( '' !== $inner ) {
 						$found[] = $inner;
 					}
@@ -386,6 +399,7 @@ if ( ! function_exists( 'pfoa_theme_validate_managed_card_placement' ) ) {
 			return $found[0];
 		};
 
+		$proven_slug = array();
 		foreach ( $placements as $placement_index => $record ) {
 			$owned_span = $owned[ $owner_of_placement[ $placement_index ] ];
 			$has_slug   = array_key_exists( 'slug', $record ) && is_string( $record['slug'] ) && '' !== $record['slug'];
@@ -395,8 +409,22 @@ if ( ! function_exists( 'pfoa_theme_validate_managed_card_placement' ) ) {
 				if ( null === $wanted || $wanted !== $agreed ) {
 					return $fail( 'unproven_legacy', 'A legacy placement lacks its proven dialog slug.' );
 				}
+				$proven_slug[ $placement_index ] = $agreed;
 			} elseif ( $has_slug ) {
 				return $fail( 'conflicting_claims', 'An id-owned placement must not carry a dialog slug.' );
+			}
+		}
+
+		$slug_to_profile = array();
+		foreach ( $proven_slug as $placement_index => $agreed ) {
+			$map_key = "\0slug\0" . $agreed;
+			$profile = $placements[ $placement_index ]['profile_id'];
+			if ( array_key_exists( $map_key, $slug_to_profile ) ) {
+				if ( $slug_to_profile[ $map_key ] !== $profile ) {
+					return $fail( 'conflicting_claims', 'One dialog slug is claimed by two profiles.' );
+				}
+			} else {
+				$slug_to_profile[ $map_key ] = $profile;
 			}
 		}
 
@@ -425,11 +453,13 @@ if ( ! function_exists( 'pfoa_theme_validate_managed_card_placement' ) ) {
 		foreach ( $ranked as $order => $ranked_span ) {
 			$owned_index = $owned_by_identity[ $ranked_span['profile_id'] . "\0" . $ranked_span['slot'] ];
 			$record      = $placements[ $placement_of_owned[ $owned_index ] ];
+			$proven      = 'legacy-proven' === $ranked_span['kind'] ? $agreed_slug( $ranked_span['slice'] ) : null;
 			$accepted[]  = array(
 				'profile_id' => $record['profile_id'],
 				'slot'       => $record['slot'],
 				'start'      => $record['start'],
 				'end'        => $record['end'],
+				'slug'       => $proven,
 				'order'      => (int) $order,
 				'kind'       => $ranked_span['kind'],
 			);
