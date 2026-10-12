@@ -42,7 +42,11 @@
  * old content with the dialog open; close preserves the body but still hides
  * the dialog and restores focus.
  *
- * Destroy lifecycle: `destroy()` bumps the sequence, aborts the live
+ * Destroy lifecycle: `destroy()` is ownership-guarded and idempotent. A
+ * stale (non-owner) handle's `destroy()` is a strict no-op: it performs no
+ * operations at all (no dialog lookup, no sequence change, no abort, no
+ * listener removal, no disposal, no DOM or focus changes, no cache change).
+ * The owning handle's `destroy()` bumps the sequence, aborts the live
  * request, snapshots dialog/body/invoker, removes listeners, then -- only
  * for the owned dialog body -- attempts `safeDispose`: on success it clears
  * the body, hides the dialog, and restores focus; on failure it preserves
@@ -69,7 +73,9 @@
  * Fragment validation (defense-in-depth, not a replacement for future
  * server output safety): before insertion the fragment is parsed with
  * DOMParser (or a template/div fallback) and inspected -- exactly one DIV
- * root with class `pfoa-cat-profile` and matching data attribute, an element
+ * root with class `pfoa-cat-profile` and matching data attribute (text nodes
+ * are read via childNodes so non-whitespace text outside the root rejects;
+ * whitespace-only text and comments are ignored), an element
  * allowlist, attribute allowlist, no `on*` handlers, safe style, safe
  * http(s) URLs, YouTube-only iframes. Unparseable input fails closed.
  *
@@ -790,7 +796,9 @@
             return null;
           }
           var b = parsedDoc.body || null;
-          var ch = b ? (b.children || b.childNodes || null) : null;
+          // childNodes first: .children hides non-whitespace text nodes
+          // outside the fragment root in real browsers.
+          var ch = b ? (b.childNodes || b.children || null) : null;
           if (!ch || typeof ch.length !== 'number') {
             return null;
           }
@@ -825,7 +833,7 @@
             }
             try {
               var content = tpl.content || null;
-              var cc = content ? (content.children || content.childNodes || null) : null;
+              var cc = content ? (content.childNodes || content.children || null) : null;
               if (cc && typeof cc.length === 'number' && cc.length > 0) {
                 var a2 = [];
                 for (var k = 0; k < cc.length; k++) {
@@ -850,7 +858,7 @@
               /* ignore */
             }
             try {
-              var kids = tmp.children || tmp.childNodes || null;
+              var kids = tmp.childNodes || tmp.children || null;
               if (kids && typeof kids.length === 'number' && kids.length > 0) {
                 var a3 = [];
                 for (var q = 0; q < kids.length; q++) {
@@ -892,7 +900,7 @@
       if (parsed.head) {
         var hk = null;
         try {
-          hk = parsed.head.children || parsed.head.childNodes || [];
+          hk = parsed.head.childNodes || parsed.head.children || [];
         } catch (err) {
           hk = [];
         }
@@ -1007,6 +1015,35 @@
             var tlow = String(tv === null || tv === undefined ? '' : tv)
               .replace(/^\s+|\s+$/g, '').toLowerCase();
             if (tlow !== '_self' && tlow !== '_blank') {
+              return false;
+            }
+            continue;
+          }
+          if (low === 'referrerpolicy') {
+            // Narrow allow: referrerpolicy only on IFRAME (approved video
+            // embeds) with a restricted value set; rejected everywhere else.
+            if (t !== 'IFRAME') {
+              return false;
+            }
+            var rpv = nodeGetAttr(el, names[a]);
+            var rplow = String(rpv === null || rpv === undefined ? '' : rpv)
+              .replace(/^\s+|\s+$/g, '').toLowerCase();
+            if (rplow !== 'strict-origin-when-cross-origin' && rplow !== 'no-referrer' &&
+              rplow !== 'same-origin' && rplow !== 'strict-origin') {
+              return false;
+            }
+            continue;
+          }
+          if (low === 'fetchpriority') {
+            // Narrow allow: fetchpriority only on IMG with a restricted
+            // value set; rejected everywhere else.
+            if (t !== 'IMG') {
+              return false;
+            }
+            var fpv = nodeGetAttr(el, names[a]);
+            var fplow = String(fpv === null || fpv === undefined ? '' : fpv)
+              .replace(/^\s+|\s+$/g, '').toLowerCase();
+            if (fplow !== 'high' && fplow !== 'low' && fplow !== 'auto') {
               return false;
             }
             continue;
@@ -1553,6 +1590,12 @@
     }
 
     function destroy() {
+      // Ownership guard: a stale handle must not touch anything. This also
+      // makes destroy idempotent: after a successful teardown the handle is
+      // no longer the owner, so a second call is a no-op.
+      if (!(cached && cached.handle === handle)) {
+        return;
+      }
       var dlg = null;
       var b = null;
       var who = invoker;

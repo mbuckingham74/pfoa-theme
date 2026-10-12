@@ -49,14 +49,15 @@ function GALLERY_FRAG(slug) {
     '<h2 class="pfoa-cat-profile-title">T</h2>' +
     '<div data-pfoa-cat-gallery=""><dl><dt>' +
     '<a href="https://example.test/pfoa-cat/' + slug + '/photo.jpg">' +
-    '<img src="https://example.test/pfoa-cat/' + slug + '/photo.jpg" alt="C"></a>' +
+    '<img src="https://example.test/pfoa-cat/' + slug + '/photo.jpg" alt="C" fetchpriority="high"></a>' +
     '</dt><dd>Cap</dd></dl><br style="clear: both"></div></div>';
 }
 function YOUTUBE_FRAG(slug) {
   return '<div class="pfoa-cat-profile" data-pfoa-cat-profile="' + slug + '">' +
     '<h2 class="pfoa-cat-profile-title">T</h2><p>Hello</p>' +
     '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" width="560" height="315" ' +
-    'title="V" allow="accelerometer; autoplay" allowfullscreen frameborder="0" loading="lazy"></iframe></div>';
+    'title="V" allow="accelerometer; autoplay" allowfullscreen frameborder="0" loading="lazy" ' +
+    'referrerpolicy="strict-origin-when-cross-origin"></iframe></div>';
 }
 
 /* ---------------- minimal element model ---------------- */
@@ -1067,6 +1068,109 @@ async function testBareValidStillInserts() {
   check(host.providerCalls.init.length === 2, 'bare valid fragment inits galleries');
 }
 
+async function testStaleDestroyNoOp() {
+  const host = makeHost();
+  const hA = host.api.start({ documentEpoch: 'e1' });
+  hA.destroy();
+  const hB = host.api.start({ documentEpoch: 'e1' });
+  check(hB !== hA && hB.started === true, 'stale-destroy setup returns fresh B');
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'STALE-OWN') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('STALE-OWN') !== -1, 'B inserts fragment before stale destroy');
+  check(host.dialog.hidden === false, 'B dialog open before stale destroy');
+  const inits = host.providerCalls.init.length;
+  const disposes = host.providerCalls.dispose.length;
+  hA.destroy();
+  check(host.dlgBody.innerHTML.indexOf('STALE-OWN') !== -1, 'stale destroy preserves B body');
+  check(host.dialog.hidden === false, 'stale destroy leaves B dialog open');
+  check((host.doc._listeners.click || []).length === 1, 'stale destroy keeps B listeners');
+  check(host.providerCalls.init.length === inits, 'stale destroy adds no provider init');
+  check(host.providerCalls.dispose.length === disposes, 'stale destroy adds no provider dispose');
+  const ev = clickEl(host, host.linkB);
+  check(ev.defaultPrevented === true, 'B still functional after stale destroy');
+  check(host.fetchCalls.length === 2, 'B click after stale destroy fetches');
+  hB.destroy();
+  check((host.doc._listeners.click || []).length === 0, 'owner destroy removes listeners');
+  const dAfter = host.providerCalls.dispose.length;
+  hB.destroy();
+  check((host.doc._listeners.click || []).length === 0, 'second destroy stays detached');
+  check(host.providerCalls.dispose.length === dAfter, 'second destroy adds no dispose');
+}
+
+async function testFragmentTextNodes() {
+  const h1 = makeHost();
+  h1.api.start({ documentEpoch: 'e1' });
+  clickEl(h1, h1.linkA);
+  h1.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: 'OUTSIDE-MARK' + VALID_FRAG('mittens', 'LEAD') }));
+  await tick();
+  check(h1.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'leading text shows fallback');
+  check(h1.providerCalls.init.length === 1, 'leading text never inits');
+
+  const h2 = makeHost();
+  h2.api.start({ documentEpoch: 'e1' });
+  clickEl(h2, h2.linkA);
+  h2.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'TRAIL') + 'OUTSIDE-MARK' }));
+  await tick();
+  check(h2.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'trailing text shows fallback');
+  check(h2.providerCalls.init.length === 1, 'trailing text never inits');
+
+  const h3 = makeHost();
+  h3.api.start({ documentEpoch: 'e1' });
+  clickEl(h3, h3.linkA);
+  h3.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: 'OUTSIDE-MARK' + VALID_FRAG('mittens', 'BOTH') + 'OUTSIDE-MARK' }));
+  await tick();
+  check(h3.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'surrounding text shows fallback');
+  check(h3.providerCalls.init.length === 1, 'surrounding text never inits');
+
+  const h4 = makeHost();
+  h4.api.start({ documentEpoch: 'e1' });
+  clickEl(h4, h4.linkA);
+  h4.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: '  \n\t ' + VALID_FRAG('mittens', 'WS-OK') + ' \n ' }));
+  await tick();
+  check(h4.dlgBody.innerHTML.indexOf('WS-OK') !== -1, 'whitespace around root still inserts');
+  check(h4.providerCalls.init.length === 2, 'whitespace around root inits galleries');
+}
+
+async function testNarrowAttributes() {
+  const cases = [
+    {
+      name: 'unsafe referrerpolicy value',
+      frag: '<div class="pfoa-cat-profile" data-pfoa-cat-profile="mittens"><p>Hi</p>' +
+        '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" width="560" height="315" ' +
+        'title="V" referrerpolicy="unsafe-url"></iframe></div>',
+    },
+    {
+      name: 'referrerpolicy on DIV',
+      frag: '<div class="pfoa-cat-profile" data-pfoa-cat-profile="mittens" referrerpolicy="no-referrer"><p>Hi</p></div>',
+    },
+    {
+      name: 'evil fetchpriority value',
+      frag: '<div class="pfoa-cat-profile" data-pfoa-cat-profile="mittens"><p>Hi</p>' +
+        '<img src="https://example.test/pfoa-cat/mittens/photo.jpg" alt="C" fetchpriority="evil"></div>',
+    },
+    {
+      name: 'fetchpriority on DIV',
+      frag: '<div class="pfoa-cat-profile" data-pfoa-cat-profile="mittens" fetchpriority="high"><p>Hi</p></div>',
+    },
+    {
+      name: 'fetchpriority on IFRAME',
+      frag: '<div class="pfoa-cat-profile" data-pfoa-cat-profile="mittens"><p>Hi</p>' +
+        '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" width="560" height="315" ' +
+        'title="V" fetchpriority="high"></iframe></div>',
+    },
+  ];
+  for (const c of cases) {
+    const host = makeHost();
+    host.api.start({ documentEpoch: 'e1' });
+    clickEl(host, host.linkA);
+    host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: c.frag }));
+    await tick();
+    check(host.dlgBody.innerHTML.indexOf('Open full profile') !== -1, c.name + ' shows fallback');
+    check(host.providerCalls.init.length === 1, c.name + ' never inits');
+  }
+}
+
 (async () => {
   await testInertLoad();
   await testIdempotentStart();
@@ -1104,6 +1208,9 @@ async function testBareValidStillInserts() {
   await testUnusableOriginFailsClosed();
   await testFullDocumentDoctypeEmptyHeadRejected();
   await testBareValidStillInserts();
+  await testStaleDestroyNoOp();
+  await testFragmentTextNodes();
+  await testNarrowAttributes();
   if (failures > 0) {
     process.stdout.write('CAT-DIALOG-CONTROLLER FIXTURE: ' + failures + ' FAILURE(S)\n');
     process.exit(1);
