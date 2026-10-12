@@ -12,6 +12,7 @@
  * and attach exactly one document click handler. `_resetForTests` is a
  * test-only hook that detaches listeners and clears cached state so a
  * fixture can isolate runs; the production path stays idempotent.
+ * Each live handle also exposes `destroy()`.
  *
  * Single implementation serving both presentation modes: one code path, no
  * per-mode flags, no per-mode branches, no mode arguments.
@@ -23,27 +24,58 @@
  * `provider.initProfileGalleries(document)` once to claim eligible initial
  * profile galleries; it never calls dispose at start.
  *
- * Presentation-epoch guard: the final server wire format is not yet
- * selected, so epoch comparison is explicitly injected via options:
- *   - `documentEpoch` (string|null; default null)
- *   - `getResponseEpoch(response, bodyText)` (default reads the
- *     `X-PFOA-Presentation-Epoch` response header, else null)
- *   - `isEpochMatch(responseEpoch)` (default rejects missing epochs and
- *     otherwise applies strict `===` against `documentEpoch`)
- *   - `dialogId` (default 'pfoa-cat-dialog')
- *   - `documentOverride` / `windowOverride`, `fetchImpl`, `getProvider`
- *     (dependency injection for tests; all optional with safe defaults)
- * Before insertion the response epoch is resolved via `getResponseEpoch`
- * and validated via `isEpochMatch`. A missing (null / '' / undefined) or
- * mismatched epoch rejects insertion: the fragment is never inserted,
- * galleries are never initialized for it, and a fallback carrying a
- * canonical link is shown instead.
+ * Provider availability: a live provider (both init+dispose functions) is
+ * required before ANY dialog-body mutation (loading, fragment, fallback,
+ * clear) and before insertion. Pre-open the controller fails closed (no
+ * preventDefault, no fetch, no dialog) when the provider is missing.
+ * Post-open, when the provider disappears before a response or dispose, the
+ * controller aborts the mutation, keeps the previous safe body content, and
+ * keeps the dialog open. A fallback is attempted only when safe disposal
+ * succeeds; when the provider is missing the fallback also aborts, leaving
+ * the loading or previous content in place.
+ *
+ * Disposal: `safeDispose(body)` returns true only when a live provider
+ * exists and `disposeProfileGalleries(body)` does not throw (its return
+ * value is ignored; 0 is valid -- only a missing provider or a throw is a
+ * failure). Every `innerHTML` mutation is preceded by a successful
+ * `safeDispose`. On failure the mutation is skipped: replacement keeps the
+ * old content with the dialog open; close preserves the body but still hides
+ * the dialog and restores focus.
+ *
+ * Destroy lifecycle: `destroy()` bumps the sequence, aborts the live
+ * request, snapshots dialog/body/invoker, removes listeners, then -- only
+ * for the owned dialog body -- attempts `safeDispose`: on success it clears
+ * the body, hides the dialog, and restores focus; on failure it preserves
+ * the body but still hides the dialog and restores focus. It never disposes
+ * the document or an unowned scope, invalidates late responses, clears the
+ * cache only for its own handle, and leaves a fresh `start()` working.
+ *
+ * Presentation-epoch guard: epoch comparison is explicitly injected via
+ * options (`documentEpoch`, `getResponseEpoch`, `isEpochMatch`). Insertion
+ * requires a non-empty document epoch, a non-empty response epoch, and
+ * strict `===` equality, independently of injected callbacks. An injected
+ * `isEpochMatch` may further reject but never overrides a missing epoch or
+ * a mismatch. A missing document epoch never yields insertion (fallback
+ * instead); no epoch is required pre-open so open+fetch still occur.
+ *
+ * Canonical link validation: only same-origin HTTP(S) Cat Profile canonical
+ * URLs are eligible (`/cats/<slug>/` with matching slug, `_self` or missing
+ * target, no `download`). Unsafe links fail closed pre-open and never reach
+ * fetch or fallback construction. Fallbacks reuse only the originally
+ * validated safe href.
+ *
+ * Fragment validation (defense-in-depth, not a replacement for future
+ * server output safety): before insertion the fragment is parsed with
+ * DOMParser (or a template/div fallback) and inspected -- exactly one DIV
+ * root with class `pfoa-cat-profile` and matching data attribute, an element
+ * allowlist, attribute allowlist, no `on*` handlers, safe style, safe
+ * http(s) URLs, YouTube-only iframes. Unparseable input fails closed.
  *
  * Fail-closed: any missing dependency (dialog shell, dialog body, fetch,
  * provider) leaves ordinary navigation untouched -- no preventDefault, no
  * dialog open, no fetch. Post-open failures keep the already-opened dialog
  * visible with a fallback that preserves canonical navigation via an
- * explicit link.
+ * explicit link, or preserve prior content when disposal is unsafe.
  */
 (function (root) {
   'use strict';
@@ -55,6 +87,23 @@
   var SLUG_RE = /^[a-z0-9-]+$/;
   var EPOCH_HEADER = 'X-PFOA-Presentation-Epoch';
   var DEFAULT_DIALOG_ID = 'pfoa-cat-dialog';
+  var CATS_PATH_RE = /^\/cats\/([a-z0-9-]+)\/?$/;
+
+  var FRAG_ALLOWED_TAGS = {
+    DIV: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, P: 1,
+    UL: 1, OL: 1, LI: 1, A: 1, IMG: 1, DL: 1, DT: 1, DD: 1,
+    BR: 1, STRONG: 1, EM: 1, B: 1, I: 1, U: 1, SPAN: 1,
+    BLOCKQUOTE: 1, FIGURE: 1, FIGCAPTION: 1, IFRAME: 1
+  };
+  var FRAG_ALLOWED_ATTRS = {
+    'class': 1, id: 1, href: 1, src: 1, srcset: 1, sizes: 1, alt: 1,
+    title: 1, width: 1, height: 1, loading: 1, decoding: 1, allow: 1,
+    allowfullscreen: 1, frameborder: 1, target: 1, rel: 1, style: 1
+  };
+  var FRAG_IFRAME_ALLOWED_ATTRS = {
+    src: 1, width: 1, height: 1, title: 1, allow: 1,
+    allowfullscreen: 1, frameborder: 1, loading: 1, 'class': 1, id: 1, style: 1
+  };
 
   /* Idempotent success record: { handle, doc, click, key, invalidate }. */
   var cached = null;
@@ -201,6 +250,13 @@
     return value.replace(/^\s+|\s+$/g, '') === '';
   }
 
+  function isNonEmptyString(value) {
+    if (typeof value !== 'string') {
+      return false;
+    }
+    return value.replace(/^\s+|\s+$/g, '') !== '';
+  }
+
   function escapeAttr(value) {
     return String(value)
       .replace(/&/g, '&amp;')
@@ -299,7 +355,8 @@
     };
     var injectedFetch = opts.fetchImpl || null;
     var getResponseEpoch = opts.getResponseEpoch || defaultGetResponseEpoch;
-    var isEpochMatch = opts.isEpochMatch || makeDefaultIsEpochMatch(documentEpoch);
+    var injectedIsEpochMatch = (Object.prototype.hasOwnProperty.call(opts, 'isEpochMatch') &&
+      typeof opts.isEpochMatch === 'function') ? opts.isEpochMatch : null;
 
     if (!doc || typeof doc.addEventListener !== 'function') {
       return { started: false };
@@ -313,6 +370,669 @@
         provider = null;
       }
       return providerLooksValid(provider) ? provider : null;
+    }
+
+    function urlCtor() {
+      try {
+        if (win && typeof win.URL === 'function') {
+          return win.URL;
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      try {
+        if (typeof URL === 'function') {
+          return URL;
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      return null;
+    }
+
+    function getBase() {
+      try {
+        if (win && win.location && typeof win.location.href === 'string' &&
+          win.location.href.replace(/^\s+|\s+$/g, '') !== '') {
+          return win.location.href;
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      try {
+        if (doc && typeof doc.baseURI === 'string' &&
+          doc.baseURI.replace(/^\s+|\s+$/g, '') !== '') {
+          return doc.baseURI;
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      try {
+        if (doc && typeof doc.URL === 'string' &&
+          doc.URL.replace(/^\s+|\s+$/g, '') !== '') {
+          return doc.URL;
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      return null;
+    }
+
+    function isEligibleHref(href, slug) {
+      if (!isNonEmptyString(href) || !isNonEmptyString(slug)) {
+        return false;
+      }
+      var C = urlCtor();
+      if (!C) {
+        return false;
+      }
+      var base = getBase();
+      var parsed = null;
+      try {
+        parsed = base ? new C(href, base) : new C(href);
+      } catch (err) {
+        return false;
+      }
+      if (!parsed) {
+        return false;
+      }
+      var proto = '';
+      try {
+        proto = String(parsed.protocol || '').toLowerCase();
+      } catch (err) {
+        return false;
+      }
+      if (proto !== 'http:' && proto !== 'https:') {
+        return false;
+      }
+      if (base) {
+        try {
+          var baseParsed = new C(base);
+          var baseOrigin = baseParsed.origin;
+          if (!baseOrigin || parsed.origin !== baseOrigin) {
+            return false;
+          }
+        } catch (err) {
+          return false;
+        }
+      }
+      var pathname = '';
+      try {
+        pathname = String(parsed.pathname || '');
+      } catch (err) {
+        return false;
+      }
+      var m = CATS_PATH_RE.exec(pathname);
+      if (!m || m[1] !== slug) {
+        return false;
+      }
+      return true;
+    }
+
+    function isEligibleAnchor(anchor, slug, href) {
+      if (hasAttr(anchor, 'download')) {
+        return false;
+      }
+      if (hasAttr(anchor, 'target')) {
+        var tv = getAttr(anchor, 'target');
+        if (typeof tv !== 'string') {
+          return false;
+        }
+        if (tv.replace(/^\s+|\s+$/g, '').toLowerCase() !== '_self') {
+          return false;
+        }
+      }
+      return isEligibleHref(href, slug);
+    }
+
+    function isSafeUrlAttr(value) {
+      if (typeof value !== 'string') {
+        return false;
+      }
+      var t = value.replace(/^\s+|\s+$/g, '');
+      if (t === '') {
+        return false;
+      }
+      var low = t.toLowerCase();
+      if (low.indexOf('javascript:') === 0 || low.indexOf('data:') === 0 ||
+        low.indexOf('vbscript:') === 0 || low.indexOf('file:') === 0 ||
+        low.indexOf('blob:') === 0) {
+        return false;
+      }
+      var C = urlCtor();
+      if (!C) {
+        return false;
+      }
+      var base = getBase();
+      var p = null;
+      try {
+        p = base ? new C(t, base) : new C(t);
+      } catch (err) {
+        return false;
+      }
+      var proto = '';
+      try {
+        proto = String(p.protocol || '').toLowerCase();
+      } catch (err) {
+        return false;
+      }
+      return proto === 'http:' || proto === 'https:';
+    }
+
+    function isSafeStyleAttr(value) {
+      var slow = String(value === null || value === undefined ? '' : value).toLowerCase();
+      if (slow.indexOf('url(') !== -1) {
+        return false;
+      }
+      if (slow.indexOf('expression(') !== -1) {
+        return false;
+      }
+      if (slow.indexOf('javascript:') !== -1) {
+        return false;
+      }
+      if (slow.indexOf('vbscript:') !== -1) {
+        return false;
+      }
+      if (slow.indexOf('data:text/html') !== -1) {
+        return false;
+      }
+      return true;
+    }
+
+    function isYouTubeSrc(src) {
+      var C = urlCtor();
+      if (!C) {
+        return false;
+      }
+      var base = getBase();
+      var p = null;
+      try {
+        p = base ? new C(String(src).replace(/^\s+|\s+$/g, ''), base) : new C(String(src).replace(/^\s+|\s+$/g, ''));
+      } catch (err) {
+        return false;
+      }
+      var proto = '';
+      try {
+        proto = String(p.protocol || '').toLowerCase();
+      } catch (err) {
+        return false;
+      }
+      if (proto !== 'https:') {
+        return false;
+      }
+      var host = '';
+      try {
+        host = String(p.hostname || '').toLowerCase();
+      } catch (err) {
+        return false;
+      }
+      if (host === 'youtu.be' || host === 'youtube.com' || host === 'youtube-nocookie.com') {
+        return true;
+      }
+      if (host.length > 'youtube.com'.length &&
+        host.slice(host.length - 'youtube.com'.length - 1) === '.youtube.com') {
+        return true;
+      }
+      if (host.length > 'youtube-nocookie.com'.length &&
+        host.slice(host.length - 'youtube-nocookie.com'.length - 1) === '.youtube-nocookie.com') {
+        return true;
+      }
+      if (host.length > 'youtu.be'.length &&
+        host.slice(host.length - 'youtu.be'.length - 1) === '.youtu.be') {
+        return true;
+      }
+      return false;
+    }
+
+    function nodeTag(node) {
+      try {
+        return String(node && node.tagName ? node.tagName : '').toUpperCase();
+      } catch (err) {
+        return '';
+      }
+    }
+
+    function nodeKids(node) {
+      try {
+        if (node && node.children && typeof node.children.length === 'number') {
+          return node.children;
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      try {
+        if (node && node.childNodes && typeof node.childNodes.length === 'number') {
+          return node.childNodes;
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      return [];
+    }
+
+    function nodeText(node) {
+      try {
+        if (node && typeof node.textContent === 'string') {
+          return node.textContent;
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      try {
+        if (node && typeof node.data === 'string') {
+          return node.data;
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      try {
+        if (node && typeof node.nodeValue === 'string') {
+          return node.nodeValue;
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      return '';
+    }
+
+    function listAttrNames(node) {
+      try {
+        if (node && typeof node.getAttributeNames === 'function') {
+          var ns = node.getAttributeNames();
+          if (ns && typeof ns.length === 'number') {
+            var out = [];
+            for (var i = 0; i < ns.length; i++) {
+              out.push(String(ns[i]));
+            }
+            return out;
+          }
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      try {
+        if (node && node.attributes && typeof node.attributes.length === 'number') {
+          var out2 = [];
+          for (var j = 0; j < node.attributes.length; j++) {
+            var a = node.attributes[j];
+            if (a && typeof a.name === 'string') {
+              out2.push(String(a.name));
+            } else if (typeof a === 'string') {
+              out2.push(a);
+            }
+          }
+          if (out2.length > 0) {
+            return out2;
+          }
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      try {
+        if (node && node.attrs && typeof node.attrs === 'object') {
+          return Object.keys(node.attrs);
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      return [];
+    }
+
+    function nodeGetAttr(node, name) {
+      try {
+        if (node && typeof node.getAttribute === 'function') {
+          var v = node.getAttribute(name);
+          if (v !== null && v !== undefined) {
+            return v;
+          }
+          var low = String(name).toLowerCase();
+          if (low !== String(name)) {
+            try {
+              var v2 = node.getAttribute(low);
+              if (v2 !== null && v2 !== undefined) {
+                return v2;
+              }
+            } catch (ignored) {
+              /* ignore */
+            }
+          }
+          return v;
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      try {
+        if (node && node.attrs && typeof node.attrs === 'object') {
+          var want = String(name).toLowerCase();
+          var keys = Object.keys(node.attrs);
+          for (var i = 0; i < keys.length; i++) {
+            if (String(keys[i]).toLowerCase() === want) {
+              return node.attrs[keys[i]];
+            }
+          }
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      return null;
+    }
+
+    function nodeHasAttr(node, name) {
+      try {
+        if (node && typeof node.hasAttribute === 'function') {
+          try {
+            if (node.hasAttribute(name)) {
+              return true;
+            }
+          } catch (err) {
+            /* fall through */
+          }
+          try {
+            if (node.hasAttribute(String(name).toLowerCase())) {
+              return true;
+            }
+          } catch (err) {
+            /* fall through */
+          }
+        }
+      } catch (err) {
+        /* fall through */
+      }
+      return nodeGetAttr(node, name) !== null;
+    }
+
+    function parseTopNodes(text) {
+      var DP = null;
+      try {
+        DP = (win && win.DOMParser) ? win.DOMParser : null;
+      } catch (err) {
+        DP = null;
+      }
+      if (!DP) {
+        try {
+          if (typeof DOMParser === 'function') {
+            DP = DOMParser;
+          }
+        } catch (err) {
+          DP = null;
+        }
+      }
+      if (DP) {
+        try {
+          var parser = new DP();
+          var parsedDoc = parser.parseFromString(text, 'text/html');
+          var b = parsedDoc && parsedDoc.body ? parsedDoc.body : null;
+          var ch = b ? (b.children || b.childNodes || null) : null;
+          if (ch && typeof ch.length === 'number') {
+            var arr = [];
+            for (var i = 0; i < ch.length; i++) {
+              arr.push(ch[i]);
+            }
+            return arr;
+          }
+        } catch (err) {
+          return null;
+        }
+        return null;
+      }
+      try {
+        if (doc && typeof doc.createElement === 'function') {
+          var tpl = null;
+          try {
+            tpl = doc.createElement('template');
+          } catch (err) {
+            tpl = null;
+          }
+          if (tpl) {
+            try {
+              tpl.innerHTML = text;
+            } catch (err) {
+              /* ignore */
+            }
+            try {
+              var content = tpl.content || null;
+              var cc = content ? (content.children || content.childNodes || null) : null;
+              if (cc && typeof cc.length === 'number' && cc.length > 0) {
+                var a2 = [];
+                for (var k = 0; k < cc.length; k++) {
+                  a2.push(cc[k]);
+                }
+                return a2;
+              }
+            } catch (err) {
+              /* fall through to div */
+            }
+          }
+          var tmp = null;
+          try {
+            tmp = doc.createElement('div');
+          } catch (err) {
+            tmp = null;
+          }
+          if (tmp) {
+            try {
+              tmp.innerHTML = text;
+            } catch (err) {
+              /* ignore */
+            }
+            try {
+              var kids = tmp.children || tmp.childNodes || null;
+              if (kids && typeof kids.length === 'number' && kids.length > 0) {
+                var a3 = [];
+                for (var q = 0; q < kids.length; q++) {
+                  a3.push(kids[q]);
+                }
+                return a3;
+              }
+            } catch (err) {
+              return null;
+            }
+            return null;
+          }
+        }
+      } catch (err) {
+        return null;
+      }
+      return null;
+    }
+
+    function isValidFragment(bodyText, expectedSlug) {
+      // Client-side defense-in-depth only; server output safety still applies.
+      if (!isNonEmptyString(bodyText) || !isNonEmptyString(expectedSlug)) {
+        return false;
+      }
+      var top = parseTopNodes(bodyText);
+      if (!top) {
+        return false;
+      }
+      var elementRoots = [];
+      for (var i = 0; i < top.length; i++) {
+        var n = top[i];
+        if (!n) {
+          continue;
+        }
+        if (n.nodeType === 1) {
+          elementRoots.push(n);
+        } else if (n.nodeType === 3) {
+          if (!isBlank(nodeText(n))) {
+            return false;
+          }
+        } else if (n.nodeType === 8) {
+          /* ignore comments */
+        } else if (nodeTag(n) !== '') {
+          elementRoots.push(n);
+        }
+      }
+      if (elementRoots.length !== 1) {
+        return false;
+      }
+      var r = elementRoots[0];
+      if (nodeTag(r) !== 'DIV') {
+        return false;
+      }
+      var cls = nodeGetAttr(r, 'class');
+      if (typeof cls !== 'string') {
+        return false;
+      }
+      var tokens = cls.split(/\s+/);
+      var hasProfile = false;
+      for (var c = 0; c < tokens.length; c++) {
+        if (tokens[c] === 'pfoa-cat-profile') {
+          hasProfile = true;
+          break;
+        }
+      }
+      if (!hasProfile) {
+        return false;
+      }
+      if (nodeGetAttr(r, 'data-pfoa-cat-profile') !== expectedSlug) {
+        return false;
+      }
+      var all = [r];
+      var stack = [r];
+      while (stack.length > 0) {
+        var cur = stack.pop();
+        var kids = nodeKids(cur);
+        for (var k = 0; k < kids.length; k++) {
+          var kid = kids[k];
+          if (!kid) {
+            continue;
+          }
+          if (kid.nodeType === 3 || kid.nodeType === 8) {
+            continue;
+          }
+          var tag = nodeTag(kid);
+          if (tag === '' && kid.nodeType !== 1) {
+            continue;
+          }
+          all.push(kid);
+          stack.push(kid);
+        }
+      }
+      for (var e = 0; e < all.length; e++) {
+        var el = all[e];
+        var t = nodeTag(el);
+        if (!FRAG_ALLOWED_TAGS[t]) {
+          return false;
+        }
+        var names = listAttrNames(el);
+        for (var a = 0; a < names.length; a++) {
+          var rawName = String(names[a]);
+          var low = rawName.toLowerCase();
+          if (low.indexOf('on') === 0) {
+            return false;
+          }
+          if (low === 'style') {
+            if (!isSafeStyleAttr(nodeGetAttr(el, names[a]))) {
+              return false;
+            }
+            continue;
+          }
+          if (low === 'target') {
+            var tv = nodeGetAttr(el, names[a]);
+            var tlow = String(tv === null || tv === undefined ? '' : tv)
+              .replace(/^\s+|\s+$/g, '').toLowerCase();
+            if (tlow !== '_self' && tlow !== '_blank') {
+              return false;
+            }
+            continue;
+          }
+          if (t === 'IFRAME') {
+            if (!FRAG_IFRAME_ALLOWED_ATTRS[low]) {
+              return false;
+            }
+            continue;
+          }
+          if (FRAG_ALLOWED_ATTRS[low]) {
+            continue;
+          }
+          if (low.indexOf('data-') === 0 || low.indexOf('aria-') === 0) {
+            continue;
+          }
+          return false;
+        }
+        if (nodeHasAttr(el, 'href')) {
+          var hv = nodeGetAttr(el, 'href');
+          if (!isSafeUrlAttr(typeof hv === 'string' ? hv : String(hv === null || hv === undefined ? '' : hv))) {
+            return false;
+          }
+        }
+        if (nodeHasAttr(el, 'srcset')) {
+          var sv = nodeGetAttr(el, 'srcset');
+          var sText = typeof sv === 'string' ? sv : String(sv === null || sv === undefined ? '' : sv);
+          if (isBlank(sText)) {
+            return false;
+          }
+          var slow = sText.toLowerCase();
+          if (slow.indexOf('javascript:') !== -1 || slow.indexOf('data:') !== -1 ||
+            slow.indexOf('vbscript:') !== -1) {
+            return false;
+          }
+          var cands = sText.split(',');
+          for (var s = 0; s < cands.length; s++) {
+            var cand = cands[s].replace(/^\s+|\s+$/g, '');
+            if (cand === '') {
+              return false;
+            }
+            var firstTok = cand.split(/\s+/)[0];
+            if (!isSafeUrlAttr(firstTok)) {
+              return false;
+            }
+          }
+        }
+        if (t === 'IMG') {
+          if (!nodeHasAttr(el, 'src')) {
+            return false;
+          }
+          var imgSrc = nodeGetAttr(el, 'src');
+          if (!isSafeUrlAttr(typeof imgSrc === 'string' ? imgSrc : String(imgSrc))) {
+            return false;
+          }
+        }
+        if (t === 'A' && nodeHasAttr(el, 'href')) {
+          var aHref = nodeGetAttr(el, 'href');
+          if (!isSafeUrlAttr(typeof aHref === 'string' ? aHref : String(aHref))) {
+            return false;
+          }
+        }
+        if (t === 'IFRAME') {
+          if (!nodeHasAttr(el, 'src')) {
+            return false;
+          }
+          var fSrc = nodeGetAttr(el, 'src');
+          var fText = typeof fSrc === 'string' ? fSrc : String(fSrc);
+          if (!isSafeUrlAttr(fText) || !isYouTubeSrc(fText)) {
+            return false;
+          }
+        } else if (nodeHasAttr(el, 'src') && t !== 'IMG' && t !== 'IFRAME') {
+          var gSrc = nodeGetAttr(el, 'src');
+          if (!isSafeUrlAttr(typeof gSrc === 'string' ? gSrc : String(gSrc))) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function isEpochOk(response, bodyText) {
+      var respEpoch = null;
+      try {
+        respEpoch = getResponseEpoch(response, bodyText);
+      } catch (err) {
+        respEpoch = null;
+      }
+      if (!isNonEmptyString(documentEpoch) || !isNonEmptyString(respEpoch) ||
+        respEpoch !== documentEpoch) {
+        return false;
+      }
+      if (injectedIsEpochMatch) {
+        try {
+          return !!injectedIsEpochMatch(respEpoch);
+        } catch (err) {
+          return false;
+        }
+      }
+      return true;
     }
 
     function fetchNow() {
@@ -380,11 +1100,52 @@
       }
     }
 
+    function safeDispose(body) {
+      if (!body) {
+        return false;
+      }
+      var provider = liveProvider();
+      if (!provider) {
+        return false;
+      }
+      try {
+        provider.disposeProfileGalleries(body);
+      } catch (err) {
+        return false;
+      }
+      return true;
+    }
+
     function setHtml(el, html) {
       try {
         el.innerHTML = html;
       } catch (err) {
         /* stub hosts always accept string assignment */
+      }
+    }
+
+    function hideDialog(dlg) {
+      try {
+        dlg.hidden = true;
+      } catch (err) {
+        /* ignore */
+      }
+      try {
+        if (typeof dlg.setAttribute === 'function') {
+          dlg.setAttribute('hidden', '');
+        }
+      } catch (err) {
+        /* ignore */
+      }
+    }
+
+    function restoreFocus(who) {
+      if (who && typeof who.focus === 'function' && inDocument(doc, who)) {
+        try {
+          who.focus();
+        } catch (err) {
+          /* ignore focus failures */
+        }
       }
     }
 
@@ -400,13 +1161,10 @@
       if (!body) {
         return;
       }
-      var provider = liveProvider();
-      if (provider) {
-        try {
-          provider.disposeProfileGalleries(body);
-        } catch (err) {
-          /* keep the fallback visible even if dispose fails */
-        }
+      // Fallback also requires safe disposal; when the provider is gone or
+      // disposal throws, this aborts and leaves loading/previous content.
+      if (!safeDispose(body)) {
+        return;
       }
       setHtml(body, fallbackHtml(href));
     }
@@ -428,37 +1186,16 @@
       }
       var body = findBody(dlg);
       if (body) {
-        var provider = liveProvider();
-        if (provider) {
-          try {
-            provider.disposeProfileGalleries(body);
-          } catch (err) {
-            /* keep closing even if dispose fails */
-          }
+        // On dispose failure preserve the old body content (never silently
+        // clear) but still hide the dialog and restore focus.
+        if (safeDispose(body)) {
+          setHtml(body, '');
         }
-        setHtml(body, '');
       }
-      try {
-        dlg.hidden = true;
-      } catch (err) {
-        /* ignore */
-      }
-      try {
-        if (typeof dlg.setAttribute === 'function') {
-          dlg.setAttribute('hidden', '');
-        }
-      } catch (err) {
-        /* ignore */
-      }
+      hideDialog(dlg);
       var who = invoker;
       invoker = null;
-      if (who && typeof who.focus === 'function' && inDocument(doc, who)) {
-        try {
-          who.focus();
-        } catch (err) {
-          /* ignore focus failures */
-        }
-      }
+      restoreFocus(who);
     }
 
     function openFor(anchor, href, slug) {
@@ -483,15 +1220,11 @@
       var signal = liveAbort && liveAbort.signal ? liveAbort.signal : undefined;
       invoker = anchor;
 
-      var opener = liveProvider();
-      if (opener) {
-        try {
-          opener.disposeProfileGalleries(body);
-        } catch (err) {
-          /* keep opening even if dispose fails */
-        }
+      // Loading requires safe disposal; on failure preserve old content and
+      // keep the dialog open state, but still proceed to fetch.
+      if (safeDispose(body)) {
+        setHtml(body, loadingHtml());
       }
-      setHtml(body, loadingHtml());
       try {
         dlg.hidden = false;
       } catch (err) {
@@ -558,19 +1291,11 @@
             showFallback(myId, href);
             return;
           }
-          var epoch = null;
-          try {
-            epoch = getResponseEpoch(response, bodyText);
-          } catch (err) {
-            epoch = null;
+          if (!isEpochOk(response, bodyText)) {
+            showFallback(myId, href);
+            return;
           }
-          var matched = false;
-          try {
-            matched = !!isEpochMatch(epoch);
-          } catch (err) {
-            matched = false;
-          }
-          if (!matched) {
+          if (!isValidFragment(bodyText, slug)) {
             showFallback(myId, href);
             return;
           }
@@ -578,21 +1303,32 @@
           if (!liveBody) {
             return;
           }
-          var disposer = liveProvider();
-          if (disposer) {
-            try {
-              disposer.disposeProfileGalleries(liveBody);
-            } catch (err) {
-              /* keep replacing even if dispose fails */
-            }
+          // Provider must still be live; on disappearance abort the mutation,
+          // keep previous safe content, and keep the dialog open. A fallback
+          // here would also require safe disposal (hence the provider), so it
+          // aborts as well, leaving loading/previous content in place.
+          if (!liveProvider()) {
+            return;
+          }
+          if (!safeDispose(liveBody)) {
+            return;
           }
           setHtml(liveBody, bodyText);
           var initializer = liveProvider();
-          if (initializer) {
-            try {
-              initializer.initProfileGalleries(liveBody);
-            } catch (err) {
-              /* fragment stays visible even if init fails */
+          if (!initializer) {
+            // Init requires a live provider; do not leave an apparently
+            // successful fragment. Dispose + fallback when safe; otherwise the
+            // just-inserted fragment remains (documented race limitation).
+            if (safeDispose(liveBody)) {
+              setHtml(liveBody, fallbackHtml(href));
+            }
+            return;
+          }
+          try {
+            initializer.initProfileGalleries(liveBody);
+          } catch (err) {
+            if (safeDispose(liveBody)) {
+              setHtml(liveBody, fallbackHtml(href));
             }
           }
         }, function () {
@@ -655,6 +1391,9 @@
       }
       var href = getAttr(anchor, 'href');
       if (isBlank(href)) {
+        return;
+      }
+      if (!isEligibleAnchor(anchor, slug, href)) {
         return;
       }
 
@@ -740,6 +1479,29 @@
     }
 
     function destroy() {
+      var dlg = null;
+      var b = null;
+      var who = invoker;
+      try {
+        dlg = getDialog();
+      } catch (err) {
+        dlg = null;
+      }
+      try {
+        b = dlg ? findBody(dlg) : null;
+      } catch (err) {
+        b = null;
+      }
+      seq += 1;
+      if (liveAbort && typeof liveAbort.abort === 'function') {
+        try {
+          liveAbort.abort();
+        } catch (err) {
+          /* ignore */
+        }
+      }
+      liveAbort = null;
+      invoker = null;
       try {
         doc.removeEventListener('click', onDocumentClick);
       } catch (err) {
@@ -750,7 +1512,29 @@
       } catch (err) {
         /* ignore */
       }
-      invalidate();
+      if (dlg && b) {
+        // Only the owned dialog body is ever disposed/cleared. On unsafe
+        // disposal preserve the body (never silently clear or abandon markup
+        // without disposal) but still hide the dialog and restore focus.
+        var ok = false;
+        try {
+          ok = safeDispose(b);
+        } catch (err) {
+          ok = false;
+        }
+        if (ok) {
+          try {
+            setHtml(b, '');
+          } catch (err) {
+            /* ignore */
+          }
+        }
+        hideDialog(dlg);
+        restoreFocus(who);
+      } else if (dlg) {
+        hideDialog(dlg);
+        restoreFocus(who);
+      }
       if (cached && cached.handle === handle) {
         cached = null;
       }

@@ -39,6 +39,26 @@ function tick(n) {
   return p;
 }
 
+function VALID_FRAG(slug, marker) {
+  const m = marker === undefined ? 'Hello' : String(marker);
+  return '<div class="pfoa-cat-profile" data-pfoa-cat-profile="' + slug + '">' +
+    '<h2 class="pfoa-cat-profile-title">T</h2><p>' + m + '</p></div>';
+}
+function GALLERY_FRAG(slug) {
+  return '<div class="pfoa-cat-profile" data-pfoa-cat-profile="' + slug + '">' +
+    '<h2 class="pfoa-cat-profile-title">T</h2>' +
+    '<div data-pfoa-cat-gallery=""><dl><dt>' +
+    '<a href="https://example.test/cats/' + slug + '/photo.jpg">' +
+    '<img src="https://example.test/cats/' + slug + '/photo.jpg" alt="C"></a>' +
+    '</dt><dd>Cap</dd></dl><br style="clear: both"></div></div>';
+}
+function YOUTUBE_FRAG(slug) {
+  return '<div class="pfoa-cat-profile" data-pfoa-cat-profile="' + slug + '">' +
+    '<h2 class="pfoa-cat-profile-title">T</h2><p>Hello</p>' +
+    '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" width="560" height="315" ' +
+    'title="V" allow="accelerometer; autoplay" allowfullscreen frameborder="0" loading="lazy"></iframe></div>';
+}
+
 /* ---------------- minimal element model ---------------- */
 
 class El {
@@ -128,6 +148,102 @@ function walkDoc(node, fn) {
   return true;
 }
 
+/* ---------------- minimal fragment HTML parser for DOMParser stub ---------------- */
+
+function decodeFragEntities(s) {
+  return String(s)
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&hellip;/g, '\u2026');
+}
+const FRAG_VOID = {
+  AREA: 1, BASE: 1, BR: 1, COL: 1, EMBED: 1, HR: 1, IMG: 1,
+  INPUT: 1, LINK: 1, META: 1, SOURCE: 1, TRACK: 1, WBR: 1,
+};
+class FragNode {
+  constructor(tag, attrs) {
+    this.nodeType = 1;
+    this.tagName = String(tag).toUpperCase();
+    this.attrs = attrs || {};
+    this.children = [];
+    this.childNodes = this.children;
+  }
+  getAttribute(name) {
+    const want = String(name).toLowerCase();
+    for (const k of Object.keys(this.attrs)) {
+      if (String(k).toLowerCase() === want) {
+        return this.attrs[k];
+      }
+    }
+    return null;
+  }
+  hasAttribute(name) {
+    return this.getAttribute(name) !== null;
+  }
+  setAttribute(name, value) {
+    this.attrs[String(name).toLowerCase()] = String(value);
+  }
+}
+function parseFragHtml(html) {
+  const roots = [];
+  const stack = [{ children: roots, tagName: '' }];
+  const tagRe = /<!--[\s\S]*?-->|<!DOCTYPE[^<>]*>|<(\/?)([A-Za-z0-9-]+)([^<>]*?)(\/?)>/g;
+  let lastIdx = 0;
+  let m;
+  const pushText = (t) => {
+    if (!t) {
+      return;
+    }
+    stack[stack.length - 1].children.push({ nodeType: 3, textContent: t });
+  };
+  while ((m = tagRe.exec(html)) !== null) {
+    pushText(html.slice(lastIdx, m.index));
+    lastIdx = tagRe.lastIndex;
+    const full = m[0];
+    if (full.indexOf('<!--') === 0 || /^<!DOCTYPE/i.test(full)) {
+      continue;
+    }
+    const isClose = m[1] === '/';
+    const tagName = m[2];
+    const attrStr = m[3] || '';
+    const selfClose = m[4] === '/';
+    const upper = String(tagName).toUpperCase();
+    if (isClose) {
+      for (let i = stack.length - 1; i > 0; i--) {
+        if (stack[i].tagName && String(stack[i].tagName).toUpperCase() === upper) {
+          stack.length = i;
+          break;
+        }
+      }
+      continue;
+    }
+    const attrs = {};
+    const attrRe = /([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+    let am;
+    while ((am = attrRe.exec(attrStr)) !== null) {
+      const nm = String(am[1]).toLowerCase();
+      const vv = am[2] !== undefined ? am[2] : am[3] !== undefined ? am[3] : am[4] !== undefined ? am[4] : '';
+      attrs[nm] = decodeFragEntities(vv);
+    }
+    const node = new FragNode(tagName, attrs);
+    stack[stack.length - 1].children.push(node);
+    if (!FRAG_VOID[upper] && !selfClose) {
+      stack.push(node);
+    }
+  }
+  pushText(html.slice(lastIdx));
+  return roots;
+}
+class StubDOMParser {
+  parseFromString(text, type) {
+    const kids = parseFragHtml(String(text));
+    return { body: { children: kids, childNodes: kids } };
+  }
+}
+
 /* ---------------- stub host ---------------- */
 
 function makeHost(opts) {
@@ -146,6 +262,8 @@ function makeHost(opts) {
     parent: null,
     parentNode: null,
     _listeners: {},
+    baseURI: 'https://example.test/',
+    URL: 'https://example.test/',
     addEventListener(type, fn) {
       (this._listeners[type] = this._listeners[type] || []).push(fn);
     },
@@ -171,6 +289,9 @@ function makeHost(opts) {
         }
       });
       return found;
+    },
+    createElement(tag) {
+      return new El(tag, {});
     },
   };
   host.doc = doc;
@@ -242,6 +363,9 @@ function makeHost(opts) {
     document: doc,
     fetch: fetchStub,
     AbortController: AbortController,
+    URL: URL,
+    DOMParser: StubDOMParser,
+    location: { href: 'https://example.test/', origin: 'https://example.test' },
   };
   if (!opts.noProvider) {
     win.PFOAGalleryLightbox = provider;
@@ -253,6 +377,7 @@ function makeHost(opts) {
     document: doc,
     AbortController: AbortController,
     Promise: Promise,
+    URL: URL,
     console: console,
   };
   sandbox.globalThis = sandbox;
@@ -375,7 +500,7 @@ async function testCloseInvalidatesOutstanding() {
   check(host.linkA.focusCalls === 1, 'close restores focus to invoker');
   const signal = host.fetchCalls[0].init.signal;
   check(signal && signal.aborted === true, 'close aborts outstanding request');
-  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: '<p>STALE</p>' }));
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'STALE') }));
   await tick();
   check(host.dlgBody.innerHTML === '', 'late response after close never alters dialog body');
   check(host.dialog.hidden === true, 'late response after close keeps dialog hidden');
@@ -387,7 +512,7 @@ async function testEscapeInvalidatesOutstanding() {
   clickEl(host, host.linkA);
   keydown(host, 'Escape');
   check(host.dialog.hidden === true, 'Escape hides open dialog');
-  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: '<p>STALE-ESC</p>' }));
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'STALE-ESC') }));
   await tick();
   check(host.dlgBody.innerHTML.indexOf('STALE-ESC') === -1, 'late response after Escape never inserts');
 }
@@ -398,10 +523,10 @@ async function testNewerInvalidatesOlder() {
   clickEl(host, host.linkA);
   clickEl(host, host.linkB);
   check(host.fetchCalls.length === 2, 'two eligible clicks produce two fetches');
-  host.pending[1].resolve(makeResponse({ ok: true, epoch: 'e1', text: '<p>FRAG-B</p>' }));
+  host.pending[1].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('tiger', 'FRAG-B') }));
   await tick();
   check(host.dlgBody.innerHTML.indexOf('FRAG-B') !== -1, 'newer response inserts');
-  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: '<p>FRAG-A</p>' }));
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'FRAG-A') }));
   await tick();
   check(host.dlgBody.innerHTML.indexOf('FRAG-A') === -1, 'older superseded response ignored');
   check(host.dlgBody.innerHTML.indexOf('FRAG-B') !== -1, 'newer fragment survives older resolution');
@@ -411,7 +536,7 @@ async function testDisposalPrecedesRemoval() {
   const host = makeHost();
   host.api.start({ documentEpoch: 'e1' });
   clickEl(host, host.linkA);
-  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: '<p>FRAG-OK</p>' }));
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'FRAG-OK') }));
   await tick();
   clickEl(host, host.closeBtn);
   await tick();
@@ -436,7 +561,7 @@ async function testInitFollowsInsertion() {
   const host = makeHost();
   host.api.start({ documentEpoch: 'e1' });
   clickEl(host, host.linkA);
-  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: '<p>FRAG-OK</p>' }));
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'FRAG-OK') }));
   await tick();
   check(host.dlgBody.innerHTML.indexOf('FRAG-OK') !== -1, 'matching epoch inserts fragment');
   check(host.providerCalls.init.length === 2, 'init called once for initial galleries and once after insert');
@@ -493,27 +618,27 @@ async function testEpochGuard() {
   host.api.start({ documentEpoch: 'epoch-X' });
 
   clickEl(host, host.linkA);
-  host.pending[0].resolve(makeResponse({ ok: true, text: '<p>NO-EPOCH</p>' }));
+  host.pending[0].resolve(makeResponse({ ok: true, text: VALID_FRAG('mittens', 'NO-EPOCH') }));
   await tick();
   check(host.dlgBody.innerHTML.indexOf('NO-EPOCH') === -1, 'missing epoch prevents insertion');
   check(host.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'missing epoch shows fallback');
   check(host.providerCalls.init.length === 1, 'missing epoch never initializes galleries');
 
   clickEl(host, host.linkA);
-  host.pending[1].resolve(makeResponse({ ok: true, epoch: 'epoch-Y', text: '<p>WRONG-EPOCH</p>' }));
+  host.pending[1].resolve(makeResponse({ ok: true, epoch: 'epoch-Y', text: VALID_FRAG('mittens', 'WRONG-EPOCH') }));
   await tick();
   check(host.dlgBody.innerHTML.indexOf('WRONG-EPOCH') === -1, 'mismatched epoch prevents insertion');
   check(host.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'mismatched epoch shows fallback');
   check(host.providerCalls.init.length === 1, 'mismatched epoch never initializes galleries');
 
   clickEl(host, host.linkA);
-  host.pending[2].resolve(makeResponse({ ok: true, epoch: 'epoch-X', text: '<p>EPOCH-OK</p>' }));
+  host.pending[2].resolve(makeResponse({ ok: true, epoch: 'epoch-X', text: VALID_FRAG('mittens', 'EPOCH-OK') }));
   await tick();
   check(host.dlgBody.innerHTML.indexOf('EPOCH-OK') !== -1, 'matching epoch inserts fragment');
   check(host.providerCalls.init.length === 2, 'matching epoch initializes galleries');
 
   clickEl(host, host.linkA);
-  host.pending[3].resolve(makeResponse({ ok: true, epoch: '', text: '<p>EMPTY-EPOCH</p>' }));
+  host.pending[3].resolve(makeResponse({ ok: true, epoch: '', text: VALID_FRAG('mittens', 'EMPTY-EPOCH') }));
   await tick();
   check(host.dlgBody.innerHTML.indexOf('EMPTY-EPOCH') === -1, 'empty epoch prevents insertion');
 }
@@ -546,6 +671,300 @@ function testNoCompetingOwnership() {
   check(CTRL_SRC.indexOf('disposeProfileGalleries') !== -1, 'source drives provider dispose');
 }
 
+/* ---------------- regression tests for hardened behavior ---------------- */
+
+async function testProviderLostBeforeResponse() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  clickEl(host, host.linkA);
+  delete host.win.PFOAGalleryLightbox;
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'LOST-PROV') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('LOST-PROV') === -1, 'provider lost before response inserts no fragment');
+  check(host.dialog.hidden === false, 'provider lost before response keeps dialog open');
+  check(host.providerCalls.init.length === 1, 'provider lost before response never inits fragment');
+}
+
+async function testProviderLostBeforeClose() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'KEEP-ME') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('KEEP-ME') !== -1, 'provider-lost-close setup inserts');
+  delete host.win.PFOAGalleryLightbox;
+  clickEl(host, host.closeBtn);
+  await tick();
+  check(host.dialog.hidden === true, 'provider lost before close still hides dialog');
+  check(host.dlgBody.innerHTML.indexOf('KEEP-ME') !== -1, 'provider lost before close preserves body');
+}
+
+async function testDisposalThrowsOnReplace() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'FIRST') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('FIRST') !== -1, 'dispose-throw setup inserts first');
+  host.provider.disposeProfileGalleries = (scope) => {
+    host.providerCalls.dispose.push(scope);
+    host.order.push('dispose');
+    throw new Error('dispose boom');
+  };
+  clickEl(host, host.linkB);
+  host.pending[1].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('tiger', 'SECOND') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('SECOND') === -1, 'throwing dispose blocks replacement insertion');
+  check(host.dlgBody.innerHTML.indexOf('FIRST') !== -1, 'throwing dispose preserves old content');
+}
+
+async function testDisposalThrowsOnClose() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'FIRST-CLOSE') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('FIRST-CLOSE') !== -1, 'dispose-close setup inserts');
+  host.provider.disposeProfileGalleries = (scope) => {
+    host.providerCalls.dispose.push(scope);
+    host.order.push('dispose');
+    throw new Error('dispose boom');
+  };
+  clickEl(host, host.closeBtn);
+  await tick();
+  check(host.dialog.hidden === true, 'throwing dispose on close still hides dialog');
+  check(host.dlgBody.innerHTML.indexOf('FIRST-CLOSE') !== -1, 'throwing dispose on close preserves body');
+}
+
+async function testInitThrowsFallback() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  host.provider.initProfileGalleries = (scope) => {
+    host.providerCalls.init.push(scope);
+    host.order.push('init');
+    throw new Error('init boom');
+  };
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'INIT-BOOM') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('INIT-BOOM') === -1, 'init throw leaves no successful fragment');
+  check(host.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'init throw shows fallback');
+  check(fallbackHref(host.dlgBody.innerHTML) === 'https://example.test/cats/mittens/',
+    'init throw fallback carries canonical href');
+}
+
+async function testDestroyWhileOpen() {
+  const host = makeHost();
+  const h = host.api.start({ documentEpoch: 'e1' });
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'DESTROY-OPEN') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('DESTROY-OPEN') !== -1, 'destroy-open setup inserts');
+  h.destroy();
+  check((host.doc._listeners.click || []).length === 0, 'destroy while open removes listeners');
+  check(host.dlgBody.innerHTML === '', 'destroy while open clears body when safe');
+  check(host.dialog.hidden === true, 'destroy while open hides dialog');
+  check(host.linkA.focusCalls >= 1, 'destroy while open restores focus');
+}
+
+async function testDestroyWithPending() {
+  const host = makeHost();
+  const h = host.api.start({ documentEpoch: 'e1' });
+  clickEl(host, host.linkA);
+  check(host.pending.length === 1, 'destroy-pending setup leaves outstanding request');
+  h.destroy();
+  check((host.doc._listeners.click || []).length === 0, 'destroy with pending removes listeners');
+  check(host.dialog.hidden === true, 'destroy with pending hides dialog');
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'LATE-AFTER-DESTROY') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('LATE-AFTER-DESTROY') === -1, 'late after destroy never inserts');
+  check(host.dialog.hidden === true, 'late after destroy keeps dialog hidden');
+}
+
+async function testRapidCloseReopen() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  clickEl(host, host.linkA);
+  clickEl(host, host.closeBtn);
+  clickEl(host, host.linkB);
+  check(host.fetchCalls.length === 2, 'rapid close/reopen produces two fetches');
+  host.pending[1].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('tiger', 'RAPID-B') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('RAPID-B') !== -1, 'rapid newer inserts');
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'RAPID-A') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('RAPID-A') === -1, 'rapid older ignored');
+  check(host.dlgBody.innerHTML.indexOf('RAPID-B') !== -1, 'rapid newer survives');
+  const tail = host.order.slice(-3).join(',');
+  check(tail === 'dispose,html,init', 'rapid order is dispose,html,init');
+}
+
+async function testUnsafeCanonicalLinks() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  const evil = new El('a', { href: 'https://evil.test/cats/mittens/', 'data-pfoa-cat-dialog': 'mittens' });
+  host.body.append(evil);
+  const e1 = clickEl(host, evil);
+  check(e1.defaultPrevented === false, 'cross-origin slug mismatch does not prevent default');
+  const js = new El('a', { href: 'javascript:alert(1)', 'data-pfoa-cat-dialog': 'mittens' });
+  host.body.append(js);
+  const e2 = clickEl(host, js);
+  check(e2.defaultPrevented === false, 'unsafe javascript protocol does not prevent default');
+  const dl = new El('a', { href: 'data:text/html,<p>x</p>', 'data-pfoa-cat-dialog': 'mittens' });
+  host.body.append(dl);
+  const e3 = clickEl(host, dl);
+  check(e3.defaultPrevented === false, 'unsafe data protocol does not prevent default');
+  const mismatch = new El('a', { href: 'https://example.test/cats/tiger/', 'data-pfoa-cat-dialog': 'mittens' });
+  host.body.append(mismatch);
+  const e4 = clickEl(host, mismatch);
+  check(e4.defaultPrevented === false, 'slug-vs-URL mismatch does not prevent default');
+  check(host.fetchCalls.length === 0, 'unsafe canonical links perform no fetch');
+  check(host.dialog.hidden === true, 'unsafe canonical links open no dialog');
+}
+
+async function testTargetAndDownloadLinks() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  const t = new El('a', {
+    href: 'https://example.test/cats/mittens/',
+    'data-pfoa-cat-dialog': 'mittens',
+    target: '_blank',
+  });
+  host.body.append(t);
+  const e1 = clickEl(host, t);
+  check(e1.defaultPrevented === false, 'target blank does not intercept');
+  const d = new El('a', {
+    href: 'https://example.test/cats/mittens/',
+    'data-pfoa-cat-dialog': 'mittens',
+    download: '',
+  });
+  host.body.append(d);
+  const e2 = clickEl(host, d);
+  check(e2.defaultPrevented === false, 'download link does not intercept');
+  check(host.fetchCalls.length === 0, 'target/download perform no fetch');
+  check(host.dialog.hidden === true, 'target/download open no dialog');
+  const self = new El('a', {
+    href: 'https://example.test/cats/mittens/',
+    'data-pfoa-cat-dialog': 'mittens',
+    target: '_self',
+  });
+  host.body.append(self);
+  const e3 = clickEl(host, self);
+  check(e3.defaultPrevented === true, 'target self remains eligible');
+}
+
+async function testEpochPermissiveOverride() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1', isEpochMatch: () => true });
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({ ok: true, text: VALID_FRAG('mittens', 'PERM-MISSING') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('PERM-MISSING') === -1, 'permissive missing epoch still prevents insertion');
+  check(host.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'permissive missing epoch shows fallback');
+  check(host.providerCalls.init.length === 1, 'permissive missing epoch never inits');
+  clickEl(host, host.linkA);
+  host.pending[1].resolve(makeResponse({ ok: true, epoch: 'WRONG', text: VALID_FRAG('mittens', 'PERM-WRONG') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('PERM-WRONG') === -1, 'permissive mismatched epoch still prevents insertion');
+  check(host.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'permissive mismatched epoch shows fallback');
+}
+
+async function testMissingDocumentEpochPermissive() {
+  const host = makeHost();
+  host.api.start({ isEpochMatch: () => true });
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: VALID_FRAG('mittens', 'NO-DOC-EPOCH') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('NO-DOC-EPOCH') === -1, 'missing document epoch never inserts even when permissive');
+  check(host.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'missing document epoch shows fallback');
+  check(host.providerCalls.init.length === 1, 'missing document epoch never inits');
+}
+
+async function testFullDocumentRejected() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({
+    ok: true,
+    epoch: 'e1',
+    text: '<!DOCTYPE html><html><head><title>T</title></head><body>' +
+      '<div class="pfoa-cat-profile" data-pfoa-cat-profile="mittens"><p>Hi</p></div>' +
+      '</body></html>',
+  }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'full-document response shows fallback');
+  check(host.providerCalls.init.length === 1, 'full-document response never inits');
+}
+
+async function testInjectionRejected() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({
+    ok: true,
+    epoch: 'e1',
+    text: '<div class="pfoa-cat-profile" data-pfoa-cat-profile="mittens"><p onclick="alert(1)">Hi</p></div>',
+  }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'event-handler injection shows fallback');
+  check(host.providerCalls.init.length === 1, 'event-handler injection never inits');
+
+  const host2 = makeHost();
+  host2.api.start({ documentEpoch: 'e1' });
+  clickEl(host2, host2.linkA);
+  host2.pending[0].resolve(makeResponse({
+    ok: true,
+    epoch: 'e1',
+    text: '<div class="pfoa-cat-profile" data-pfoa-cat-profile="mittens"><script>alert(1)</script><p>Hi</p></div>',
+  }));
+  await tick();
+  check(host2.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'script element shows fallback');
+
+  const host3 = makeHost();
+  host3.api.start({ documentEpoch: 'e1' });
+  clickEl(host3, host3.linkA);
+  host3.pending[0].resolve(makeResponse({
+    ok: true,
+    epoch: 'e1',
+    text: '<div class="pfoa-cat-profile" data-pfoa-cat-profile="mittens"><a href="javascript:alert(1)">x</a></div>',
+  }));
+  await tick();
+  check(host3.dlgBody.innerHTML.indexOf('Open full profile') !== -1, 'javascript href shows fallback');
+}
+
+async function testValidGalleryAndYouTube() {
+  const host = makeHost();
+  host.api.start({ documentEpoch: 'e1' });
+  clickEl(host, host.linkA);
+  host.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: GALLERY_FRAG('mittens') }));
+  await tick();
+  check(host.dlgBody.innerHTML.indexOf('data-pfoa-cat-gallery') !== -1, 'gallery fragment inserts');
+  check(host.providerCalls.init.length === 2, 'gallery fragment inits galleries');
+  const tail = host.order.slice(-3).join(',');
+  check(tail === 'dispose,html,init', 'gallery order is dispose,html,init');
+
+  const host2 = makeHost();
+  host2.api.start({ documentEpoch: 'e1' });
+  clickEl(host2, host2.linkA);
+  host2.pending[0].resolve(makeResponse({ ok: true, epoch: 'e1', text: YOUTUBE_FRAG('mittens') }));
+  await tick();
+  check(host2.dlgBody.innerHTML.indexOf('youtube.com/embed') !== -1, 'youtube embed inserts');
+  check(host2.providerCalls.init.length === 2, 'youtube embed inits galleries');
+}
+
+async function testStartAfterDestroy() {
+  const host = makeHost();
+  const c1 = host.api.start({ documentEpoch: 'e1' });
+  c1.destroy();
+  check((host.doc._listeners.click || []).length === 0, 'destroy clears listeners for restart');
+  const c2 = host.api.start({ documentEpoch: 'e1' });
+  check(c2 !== c1 && c2.started === true, 'start after destroy returns fresh controller');
+  check((host.doc._listeners.click || []).length === 1, 'start after destroy attaches one handler');
+  const ev = clickEl(host, host.linkA);
+  check(ev.defaultPrevented === true, 'fresh controller after destroy still works');
+  check(host.fetchCalls.length === 1, 'fresh controller after destroy fetches');
+}
+
 (async () => {
   await testInertLoad();
   await testIdempotentStart();
@@ -561,6 +980,22 @@ function testNoCompetingOwnership() {
   await testEpochGuard();
   await testIneligibleLinks();
   testNoCompetingOwnership();
+  await testProviderLostBeforeResponse();
+  await testProviderLostBeforeClose();
+  await testDisposalThrowsOnReplace();
+  await testDisposalThrowsOnClose();
+  await testInitThrowsFallback();
+  await testDestroyWhileOpen();
+  await testDestroyWithPending();
+  await testRapidCloseReopen();
+  await testUnsafeCanonicalLinks();
+  await testTargetAndDownloadLinks();
+  await testEpochPermissiveOverride();
+  await testMissingDocumentEpochPermissive();
+  await testFullDocumentRejected();
+  await testInjectionRejected();
+  await testValidGalleryAndYouTube();
+  await testStartAfterDestroy();
   if (failures > 0) {
     process.stdout.write('CAT-DIALOG-CONTROLLER FIXTURE: ' + failures + ' FAILURE(S)\n');
     process.exit(1);
