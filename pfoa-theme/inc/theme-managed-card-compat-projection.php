@@ -292,6 +292,327 @@ if ( ! function_exists( 'pfoa_theme_project_managed_cards_compat' ) ) {
 				}
 			}
 		}
+		try {
+			if ( $classification['count_owned'] + $classification['count_manual'] !== $inventory['count'] ) {
+				return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+			}
+			if ( count( $owned_list ) + count( $manual_list ) !== count( $inventory['cards'] ) ) {
+				return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+			}
+			$inv_by_span = array();
+			foreach ( $inventory['cards'] as $ic ) {
+				if ( ! is_array( $ic ) || ! array_key_exists( 'start', $ic ) || ! array_key_exists( 'end', $ic ) || ! array_key_exists( 'slice', $ic ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( ! is_int( $ic['start'] ) || ! is_int( $ic['end'] ) || ! is_string( $ic['slice'] ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( $ic['start'] < 0 || $ic['end'] <= $ic['start'] || $ic['end'] > $content_len ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( substr( $content, $ic['start'], $ic['end'] - $ic['start'] ) !== $ic['slice'] ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				$inv_key = (string) $ic['start'] . "\0" . (string) $ic['end'];
+				if ( array_key_exists( $inv_key, $inv_by_span ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				$inv_by_span[ $inv_key ] = $ic;
+			}
+			$claimed             = array();
+			$seen_classified     = array();
+			$all_classified      = array_merge( $owned_list, $manual_list );
+			foreach ( $all_classified as $ce ) {
+				$ckey = (string) $ce['start'] . "\0" . (string) $ce['end'];
+				if ( array_key_exists( $ckey, $seen_classified ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				$seen_classified[ $ckey ] = true;
+				if ( ! array_key_exists( $ckey, $inv_by_span ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( $ce['slice'] !== $inv_by_span[ $ckey ]['slice'] ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( array_key_exists( $ckey, $claimed ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				$claimed[ $ckey ] = true;
+			}
+			foreach ( $inv_by_span as $inv_key => $inv_entry ) {
+				if ( ! array_key_exists( $inv_key, $claimed ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+			}
+			{
+				$pos = 0;
+				foreach ( $trusted_proofs as $pk => $pv ) {
+					if ( $pk !== $pos || ! is_array( $pv ) ) {
+						return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+					}
+					$pos++;
+				}
+			}
+			foreach ( $trusted_proofs as $pv ) {
+				if ( ! array_key_exists( 'start', $pv ) || ! is_int( $pv['start'] ) || ! array_key_exists( 'end', $pv ) || ! is_int( $pv['end'] ) || $pv['end'] <= $pv['start'] ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( ! array_key_exists( 'profile_id', $pv ) || ! is_string( $pv['profile_id'] ) || 1 !== preg_match( $id_pattern, $pv['profile_id'] ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( ! array_key_exists( 'slot', $pv ) || ! is_string( $pv['slot'] ) || 1 !== preg_match( $slot_pattern, $pv['slot'] ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( ! array_key_exists( 'slice', $pv ) || ! is_string( $pv['slice'] ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( ! array_key_exists( 'fingerprint', $pv ) || ! is_string( $pv['fingerprint'] ) || 1 !== preg_match( '/\A[0-9a-f]{32}\z/', $pv['fingerprint'] ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( array_key_exists( 'slug', $pv ) && ( ! is_string( $pv['slug'] ) || 1 !== preg_match( $slug_pattern, $pv['slug'] ) ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+			}
+			foreach ( $manual_list as $ms ) {
+				foreach ( $trusted_proofs as $pv ) {
+					if ( $pv['start'] < $ms['end'] && $ms['start'] < $pv['end'] ) {
+						return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+					}
+				}
+			}
+			$cls_allowed_tokens = array( 'pfoa-cat-card', 'pfoa-cat-card-media', 'pfoa-cat-card-title', 'pfoa-cat-card-thumb', 'pfoa-cat-card-status', 'pfoa-cat-card-note', 'pfoa-cat-card-incomplete', 'pfoa-cat-pair-left', 'pfoa-cat-pair-right' );
+			$cls_id_pattern     = '/(?<![A-Za-z0-9_-])data-pfoa-profile-id\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>\/]+)/i';
+			$cls_class_pattern  = '/class\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>\/]+)/i';
+			$cls_anchor_pattern = '/<a\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i';
+			$cls_dialog_ok      = function_exists( 'pfoa_theme_read_dialog_attribute' );
+			foreach ( $manual_list as $ms ) {
+				$mslice    = $ms['slice'];
+				$mopen_tag = null;
+				if ( 1 === preg_match( '/<article\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i', $mslice, $mopen_match, PREG_OFFSET_CAPTURE ) ) {
+					$mopen_tag = (string) $mopen_match[0][0];
+				}
+				if ( null === $mopen_tag ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( 1 !== preg_match( '/<\/article\s*>\s*\z/i', $mslice ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( false !== stripos( $mslice, 'data-fake-profile-id' ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( 1 === preg_match( '/(?<![A-Za-z0-9_-])data-pfoa-profile-id-/i', $mslice ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				$mopen_valid = array();
+				if ( preg_match_all( $cls_id_pattern, $mopen_tag, $mopen_matches, PREG_SET_ORDER ) ) {
+					foreach ( $mopen_matches as $one ) {
+						$mtoken = (string) $one[1];
+						$mfirst = strlen( $mtoken ) > 0 ? $mtoken[0] : '';
+						if ( '"' !== $mfirst && '\'' !== $mfirst ) {
+							return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+						}
+						$minner = substr( $mtoken, 1, strlen( $mtoken ) - 2 );
+						if ( 1 !== preg_match( $id_pattern, $minner ) ) {
+							return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+						}
+						$mopen_valid[] = $minner;
+					}
+				}
+				if ( count( $mopen_valid ) > 1 ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				$mslice_valid_count = 0;
+				if ( preg_match_all( $cls_id_pattern, $mslice, $mslice_matches, PREG_SET_ORDER ) ) {
+					foreach ( $mslice_matches as $one ) {
+						$mtoken = (string) $one[1];
+						$mfirst = strlen( $mtoken ) > 0 ? $mtoken[0] : '';
+						if ( ( '"' === $mfirst || '\'' === $mfirst ) && 1 === preg_match( $id_pattern, substr( $mtoken, 1, strlen( $mtoken ) - 2 ) ) ) {
+							$mslice_valid_count++;
+						} else {
+							return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+						}
+					}
+				}
+				if ( $mslice_valid_count > 1 ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( 0 === count( $mopen_valid ) && false !== stripos( $mslice, 'profile-id' ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( 0 !== count( $mopen_valid ) || 0 !== $mslice_valid_count ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( preg_match_all( $cls_class_pattern, $mslice, $mclass_matches, PREG_SET_ORDER ) ) {
+					foreach ( $mclass_matches as $one ) {
+						$mtoken = (string) $one[1];
+						$mfirst = strlen( $mtoken ) > 0 ? $mtoken[0] : '';
+						$minner = ( '"' === $mfirst || '\'' === $mfirst ) ? substr( $mtoken, 1, strlen( $mtoken ) - 2 ) : $mtoken;
+						$mparts = preg_split( '/\s+/', $minner );
+						if ( ! is_array( $mparts ) ) {
+							continue;
+						}
+						foreach ( $mparts as $part ) {
+							$part = (string) $part;
+							if ( '' === $part ) {
+								continue;
+							}
+							if ( false !== strpos( $part, 'pfoa-cat-card' ) && ! in_array( $part, $cls_allowed_tokens, true ) ) {
+								return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+							}
+						}
+					}
+				}
+				$mhas_token = false;
+				if ( 1 === preg_match( $cls_class_pattern, $mopen_tag, $mart_class ) ) {
+					$mtoken = (string) $mart_class[1];
+					$mfirst = strlen( $mtoken ) > 0 ? $mtoken[0] : '';
+					$minner = ( '"' === $mfirst || '\'' === $mfirst ) ? substr( $mtoken, 1, strlen( $mtoken ) - 2 ) : $mtoken;
+					$mparts = preg_split( '/\s+/', $minner );
+					$mclean = array();
+					if ( is_array( $mparts ) ) {
+						foreach ( $mparts as $part ) {
+							if ( '' !== (string) $part ) {
+								$mclean[] = (string) $part;
+							}
+						}
+						if ( in_array( 'pfoa-cat-card', $mclean, true ) ) {
+							$mhas_token = true;
+						}
+					}
+				}
+				if ( $mhas_token ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				$manchor_count = preg_match_all( $cls_anchor_pattern, $mslice, $manchor_matches, PREG_OFFSET_CAPTURE );
+				if ( false === $manchor_count ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				$mdialog_all = array();
+				$matags      = isset( $manchor_matches[0] ) && is_array( $manchor_matches[0] ) ? $manchor_matches[0] : array();
+				foreach ( $matags as $amatch ) {
+					$atag = (string) $amatch[0];
+					if ( $cls_dialog_ok ) {
+						$mread = pfoa_theme_read_dialog_attribute( $atag );
+					} else {
+						$mread = array( 'status' => 'malformed', 'slug' => null, 'values' => array( '' ) );
+					}
+					if ( ! is_array( $mread ) || ! array_key_exists( 'status', $mread ) ) {
+						$mdialog_all[] = '';
+						continue;
+					}
+					if ( 'none' === $mread['status'] ) {
+						continue;
+					}
+					if ( 'single' === $mread['status'] && isset( $mread['slug'] ) && is_string( $mread['slug'] ) ) {
+						$mdialog_all[] = $mread['slug'];
+						continue;
+					}
+					$mevidence = isset( $mread['values'] ) && is_array( $mread['values'] ) ? $mread['values'] : array( '' );
+					if ( 0 === count( $mevidence ) ) {
+						$mevidence = array( '' );
+					}
+					foreach ( $mevidence as $one ) {
+						$mdialog_all[] = is_string( $one ) ? $one : '';
+					}
+				}
+				if ( 0 !== count( $mdialog_all ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+			}
+			$cls_seen_identity = array();
+			foreach ( $owned_list as $oe ) {
+				$proof_matches = array();
+				foreach ( $trusted_proofs as $pv ) {
+					if ( $pv['start'] === $oe['start'] && $pv['end'] === $oe['end'] ) {
+						$proof_matches[] = $pv;
+					}
+				}
+				if ( 1 !== count( $proof_matches ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				$oproof = $proof_matches[0];
+				if ( $oproof['slice'] !== $oe['slice'] ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( md5( $oe['slice'] ) !== strtolower( (string) $oproof['fingerprint'] ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				if ( $oproof['profile_id'] !== $oe['profile_id'] || $oproof['slot'] !== $oe['slot'] ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				$identity_key = $oe['profile_id'] . "\0" . $oe['slot'];
+				if ( array_key_exists( $identity_key, $cls_seen_identity ) ) {
+					return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+				}
+				$cls_seen_identity[ $identity_key ] = true;
+				if ( 'legacy-proven' === $oe['kind'] ) {
+					$olslice = $oe['slice'];
+					$olcount = preg_match_all( $cls_anchor_pattern, $olslice, $olmatches, PREG_OFFSET_CAPTURE );
+					if ( false === $olcount || ! isset( $olmatches[0] ) || ! is_array( $olmatches[0] ) ) {
+						return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+					}
+					$olfound = array();
+					$olok    = true;
+					foreach ( $olmatches[0] as $olmatch ) {
+						$oltag = (string) $olmatch[0];
+						if ( $cls_dialog_ok ) {
+							$olread = pfoa_theme_read_dialog_attribute( $oltag );
+						} else {
+							$olok = false;
+							break;
+						}
+						if ( ! is_array( $olread ) || ! array_key_exists( 'status', $olread ) ) {
+							$olok = false;
+							break;
+						}
+						if ( 'none' === $olread['status'] ) {
+							continue;
+						}
+						if ( 'single' === $olread['status'] && isset( $olread['slug'] ) && is_string( $olread['slug'] ) ) {
+							$olfound[] = $olread['slug'];
+							continue;
+						}
+						$olok = false;
+						break;
+					}
+					if ( ! $olok || count( $olfound ) < 2 || 1 !== count( array_unique( $olfound ) ) || 1 !== preg_match( $slug_pattern, $olfound[0] ) ) {
+						return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+					}
+					if ( ! array_key_exists( 'slug', $oproof ) || ! is_string( $oproof['slug'] ) || $oproof['slug'] !== $olfound[0] ) {
+						return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+					}
+				} else {
+					$oopen_tag = null;
+					if ( 1 === preg_match( '/<article\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i', $oe['slice'], $oopen_match, PREG_OFFSET_CAPTURE ) ) {
+						$oopen_tag = (string) $oopen_match[0][0];
+					}
+					if ( null === $oopen_tag ) {
+						return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+					}
+					$ostored    = array();
+					$omalformed = false;
+					if ( preg_match_all( $cls_id_pattern, $oopen_tag, $oopen_matches, PREG_SET_ORDER ) ) {
+						foreach ( $oopen_matches as $one ) {
+							$otoken = (string) $one[1];
+							$ofirst = strlen( $otoken ) > 0 ? $otoken[0] : '';
+							if ( ( '"' !== $ofirst && '\'' !== $ofirst ) || 1 !== preg_match( $id_pattern, substr( $otoken, 1, strlen( $otoken ) - 2 ) ) ) {
+								$omalformed = true;
+								break;
+							}
+							$ostored[] = substr( $otoken, 1, strlen( $otoken ) - 2 );
+						}
+					}
+					if ( $omalformed || 1 !== count( $ostored ) ) {
+						return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+					}
+					if ( $ostored[0] !== $oproof['profile_id'] || $ostored[0] !== $oe['profile_id'] ) {
+						return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+					}
+				}
+			}
+		} catch ( Throwable $e ) {
+			return $fail( 'classification_failed', 'Managed-card classification returned a malformed response.', 'classify' );
+		}
 
 		if ( ! function_exists( 'pfoa_theme_validate_managed_card_placement' ) ) {
 			return $fail( 'missing_dependency', 'Placement component is not loaded.', 'validate' );
@@ -314,6 +635,7 @@ if ( ! function_exists( 'pfoa_theme_project_managed_cards_compat' ) ) {
 			}
 			return $fail( $code, $message, 'validate' );
 		}
+		try {
 		if ( array_keys( $validation ) !== array( 'ok', 'source_page_id', 'placements', 'count', 'manual_count' ) ) {
 			return $fail( 'validation_failed', 'Managed-card placement validation returned a malformed response.', 'validate' );
 		}
@@ -444,14 +766,19 @@ if ( ! function_exists( 'pfoa_theme_project_managed_cards_compat' ) ) {
 				$found_valid = true;
 				foreach ( $am[0] as $atag ) {
 					$read = pfoa_theme_read_dialog_attribute( (string) $atag );
-					if ( ! is_array( $read ) || ! array_key_exists( 'status', $read ) || 'none' === $read['status'] ) {
-						continue;
-					}
-					if ( 'single' !== $read['status'] || ! isset( $read['slug'] ) || ! is_string( $read['slug'] ) ) {
+					if ( ! is_array( $read ) || ! array_key_exists( 'status', $read ) ) {
 						$found_valid = false;
 						break;
 					}
-					$found[] = $read['slug'];
+					if ( 'none' === $read['status'] ) {
+						continue;
+					}
+					if ( 'single' === $read['status'] && isset( $read['slug'] ) && is_string( $read['slug'] ) ) {
+						$found[] = $read['slug'];
+						continue;
+					}
+					$found_valid = false;
+					break;
 				}
 				if ( ! $found_valid || count( $found ) < 2 || 1 !== count( array_unique( $found ) ) || 1 !== preg_match( $slug_pattern, $found[0] ) ) {
 					return $fail( 'validation_failed', 'Managed-card placement validation returned a malformed response.', 'validate' );
@@ -488,6 +815,9 @@ if ( ! function_exists( 'pfoa_theme_project_managed_cards_compat' ) ) {
 					return $fail( 'validation_failed', 'Managed-card placement validation returned a malformed response.', 'validate' );
 				}
 			}
+		}
+		} catch ( Throwable $e ) {
+			return $fail( 'validation_failed', 'Managed-card placement validation returned a malformed response.', 'validate' );
 		}
 
 		if ( ! function_exists( 'pfoa_theme_splice_managed_cards' ) ) {

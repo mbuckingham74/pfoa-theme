@@ -583,4 +583,159 @@ $res_t_spl = cp_isolated_project( $mock_t_spl, $content, $proofs_ab, $placements
 cp_assert_failure( $res_t_spl, 'splice', 't-splice-throw' );
 cp_pass( 't-splice-throw splice exception contained with null output' );
 
-fwrite( STDOUT, "PASS: theme managed card compat projection fixture (complete 2-owned+manual composition byte-exact, unicode manual, bad proofs, missing placements, 1-byte stale shift, duplicate replacements, malformed content, slug/extra validator failures with null output, no hooks/writes, inactive, expected symbols only, zero-owned/manual-only, multi-owned, validator/splice integrity, throwable containment)\n" );
+// Classification reconciliation: proven ID-owned card relabeled as manual MUST fail.
+$fab_c_down_id = array(
+	'ok' => true,
+	'source_page_id' => 20323,
+	'owned' => array(
+		array( 'start' => $proof_b['start'], 'end' => $proof_b['end'], 'slice' => substr( $content, $proof_b['start'], $proof_b['end'] - $proof_b['start'] ), 'profile_id' => '102', 'slot' => 'slot-b', 'kind' => 'legacy-proven' ),
+	),
+	'manual' => array(
+		array( 'start' => $manual_span['start'], 'end' => $manual_span['end'], 'slice' => $manual_span['slice'] ),
+		array( 'start' => $proof_a['start'], 'end' => $proof_a['end'], 'slice' => substr( $content, $proof_a['start'], $proof_a['end'] - $proof_a['start'] ) ),
+	),
+	'count_owned' => 1,
+	'count_manual' => 2,
+);
+$mock_c_down_id = 'function pfoa_theme_classify_managed_card_ownership( $a, $b, $c, $d ) { return ' . var_export( $fab_c_down_id, true ) . '; }';
+$res_c_down_id = cp_isolated_project( $mock_c_down_id, $content, $proofs_ab, $placements, $replacements );
+cp_assert_failure( $res_c_down_id, 'classify', 'c-downgrade-id' );
+cp_pass( 'c-downgrade-id proven id-owned relabeled as manual rejected' );
+
+// Classification reconciliation: proven legacy card relabeled as manual MUST fail.
+$fab_c_down_legacy = array(
+	'ok' => true,
+	'source_page_id' => 20323,
+	'owned' => array(
+		array( 'start' => $proof_a['start'], 'end' => $proof_a['end'], 'slice' => substr( $content, $proof_a['start'], $proof_a['end'] - $proof_a['start'] ), 'profile_id' => '101', 'slot' => 'slot-a', 'kind' => 'id-owned' ),
+	),
+	'manual' => array(
+		array( 'start' => $manual_span['start'], 'end' => $manual_span['end'], 'slice' => $manual_span['slice'] ),
+		array( 'start' => $proof_b['start'], 'end' => $proof_b['end'], 'slice' => substr( $content, $proof_b['start'], $proof_b['end'] - $proof_b['start'] ) ),
+	),
+	'count_owned' => 1,
+	'count_manual' => 2,
+);
+$mock_c_down_legacy = 'function pfoa_theme_classify_managed_card_ownership( $a, $b, $c, $d ) { return ' . var_export( $fab_c_down_legacy, true ) . '; }';
+$res_c_down_legacy = cp_isolated_project( $mock_c_down_legacy, $content, $proofs_ab, $placements, $replacements );
+cp_assert_failure( $res_c_down_legacy, 'classify', 'c-downgrade-legacy' );
+cp_pass( 'c-downgrade-legacy proven legacy relabeled as manual rejected' );
+
+// Classification reconciliation: omitting one inventoried article MUST fail.
+$fab_c_omit = array(
+	'ok' => true,
+	'source_page_id' => 20323,
+	'owned' => array(
+		array( 'start' => $proof_a['start'], 'end' => $proof_a['end'], 'slice' => substr( $content, $proof_a['start'], $proof_a['end'] - $proof_a['start'] ), 'profile_id' => '101', 'slot' => 'slot-a', 'kind' => 'id-owned' ),
+	),
+	'manual' => array(
+		array( 'start' => $manual_span['start'], 'end' => $manual_span['end'], 'slice' => $manual_span['slice'] ),
+	),
+	'count_owned' => 1,
+	'count_manual' => 1,
+);
+$mock_c_omit = 'function pfoa_theme_classify_managed_card_ownership( $a, $b, $c, $d ) { return ' . var_export( $fab_c_omit, true ) . '; }';
+$res_c_omit = cp_isolated_project( $mock_c_omit, $content, $proofs_ab, $placements, $replacements );
+cp_assert_failure( $res_c_omit, 'classify', 'c-omitted' );
+cp_pass( 'c-omitted omitted inventoried article rejected' );
+
+// Classification reconciliation: duplicating one span MUST fail.
+$fab_c_dup = array(
+	'ok' => true,
+	'source_page_id' => 20323,
+	'owned' => array(
+		array( 'start' => $proof_a['start'], 'end' => $proof_a['end'], 'slice' => substr( $content, $proof_a['start'], $proof_a['end'] - $proof_a['start'] ), 'profile_id' => '101', 'slot' => 'slot-a', 'kind' => 'id-owned' ),
+		array( 'start' => $proof_b['start'], 'end' => $proof_b['end'], 'slice' => substr( $content, $proof_b['start'], $proof_b['end'] - $proof_b['start'] ), 'profile_id' => '102', 'slot' => 'slot-b', 'kind' => 'legacy-proven' ),
+	),
+	'manual' => array(
+		array( 'start' => $manual_span['start'], 'end' => $manual_span['end'], 'slice' => $manual_span['slice'] ),
+		array( 'start' => $manual_span['start'], 'end' => $manual_span['end'], 'slice' => $manual_span['slice'] ),
+	),
+	'count_owned' => 2,
+	'count_manual' => 2,
+);
+$mock_c_dup = 'function pfoa_theme_classify_managed_card_ownership( $a, $b, $c, $d ) { return ' . var_export( $fab_c_dup, true ) . '; }';
+$res_c_dup = cp_isolated_project( $mock_c_dup, $content, $proofs_ab, $placements, $replacements );
+cp_assert_failure( $res_c_dup, 'classify', 'c-duplicated' );
+cp_pass( 'c-duplicated duplicated span rejected' );
+
+// Classification reconciliation: inventing a span outside the inventory MUST fail.
+$invented_slice = substr( $content, 0, 5 );
+$fab_c_invented = array(
+	'ok' => true,
+	'source_page_id' => 20323,
+	'owned' => array(
+		array( 'start' => $proof_a['start'], 'end' => $proof_a['end'], 'slice' => substr( $content, $proof_a['start'], $proof_a['end'] - $proof_a['start'] ), 'profile_id' => '101', 'slot' => 'slot-a', 'kind' => 'id-owned' ),
+		array( 'start' => $proof_b['start'], 'end' => $proof_b['end'], 'slice' => substr( $content, $proof_b['start'], $proof_b['end'] - $proof_b['start'] ), 'profile_id' => '102', 'slot' => 'slot-b', 'kind' => 'legacy-proven' ),
+	),
+	'manual' => array(
+		array( 'start' => $manual_span['start'], 'end' => $manual_span['end'], 'slice' => $manual_span['slice'] ),
+		array( 'start' => 0, 'end' => 5, 'slice' => $invented_slice ),
+	),
+	'count_owned' => 2,
+	'count_manual' => 2,
+);
+$mock_c_invented = 'function pfoa_theme_classify_managed_card_ownership( $a, $b, $c, $d ) { return ' . var_export( $fab_c_invented, true ) . '; }';
+$res_c_invented = cp_isolated_project( $mock_c_invented, $content, $proofs_ab, $placements, $replacements );
+cp_assert_failure( $res_c_invented, 'classify', 'c-invented' );
+cp_pass( 'c-invented invented span outside inventory rejected' );
+
+// Classification reconciliation must not over-block: genuine single manual note succeeds.
+$solo_note    = cp_manual_card( 'Solo note' );
+$content_solo = cp_wrap( $solo_note );
+$result_solo  = cp_project( 20323, $content_solo, array(), array(), array() );
+cp_assert_success( $result_solo, 'c-genuine-manual-only' );
+cp_assert( 0 === $result_solo['owned_count'], 'c-genuine-manual-only: owned 0' );
+cp_assert( 1 === $result_solo['manual_count'], 'c-genuine-manual-only: manual 1' );
+cp_assert( $content_solo === $result_solo['projected_content'], 'c-genuine-manual-only: projected equals stored bytes' );
+cp_pass( 'c-genuine-manual-only single manual note succeeds byte-exact' );
+
+// Classification reconciliation must not over-block: genuine manual-first mixed source succeeds.
+$card_gx      = cp_id_card( 301, 'zeta', 'Zeta' );
+$man_gx       = cp_manual_card( 'Leading note' );
+$content_gx   = cp_wrap( $man_gx . $card_gx );
+$proof_gx     = cp_proof( $content_gx, $card_gx, 301, 'slot-g' );
+$placements_gx = array( cp_placement_for( $proof_gx ) );
+$replacements_gx = array( cp_replacement_for( $proof_gx, '<section data-new="g">G new</section>' ) );
+$result_gx = cp_project( 20323, $content_gx, array( $proof_gx ), $placements_gx, $replacements_gx );
+cp_assert_success( $result_gx, 'c-mixed-genuine' );
+$expected_gx = substr( $content_gx, 0, $proof_gx['start'] ) . '<section data-new="g">G new</section>' . substr( $content_gx, $proof_gx['end'] );
+cp_assert( $expected_gx === $result_gx['projected_content'], 'c-mixed-genuine: byte-exact projection' );
+cp_assert( false !== strpos( $result_gx['projected_content'], $man_gx ), 'c-mixed-genuine: manual kept' );
+cp_pass( 'c-mixed-genuine manual-first mixed source succeeds byte-exact' );
+
+// Validation recheck containment: dialog reader throwing mid-validation MUST fail closed.
+// The mock reader answers the two classify-phase legacy calls, then throws, so the
+// coordinator validation recheck is the stage under test.
+$fab_c_good = array(
+	'ok' => true,
+	'source_page_id' => 20323,
+	'owned' => array(
+		array( 'start' => $proof_a['start'], 'end' => $proof_a['end'], 'slice' => substr( $content, $proof_a['start'], $proof_a['end'] - $proof_a['start'] ), 'profile_id' => '101', 'slot' => 'slot-a', 'kind' => 'id-owned' ),
+		array( 'start' => $proof_b['start'], 'end' => $proof_b['end'], 'slice' => substr( $content, $proof_b['start'], $proof_b['end'] - $proof_b['start'] ), 'profile_id' => '102', 'slot' => 'slot-b', 'kind' => 'legacy-proven' ),
+	),
+	'manual' => array(
+		array( 'start' => $manual_span['start'], 'end' => $manual_span['end'], 'slice' => $manual_span['slice'] ),
+	),
+	'count_owned' => 2,
+	'count_manual' => 1,
+);
+$mock_c_good_iso = 'function pfoa_theme_classify_managed_card_ownership( $a, $b, $c, $d ) { return ' . var_export( $fab_c_good, true ) . '; }';
+$mock_v_good_iso = 'function pfoa_theme_validate_managed_card_placement( $a, $b, $c, $d ) { return ' . var_export( $fab_v_good, true ) . '; }';
+$mock_r_throw_ex = 'function pfoa_theme_read_dialog_attribute( $t ) { static $n = 0; $n++; if ( $n > 2 ) { throw new Exception( "injected dialog" ); } return array( "status" => "single", "slug" => "mittens", "raw" => "mittens", "hits" => 1, "values" => array( "mittens" ) ); }';
+$res_v_dlg_ex = cp_isolated_project( $mock_r_throw_ex . "\n" . $mock_c_good_iso . "\n" . $mock_v_good_iso, $content, $proofs_ab, $placements, $replacements );
+cp_assert_failure( $res_v_dlg_ex, 'validate', 'v-dialog-throw-exception' );
+cp_pass( 'v-dialog-throw-exception dialog reader exception contained at validate' );
+
+$mock_r_throw_er = 'function pfoa_theme_read_dialog_attribute( $t ) { static $n = 0; $n++; if ( $n > 2 ) { throw new Error( "injected dialog" ); } return array( "status" => "single", "slug" => "mittens", "raw" => "mittens", "hits" => 1, "values" => array( "mittens" ) ); }';
+$res_v_dlg_er = cp_isolated_project( $mock_r_throw_er . "\n" . $mock_c_good_iso . "\n" . $mock_v_good_iso, $content, $proofs_ab, $placements, $replacements );
+cp_assert_failure( $res_v_dlg_er, 'validate', 'v-dialog-throw-error' );
+cp_pass( 'v-dialog-throw-error dialog reader error contained at validate' );
+
+// Validation recheck fail-closed: malformed dialog reader return MUST fail.
+$mock_r_mal = 'function pfoa_theme_read_dialog_attribute( $t ) { static $n = 0; $n++; if ( $n > 2 ) { return "not-an-array"; } return array( "status" => "single", "slug" => "mittens", "raw" => "mittens", "hits" => 1, "values" => array( "mittens" ) ); }';
+$res_v_dlg_mal = cp_isolated_project( $mock_r_mal . "\n" . $mock_c_good_iso . "\n" . $mock_v_good_iso, $content, $proofs_ab, $placements, $replacements );
+cp_assert_failure( $res_v_dlg_mal, 'validate', 'v-dialog-malformed-return' );
+cp_pass( 'v-dialog-malformed-return malformed dialog reader return rejected at validate' );
+
+fwrite( STDOUT, "PASS: theme managed card compat projection fixture (complete 2-owned+manual composition byte-exact, unicode manual, bad proofs, missing placements, 1-byte stale shift, duplicate replacements, malformed content, slug/extra validator failures with null output, no hooks/writes, inactive, expected symbols only, zero-owned/manual-only, multi-owned, validator/splice integrity, throwable containment, classification reconciliation (downgrade/omitted/duplicated/invented rejected, genuine manual/mixed accepted), dialog-reader validation containment)\n" );
