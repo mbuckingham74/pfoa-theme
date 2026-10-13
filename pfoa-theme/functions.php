@@ -90,6 +90,24 @@ function pfoa_enqueue_assets() {
 		);
 	}
 
+	// PFOA 0.1.121 — presentation only: Adopted Gallery decorative filler
+	// placement (AG-09). Tiny layout script, adopted2026 page only. It
+	// inserts at most one noninteractive filler panel per incomplete gallery
+	// row, never reorders or edits event nodes, and no-ops without events.
+	if ( function_exists( 'is_page' ) && ( is_page( 22514 ) || is_page( 'adopted2026' ) ) ) {
+		$filler_script = get_template_directory() . '/assets/js/pfoa-adopted-gallery-filler.js';
+
+		if ( file_exists( $filler_script ) ) {
+			wp_enqueue_script(
+				'pfoa-adopted-gallery-filler',
+				get_template_directory_uri() . '/assets/js/pfoa-adopted-gallery-filler.js',
+				array(),
+				(string) filemtime( $filler_script ),
+				array( 'strategy' => 'defer' )
+			);
+		}
+	}
+
 	if ( is_front_page() ) {
 		$front_page_id = (int) get_option( 'page_on_front' );
 
@@ -3236,6 +3254,36 @@ function pfoa_adoption_event_member_media( $image_id, $caption = '' ) {
 	return '<span class="pfoa-adoption-event-thumb-missing"><span class="pfoa-adoption-event-missing-text">Photo unavailable</span></span>';
 }
 
+/**
+ * Format a stored adoption-event date for visible presentation.
+ *
+ * Presentation only: reads nothing, writes nothing. Returns '' for empty
+ * input, a localized "F j, Y" string for parseable dates, or the raw trimmed
+ * string when unparseable. Callers escape the return value.
+ *
+ * @param string $date_raw Stored `_pfoa_event_date` value.
+ * @return string Display date (unescaped).
+ */
+function pfoa_adoption_event_format_date( $date_raw ) {
+	$date_raw = trim( (string) $date_raw );
+
+	if ( '' === $date_raw ) {
+		return '';
+	}
+
+	$timestamp = strtotime( $date_raw );
+
+	if ( false === $timestamp ) {
+		return $date_raw;
+	}
+
+	if ( function_exists( 'date_i18n' ) ) {
+		return date_i18n( 'F j, Y', $timestamp );
+	}
+
+	return date( 'F j, Y', $timestamp );
+}
+
 function pfoa_present_adoption_events( $content ) {
 	if ( function_exists( 'is_admin' ) && is_admin() ) {
 		return $content;
@@ -3599,8 +3647,19 @@ function pfoa_present_adoption_events( $content ) {
 			$combined_title .= '</h2>';
 		}
 
+		// PFOA 0.1.121 — presentation only: consistent visible historical
+		// adoption date beneath the event title (AG metadata). Sourced from
+		// the already-read stored `_pfoa_event_date`; no new reads, no
+		// writes, no domain changes. Unparseable values render raw.
+		$event_date_text = pfoa_adoption_event_format_date( isset( $event['date'] ) ? $event['date'] : '' );
+		$event_date_html = '';
+
+		if ( '' !== $event_date_text ) {
+			$event_date_html = '<p class="pfoa-adoption-event-date">' . esc_html( $event_date_text ) . '</p>';
+		}
+
 		if ( 1 >= $member_count && '' !== $combined_title ) {
-			$events_html .= $combined_title;
+			$events_html .= $combined_title . $event_date_html;
 		}
 
 		$events_html .= '<div class="pfoa-adoption-event-members pfoa-adoption-event-members-' . $count_class . '">';
@@ -3627,7 +3686,7 @@ function pfoa_present_adoption_events( $content ) {
 		$events_html .= '</div>';
 
 		if ( 1 < $member_count && '' !== $combined_title ) {
-			$events_html .= $combined_title;
+			$events_html .= $combined_title . $event_date_html;
 		}
 
 		$events_html .= '</div>';
@@ -3927,7 +3986,14 @@ function pfoa_present_adoption_events( $content ) {
 			}
 		}
 
-		$event_labels[ $event['uuid'] ] = empty( $label_names ) ? 'Adopted cats' : 'Adopted cats: ' . implode( ' & ', $label_names );
+		$label_date = pfoa_adoption_event_format_date( isset( $event['date'] ) ? $event['date'] : '' );
+		$label_text = empty( $label_names ) ? 'Adopted cats' : 'Adopted cats: ' . implode( ' & ', $label_names );
+
+		if ( '' !== $label_date ) {
+			$label_text .= ' — ' . $label_date;
+		}
+
+		$event_labels[ $event['uuid'] ] = $label_text;
 	}
 
 	if ( $event_loaded ) {

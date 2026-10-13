@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.120
+ Version: 0.1.121
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4593,6 +4593,252 @@ a.pfoa-board-card:focus-visible {
 
 	a.pfoa-board-card:hover {
 		transform: none;
+	}
+}
+
+/* PFOA 0.1.121 — Adopted Gallery presentation contract (AG-01..AG-12,
+ * DEV scope page 22514 only). Chronology-first sequential packing with
+ * uniform photographs, indivisible event cards, visible historical dates,
+ * and one decorative filler panel per incomplete row.
+ *
+ * Reuse recipe for future Adopted YYYY galleries: copy this block and scope
+ * it to the new page id (body.page-id-XXXXX); activation is separate and no
+ * rule below depends on hardcoded historical Event IDs.
+ *
+ * --pfoa-adopted-photo is the single shared displayed-photograph dimension
+ * for every Adopted cat photograph (legacy singles + every event member) at
+ * the current viewport. It derives from the gallery content width, track
+ * count, gaps, and card shell (2 x space-2 padding + 3px combined border),
+ * matching the Sol baseline (6-slot 123px, 4-slot 204px, 3-slot ~191px,
+ * 2-slot 142px). Container-query width units keep the value proportional at
+ * any container width; pixel fallbacks below apply where cqw is
+ * unsupported. Square geometry + object-fit:cover are preserved everywhere.
+ */
+body.page-id-22514 .entry-content .gallery {
+	container-type: inline-size;
+	container-name: pfoa-adopted-gallery;
+	--pfoa-adopted-photo: 123px;
+}
+
+@supports (width: 1cqw) {
+	body.page-id-22514 .entry-content .gallery {
+		--pfoa-adopted-photo: calc((100cqw - 5 * var(--pfoa-space-2)) / 6 - (var(--pfoa-space-2) * 2 + 3px));
+	}
+}
+
+/* Uniform legacy + event photographs: identical width/height at any given
+ * viewport, centered in their cards. Aspect-ratio/object-fit stay as backup.
+ */
+body.page-id-22514 .entry-content .gallery-icon {
+	display: flex;
+	justify-content: center;
+}
+
+body.page-id-22514 .entry-content .gallery-icon img,
+body.page-id-22514 .pfoa-adoption-event-thumb img {
+	width: var(--pfoa-adopted-photo);
+	height: var(--pfoa-adopted-photo);
+}
+
+body.page-id-22514 .pfoa-adoption-event-thumb a {
+	display: flex;
+	justify-content: center;
+}
+
+body.page-id-22514 .pfoa-adoption-event-thumb-missing {
+	width: var(--pfoa-adopted-photo);
+	height: var(--pfoa-adopted-photo);
+	margin-inline: auto;
+}
+
+/* Event cards are indivisible layout units (AG-06): card width follows its
+ * uniformly sized photographs + spacing + decoration (AG-07), left-aligned
+ * in their grid span. Sparse grid flow packs chronologically fit-or-next-row
+ * with no skip-ahead (AG-04/AG-08); cards never stretch photographs.
+ */
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event {
+	justify-self: start;
+	width: fit-content;
+	max-width: 100%;
+}
+
+body.page-id-22514 .pfoa-adoption-event-members {
+	justify-content: center;
+}
+
+body.page-id-22514 .pfoa-adoption-event-members-1 {
+	grid-template-columns: var(--pfoa-adopted-photo);
+}
+
+body.page-id-22514 .pfoa-adoption-event-members-2 {
+	grid-template-columns: repeat(2, var(--pfoa-adopted-photo));
+	max-width: 100%;
+}
+
+body.page-id-22514 .pfoa-adoption-event-members-3 {
+	grid-template-columns: repeat(3, var(--pfoa-adopted-photo));
+}
+
+/* 4+ member events: flexible wrap rows of uniformly sized photographs, so
+ * any participant count stays inside its own card at uniform dimensions.
+ */
+body.page-id-22514 .pfoa-adoption-event-members-n {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+body.page-id-22514 .pfoa-adoption-event-members-n > .pfoa-adoption-event-member {
+	flex: 0 0 var(--pfoa-adopted-photo);
+	width: var(--pfoa-adopted-photo);
+	box-sizing: border-box;
+}
+
+body.page-id-22514 .pfoa-adoption-event-members-2,
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-2 {
+	width: max-content;
+	max-width: 100%;
+	margin-inline: auto;
+}
+
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-3,
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-n {
+	grid-template-columns: repeat(3, var(--pfoa-adopted-photo));
+	width: max-content;
+	max-width: 100%;
+	margin-inline: auto;
+}
+
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-n {
+	display: flex;
+}
+
+/* Card spans: singles 1, pairs 2, trios 3, quads+ 4 tracks at desktop, so a
+ * quad sits 4-across in one indivisible card.
+ */
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
+	grid-column: span 4;
+}
+
+/* Visible historical adoption date beneath the event title (AG metadata).
+ * Restrained muted treatment keeps the title/caption hierarchy primary;
+ * badge geometry (absolute, zero flow) is untouched.
+ */
+body.page-id-22514 .pfoa-adoption-event-date {
+	margin: var(--pfoa-space-2) 0 0;
+	color: var(--pfoa-text-muted);
+	font-size: 0.85rem;
+	line-height: 1.45;
+	text-align: center;
+}
+
+body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-date {
+	margin: 0 0 var(--pfoa-space-2);
+}
+
+/* Decorative filler panel (AG-09): exactly one per incomplete row, placed
+ * by pfoa-adopted-gallery-filler.js with grid-column auto/-1. Outside event
+ * cards, noninteractive, aria-hidden, excluded from counts/lightbox (no
+ * gallery-item class, no links). Never tiled: the script inserts at most one
+ * per row and removes all fillers before every re-placement.
+ */
+body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 0;
+	min-height: var(--pfoa-adopted-photo);
+	margin: 0;
+	padding: var(--pfoa-space-2);
+	background: var(--pfoa-surface-page);
+	border: 1.5px solid #aeb4cd;
+	border-radius: var(--pfoa-radius);
+	box-sizing: border-box;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler img {
+	display: block;
+	max-width: 80%;
+	max-height: calc(var(--pfoa-adopted-photo) - var(--pfoa-space-2));
+	object-fit: contain;
+	object-position: center;
+	opacity: 0.9;
+}
+
+body.page-id-22514 .pfoa-adopted-filler-wordmark {
+	display: block;
+	color: var(--pfoa-text-muted);
+	font-weight: 800;
+	font-size: 1.25rem;
+	letter-spacing: 0.35em;
+	text-indent: 0.35em;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+@media (max-width: 1319px) {
+	body.page-id-22514 .entry-content .gallery {
+		--pfoa-adopted-photo: 204px;
+	}
+
+	@supports (width: 1cqw) {
+		body.page-id-22514 .entry-content .gallery {
+			--pfoa-adopted-photo: calc((100cqw - 3 * var(--pfoa-space-2)) / 4 - (var(--pfoa-space-2) * 2 + 3px));
+		}
+	}
+}
+
+@media (max-width: 720px) {
+	body.page-id-22514 .entry-content .gallery {
+		--pfoa-adopted-photo: 191px;
+	}
+
+	@supports (width: 1cqw) {
+		body.page-id-22514 .entry-content .gallery {
+			--pfoa-adopted-photo: calc((100cqw - 2 * var(--pfoa-space-2)) / 3 - (var(--pfoa-space-2) * 2 + 3px));
+		}
+	}
+
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-3,
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
+		grid-column: 1 / -1;
+	}
+
+	/* Trios wrap 2+1, quads+ sit 2x2 inside their own full-row card. */
+	body.page-id-22514 .pfoa-adoption-event-members-3 {
+		grid-template-columns: repeat(2, var(--pfoa-adopted-photo));
+	}
+
+	body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-3 {
+		grid-template-columns: repeat(2, var(--pfoa-adopted-photo));
+	}
+
+	body.page-id-22514 .pfoa-adoption-event-members-n {
+		max-width: calc(var(--pfoa-adopted-photo) * 2 + var(--pfoa-space-2));
+		margin-inline: auto;
+	}
+}
+
+@media (max-width: 480px) {
+	body.page-id-22514 .entry-content .gallery {
+		--pfoa-adopted-photo: 142px;
+	}
+
+	@supports (width: 1cqw) {
+		body.page-id-22514 .entry-content .gallery {
+			--pfoa-adopted-photo: calc((100cqw - 1 * var(--pfoa-space-2)) / 2 - (var(--pfoa-space-2) * 2 + 3px));
+		}
+	}
+
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-2 {
+		grid-column: 1 / -1;
+	}
+
+	body.page-id-22514 .pfoa-adoption-event-members-2,
+	body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-2 {
+		grid-template-columns: repeat(2, var(--pfoa-adopted-photo));
 	}
 }
 
