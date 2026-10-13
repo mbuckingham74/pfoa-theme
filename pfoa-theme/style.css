@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.121
+ Version: 0.1.122
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4737,8 +4737,8 @@ body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-date {
 }
 
 /* Decorative filler panel (AG-09): exactly one per incomplete row, placed
- * by pfoa-adopted-gallery-filler.js with grid-column auto/-1. Outside event
- * cards, noninteractive, aria-hidden, excluded from counts/lightbox (no
+ * by pfoa-adopted-gallery-filler.js with an explicit remainder span. Outside
+ * event cards, noninteractive, aria-hidden, excluded from counts/lightbox (no
  * gallery-item class, no links). Never tiled: the script inserts at most one
  * per row and removes all fillers before every re-placement.
  */
@@ -4746,11 +4746,12 @@ body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	align-self: stretch;
 	min-width: 0;
 	min-height: var(--pfoa-adopted-photo);
 	margin: 0;
 	padding: var(--pfoa-space-2);
-	background: var(--pfoa-surface-page);
+	background: #fff;
 	border: 1.5px solid #aeb4cd;
 	border-radius: var(--pfoa-radius);
 	box-sizing: border-box;
@@ -4758,24 +4759,15 @@ body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler {
 	pointer-events: none;
 }
 
-body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler img {
-	display: block;
-	max-width: 80%;
-	max-height: calc(var(--pfoa-adopted-photo) - var(--pfoa-space-2));
-	object-fit: contain;
-	object-position: center;
-	opacity: 0.9;
+body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler svg {
+	width: clamp(40px, 35%, 64px);
+	height: auto;
+	aspect-ratio: 1 / 1;
 }
 
+/* Legacy wordmark hook retained as an empty stub (tests may reference the
+ * selector); the filler now renders an inline paw and never creates it. */
 body.page-id-22514 .pfoa-adopted-filler-wordmark {
-	display: block;
-	color: var(--pfoa-text-muted);
-	font-weight: 800;
-	font-size: 1.25rem;
-	letter-spacing: 0.35em;
-	text-indent: 0.35em;
-	line-height: 1;
-	white-space: nowrap;
 }
 
 @media (max-width: 1319px) {

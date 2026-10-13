@@ -293,14 +293,30 @@ fixture_assert( 1 === preg_match( '/--pfoa-adopted-photo:\s*191px/', $css ), 'cs
 fixture_assert( 1 === preg_match( '/--pfoa-adopted-photo:\s*142px/', $css ), 'css: 2-slot Sol fallback 142px' );
 
 // (AG-06/AG-09) Filler contract: JS present, decorative-only, aria-hidden,
-// data-pfoa-filler, single-per-row with pre-clear, never touches events.
+// data-pfoa-filler + data-pfoa-filler-span, explicit span remainder
+// (gridColumnStart 'span N', gridColumnEnd 'auto', never -1), full row
+// height via stretch, single black-paw inline SVG (no logo img, no
+// wordmark), single-per-row with pre-clear, never touches events.
 $filler_path = dirname( __DIR__ ) . '/pfoa-theme/assets/js/pfoa-adopted-gallery-filler.js';
 fixture_assert( file_exists( $filler_path ), 'filler: script file exists' );
 $filler = (string) file_get_contents( $filler_path );
 fixture_assert( false !== strpos( $filler, 'data-pfoa-filler' ), 'filler: data-pfoa-filler marker' );
+fixture_assert( false !== strpos( $filler, 'data-pfoa-filler-span' ), 'filler: data-pfoa-filler-span marker' );
 fixture_assert( false !== strpos( $filler, "aria-hidden" ), 'filler: aria-hidden' );
 fixture_assert( false !== strpos( $filler, 'pfoa-adopted-filler' ), 'filler: filler class' );
-fixture_assert( false !== strpos( $filler, 'gridColumnEnd' ), 'filler: spans row remainder' );
+fixture_assert( false !== strpos( $filler, 'gridColumnStart' ), 'filler: explicit gridColumnStart' );
+fixture_assert( false !== strpos( $filler, "'span '" ), 'filler: explicit span remainder (span N)' );
+fixture_assert( false !== strpos( $filler, 'gridColumnEnd' ), 'filler: gridColumnEnd present' );
+fixture_assert( false !== strpos( $filler, "'auto'" ), 'filler: gridColumnEnd auto' );
+fixture_assert( false === strpos( $filler, "'-1'" ), 'filler: never spans to -1' );
+$filler_css_pos = strpos( $css, '.pfoa-adopted-filler' );
+$stretch_pos    = ( false === $filler_css_pos ) ? false : strpos( $css, 'align-self: stretch', $filler_css_pos );
+fixture_assert( false !== $stretch_pos, 'css: filler full row height via stretch' );
+fixture_assert( false !== stripos( $filler, '<svg' ) || false !== strpos( $filler, 'createElementNS' ), 'filler: black-paw inline SVG' );
+fixture_assert( false === strpos( $filler, "createElement('img')" ), 'filler: no logo img element' );
+fixture_assert( false === strpos( $filler, 'custom-logo' ), 'filler: no header-logo src dependency' );
+fixture_assert( false === strpos( $filler, 'wordmark' ), 'filler: no wordmark fallback' );
+fixture_assert( false === strpos( $filler, "'PFOA'" ), 'filler: no wordmark text' );
 fixture_assert( false !== strpos( $filler, 'clearFillers' ), 'filler: clears before placement (no duplicates)' );
 fixture_assert( false === strpos( $filler, 'removeChild(children' ), 'filler: never removes event nodes' );
 fixture_assert( false === strpos( $filler, 'insertBefore(event' ), 'filler: never reorders events' );

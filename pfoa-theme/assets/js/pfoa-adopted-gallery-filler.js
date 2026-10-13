@@ -3,8 +3,9 @@
  *
  * Inserts exactly one decorative, noninteractive PFOA panel per incomplete
  * gallery row on the Adopted gallery. The panel spans the row's remaining
- * grid tracks with the official logo (header custom logo when available,
- * PFOA wordmark fallback), centered and proportional.
+ * grid tracks via an explicit span count (total tracks minus used tracks)
+ * and shows an inline black cat paw (no external asset, no text),
+ * centered and proportional.
  *
  * Guarantees: events are never reordered, moved, or edited — only
  * `.pfoa-adopted-filler` nodes are added/removed. Re-runs (resize, load)
@@ -103,47 +104,49 @@
 		}
 	}
 
-	function logoSource() {
-		if (typeof document === 'undefined' || !document.querySelector) {
-			return '';
-		}
-
-		var logo = document.querySelector('.site-branding img.custom-logo, img.custom-logo');
-
-		if (logo && logo.getAttribute('src')) {
-			return logo.getAttribute('src');
-		}
-
-		return '';
-	}
-
-	function buildFiller() {
+	function buildFiller(span) {
+		var count = Math.max(1, parseInt(span, 10) || 1);
 		var panel = document.createElement('div');
 		panel.className = FILLER_CLASS;
 		panel.setAttribute('aria-hidden', 'true');
 		panel.setAttribute('data-pfoa-filler', '1');
+		panel.setAttribute('data-pfoa-filler-span', String(count));
 
-		var src = logoSource();
+		var svgNS = 'http://www.w3.org/2000/svg';
+		var svg = document.createElementNS
+			? document.createElementNS(svgNS, 'svg')
+			: document.createElement('svg');
+		svg.setAttribute('viewBox', '0 0 100 100');
+		svg.setAttribute('aria-hidden', 'true');
+		svg.setAttribute('focusable', 'false');
 
-		if (src) {
-			var img = document.createElement('img');
-			img.setAttribute('src', src);
-			img.setAttribute('alt', '');
-			img.setAttribute('aria-hidden', 'true');
-			img.setAttribute('draggable', 'false');
-			panel.appendChild(img);
-		} else {
-			var wordmark = document.createElement('span');
-			wordmark.className = 'pfoa-adopted-filler-wordmark';
-			wordmark.setAttribute('aria-hidden', 'true');
-			wordmark.textContent = 'PFOA';
-			panel.appendChild(wordmark);
+		// Black cat paw: one large pad + four toe ovals, all near-black.
+		var shapes = [
+			{ cx: '50', cy: '65', rx: '18', ry: '14' },
+			{ cx: '22', cy: '38', rx: '8', ry: '10' },
+			{ cx: '40', cy: '28', rx: '8', ry: '10' },
+			{ cx: '60', cy: '28', rx: '8', ry: '10' },
+			{ cx: '78', cy: '38', rx: '8', ry: '10' }
+		];
+
+		for (var i = 0; i < shapes.length; i++) {
+			var ellipse = document.createElementNS
+				? document.createElementNS(svgNS, 'ellipse')
+				: document.createElement('ellipse');
+			ellipse.setAttribute('cx', shapes[i].cx);
+			ellipse.setAttribute('cy', shapes[i].cy);
+			ellipse.setAttribute('rx', shapes[i].rx);
+			ellipse.setAttribute('ry', shapes[i].ry);
+			ellipse.setAttribute('fill', '#111');
+			svg.appendChild(ellipse);
 		}
 
-		// Auto start resolves to the first free cell of the row the
-		// reference node closes; spanning to -1 fills the row remainder.
-		panel.style.gridColumnStart = 'auto';
-		panel.style.gridColumnEnd = '-1';
+		panel.appendChild(svg);
+
+		// Explicit remainder span: auto start + definite end resolves to
+		// span 1 ending at -1 (last track only), so set span explicitly.
+		panel.style.gridColumnStart = 'span ' + count;
+		panel.style.gridColumnEnd = 'auto';
 
 		return panel;
 	}
@@ -203,13 +206,20 @@
 				continue;
 			}
 
-			var last = rows[k].items[rows[k].items.length - 1];
-			var filler = buildFiller();
+			var remaining = total - used;
 
-			// Insert directly after the row's last DOM node: auto-placement
-			// resolves the filler into this row's remainder, and later rows
-			// keep their positions (the filler only consumes cells no event
-			// could occupy without breaking chronology).
+			if (remaining < 1) {
+				continue;
+			}
+
+			var last = rows[k].items[rows[k].items.length - 1];
+			var filler = buildFiller(remaining);
+
+			// Insert directly after the row's last DOM node: the explicit
+			// remainder span places the filler into this row's leftover
+			// tracks, and later rows keep their positions (the filler only
+			// consumes cells no event could occupy without breaking
+			// chronology).
 			if (last.nextSibling) {
 				gallery.insertBefore(filler, last.nextSibling);
 			} else {

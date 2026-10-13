@@ -1,8 +1,10 @@
 /**
  * Node smoke test for pfoa-adopted-gallery-filler.js with a hand-rolled DOM
- * shim (no dependencies). Verifies: one filler per incomplete row, no filler
- * on complete rows, no duplicates across refresh/resize, events never
- * reordered/removed, wordmark fallback when no header logo exists.
+ * shim (no dependencies). Verifies: one filler per incomplete row with
+ * explicit span remainder (gridColumnStart 'span N', gridColumnEnd 'auto',
+ * data-pfoa-filler-span), black-paw inline SVG (no logo img, no wordmark),
+ * no filler on complete rows, no duplicates across refresh/resize, events
+ * never reordered/removed, paw renders logo-independently.
  *
  * Run: node tests/theme-adopted-gallery-filler-smoke.js
  */
@@ -66,6 +68,24 @@ function makeEl(tag, opts) {
 		},
 	};
 	if (opts.span) el._span = opts.span;
+	// Minimal innerHTML support: the filler sets an inline <svg> paw via
+	// innerHTML or createElementNS. Parse a single <svg> payload into one
+	// SVG child so assertions stay meaningful without a real DOM.
+	Object.defineProperty(el, 'innerHTML', {
+		get() { return el._html || ''; },
+		set(html) {
+			el._html = String(html);
+			el.children = [];
+			if (/<svg[\s>]/i.test(el._html)) {
+				const svg = makeEl('svg', {});
+				svg.setAttribute('aria-hidden', 'true');
+				el.children.push(svg);
+				svg.parentNode = el;
+				syncSiblings(el);
+			}
+		},
+		configurable: true,
+	});
 	return el;
 }
 
@@ -83,6 +103,9 @@ function matches(el, sel) {
 	if (sel === '.site-branding img.custom-logo, img.custom-logo') {
 		return el.tagName === 'IMG' && el.classList.contains('custom-logo');
 	}
+	if (sel === 'img') return el.tagName === 'IMG';
+	if (sel === 'span') return el.tagName === 'SPAN';
+	if (sel === 'svg') return el.tagName === 'SVG';
 	return false;
 }
 
@@ -115,6 +138,7 @@ global.document = {
 		return null;
 	},
 	createElement(tag) { return makeEl(tag, {}); },
+	createElementNS(ns, tag) { return makeEl(tag, {}); },
 	addEventListener() {},
 	removeEventListener() {},
 };
@@ -145,14 +169,22 @@ assert.strictEqual(fillers.length, 2, 'exactly one filler per incomplete row (ro
 for (const f of fillers) {
 	assert.strictEqual(f.getAttribute('aria-hidden'), 'true', 'filler aria-hidden');
 	assert.strictEqual(f.getAttribute('data-pfoa-filler'), '1', 'filler data marker');
-	assert.strictEqual(f.style.gridColumnEnd, '-1', 'filler spans to row end');
+	assert(/^span\s+\d+$/i.test(f.style.gridColumnStart || ''), 'filler explicit span remainder (gridColumnStart "span N")');
+	assert.strictEqual(f.style.gridColumnEnd, 'auto', 'filler gridColumnEnd auto (never -1)');
 	assert(!f.classList.contains('gallery-item'), 'filler excluded from counts');
-	const img = f.querySelectorAll('img');
-	assert.strictEqual(img.length, 0, 'no nested query across filler (shim check)');
+	assert.strictEqual(f.querySelectorAll('img').length, 0, 'no logo img in filler');
+	assert.strictEqual(f.querySelectorAll('span').length, 0, 'no wordmark span in filler');
 	assert.strictEqual(f.children.length, 1, 'filler has one decorative child');
-	assert.strictEqual(f.children[0].tagName, 'IMG', 'official logo used when header logo present');
-	assert.strictEqual(f.children[0].getAttribute('alt'), '', 'decorative logo has empty alt');
+	assert.strictEqual(String(f.children[0].tagName).toUpperCase(), 'SVG', 'black paw inline SVG');
+	assert.strictEqual(f.children[0].getAttribute('aria-hidden'), 'true', 'paw aria-hidden');
 }
+
+// Row1: span-4 + span-1 = 5 of 6 used -> explicit span 1.
+// Row3: span-2 = 2 of 6 used -> explicit span 4.
+assert.strictEqual(fillers[0].style.gridColumnStart, 'span 1', 'row1 remainder span 1');
+assert.strictEqual(fillers[1].style.gridColumnStart, 'span 4', 'row3 remainder span 4');
+assert.strictEqual(fillers[0].getAttribute('data-pfoa-filler-span'), '1', 'row1 span marker 1');
+assert.strictEqual(fillers[1].getAttribute('data-pfoa-filler-span'), '4', 'row3 span marker 4');
 
 // Idempotency: refresh + resize must not duplicate.
 api.refresh();
@@ -166,14 +198,21 @@ assert.deepStrictEqual(
 	'events still untouched after refresh'
 );
 
-// Wordmark fallback when no header logo.
+// Paw consistency: the filler paw is logo-independent — with no header
+// logo, fillers still render the same SVG paw with the same explicit span
+// (no IMG, no wordmark fallback).
 global.document.querySelector = () => null;
 api.refresh();
 fillers = gallery.children.filter((c) => c.classList.contains('pfoa-adopted-filler'));
 assert.strictEqual(fillers.length, 2, 'fillers still placed without logo');
-assert.strictEqual(fillers[0].children[0].tagName, 'SPAN', 'wordmark fallback');
-assert.strictEqual(fillers[0].children[0].textContent, 'PFOA', 'wordmark text');
+for (const f of fillers) {
+	assert.strictEqual(String(f.children[0].tagName).toUpperCase(), 'SVG', 'paw persists without header logo');
+	assert.strictEqual(f.querySelectorAll('img').length, 0, 'still no logo img without header logo');
+	assert.strictEqual(f.querySelectorAll('span').length, 0, 'still no wordmark without header logo');
+}
+assert.strictEqual(fillers[0].style.gridColumnStart, 'span 1', 'span persists without logo (row1)');
+assert.strictEqual(fillers[1].style.gridColumnStart, 'span 4', 'span persists without logo (row3)');
 
 api._resetForTests();
-console.log('PASS: adopted gallery filler smoke (placement, dedupe, order, fallback)');
+console.log('PASS: adopted gallery filler smoke (explicit span, paw, dedupe, order, logo-independence)');
 process.exit(0);
