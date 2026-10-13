@@ -271,10 +271,54 @@ fixture_assert( false !== strpos( $out, 'gallery-1-102' ), 'suppression: unclaim
 // together modifiers, trios/quad carry together, single caption kept.
 fixture_assert( false !== strpos( $out, 'Spencer &amp; Thompson &amp; Wilbur' ), 'captions: trio combined title kept' );
 fixture_assert( false !== strpos( $out, 'Amelia &amp; Cami &amp; Greyer &amp; Gypsy' ), 'captions: quad combined title kept' );
-fixture_assert( 1 === substr_count( $out, '<figcaption class="pfoa-adoption-event-caption">Solo</figcaption>' ), 'captions: single caption kept' );
+// PFOA 0.1.125 — redundant solo captions stay in markup for lightbox/a11y
+// but hide visually (title already shows the same name); stored caption,
+// alt, and data-pfoa-caption are never deleted.
+fixture_assert( 1 === substr_count( $out, '<figcaption class="pfoa-adoption-event-caption screen-reader-text">Solo</figcaption>' ), 'captions: redundant solo caption hidden visually but kept in markup' );
+fixture_assert( 0 === substr_count( $out, '<figcaption class="pfoa-adoption-event-caption">Solo</figcaption>' ), 'captions: no redundant visible solo caption' );
 fixture_assert( false !== strpos( $out, 'pfoa-adoption-event-count-3' ), 'grouping: trio count class' );
 fixture_assert( false !== strpos( $out, 'pfoa-adoption-event-count-n' ), 'grouping: quad count class' );
 fixture_assert( false !== strpos( $out, 'pfoa-adoption-event-count-1' ), 'grouping: single count class' );
+
+// (PFOA 0.1.125 regression) Solo title + date remain within the solo card:
+// members render first, then title, then date — all inside the same
+// count-1 wrapper. The pre-fix order (title + date above members, outside
+// the only bordered box) fails the members-before-title assertion.
+$solo_wrapper = fixture_pos( $out, 'data-pfoa-adoption-event="uuid-same-low"', 'solo-card: wrapper found' );
+$solo_members = strpos( $out, 'pfoa-adoption-event-members-1', $solo_wrapper );
+$solo_title   = strpos( $out, 'pfoa-adoption-event-title', $solo_wrapper );
+$solo_date    = strpos( $out, '<p class="pfoa-adoption-event-date">', $solo_wrapper );
+$solo_next    = strpos( $out, 'data-pfoa-adoption-event="uuid-same-high"', $solo_wrapper );
+fixture_assert( false !== $solo_members && false !== $solo_title && false !== $solo_date && false !== $solo_next, 'solo-card: members/title/date/next markers found' );
+fixture_assert( $solo_wrapper < $solo_members && $solo_members < $solo_title && $solo_title < $solo_date && $solo_date < $solo_next, 'solo-card: photo, then title, then date — all inside the solo card' );
+fixture_assert( false !== strpos( $out, 'data-pfoa-caption="Solo"' ), 'solo-card: lightbox caption metadata preserved' );
+fixture_assert( false !== strpos( $out, 'alt="Solo"' ), 'solo-card: image alt preserved' );
+
+// (PFOA 0.1.125 regression) Non-redundant solo captions stay visible:
+// a solo whose stored caption differs from its name keeps a visible
+// figcaption beneath the photo, with title + date still inside the card.
+$GLOBALS['fixture_event_ids'] = array( 70 );
+$GLOBALS['fixture_meta'][70]  = array(
+	'_pfoa_event_year'    => '2026',
+	'_pfoa_event_date'    => '2026-08-19',
+	'_pfoa_event_uuid'    => 'uuid-solo-distinct',
+	'_pfoa_event_members' => array(
+		array(
+			'image_id'          => 902,
+			'cat_name_at_event' => 'Echo',
+			'caption'           => 'Echo basking in the sun',
+			'cat_post_id'       => 0,
+		),
+	),
+);
+$out_distinct = pfoa_present_adoption_events( fixture_gallery( array( 902 ) ) );
+fixture_assert( 1 === substr_count( $out_distinct, '<figcaption class="pfoa-adoption-event-caption">Echo basking in the sun</figcaption>' ), 'solo-card: distinct solo caption stays visible' );
+fixture_assert( false !== strpos( $out_distinct, '<h2 class="pfoa-adoption-event-title">Echo</h2>' ), 'solo-card: distinct solo title kept' );
+$distinct_members = strpos( $out_distinct, 'pfoa-adoption-event-members-1' );
+$distinct_title   = strpos( $out_distinct, 'pfoa-adoption-event-title' );
+$distinct_date    = strpos( $out_distinct, '<p class="pfoa-adoption-event-date">August 19, 2026</p>' );
+fixture_assert( false !== $distinct_members && false !== $distinct_title && false !== $distinct_date, 'solo-card: distinct solo markers found' );
+fixture_assert( $distinct_members < $distinct_title && $distinct_title < $distinct_date, 'solo-card: distinct solo photo, then title, then date inside card' );
 
 // (AG-05/AG-07) CSS source contract: shared photo var, container scaling,
 // square geometry, card spans, no hardcoded event IDs.
@@ -291,6 +335,16 @@ fixture_assert( 1 === preg_match( '/--pfoa-adopted-photo:\s*123px/', $css ), 'cs
 fixture_assert( 1 === preg_match( '/--pfoa-adopted-photo:\s*204px/', $css ), 'css: 4-slot Sol fallback 204px' );
 fixture_assert( 1 === preg_match( '/--pfoa-adopted-photo:\s*191px/', $css ), 'css: 3-slot Sol fallback ~191px' );
 fixture_assert( 1 === preg_match( '/--pfoa-adopted-photo:\s*142px/', $css ), 'css: 2-slot Sol fallback 142px' );
+
+// (PFOA 0.1.125) Solo outer card shell: count-1 wrapper carries the shared
+// bordered shell (photo + title + date inside one border-box) with a
+// borderless inner member — never a doubled frame, never title/date
+// outside the border.
+fixture_assert( 1 === preg_match( '/\.entry-content \.gallery > \.pfoa-adoption-event-count-1[\s\S]*?background:\s*var\(--pfoa-surface-page\)/', $css ), 'css: solo outer shell background' );
+fixture_assert( 1 === preg_match( '/\.entry-content \.gallery > \.pfoa-adoption-event-count-1[\s\S]*?border:\s*1\.5px solid #aeb4cd/', $css ), 'css: solo outer shell border' );
+fixture_assert( 1 === preg_match( '/\.pfoa-adoption-event-count-1 \.pfoa-adoption-event-member[\s\S]*?border:\s*0/', $css ), 'css: solo inner member borderless (no doubled frame)' );
+fixture_assert( 1 === preg_match( '/\.pfoa-adoption-event-count-1 \.pfoa-adoption-event-title[\s\S]*?margin:\s*var\(--pfoa-space-3\) 0 0/', $css ), 'css: solo title below photo (shared multi spacing)' );
+fixture_assert( 1 === preg_match( '/\.pfoa-adoption-event-count-1 \.pfoa-adoption-event-date[\s\S]*?margin:\s*var\(--pfoa-space-2\) 0 0/', $css ), 'css: solo date beneath title inside card' );
 
 // (AG-07 track allocation, PFOA 0.1.124) Single coherent sizing system:
 // width(N) = N * (photo + shell) + (N-1) * gap, i.e. N shells, not 1, so

@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.124
+ Version: 0.1.125
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4285,8 +4285,9 @@ body.page-id-22514 .pfoa-adoption-event-missing-text {
  * Single-member events span 1 track; pairs span 2; trios and larger span 3
  * on desktop so ROW2 packs as Thunder (1) + trio (3) + Frost (1) +
  * Lightning (1) with no forced row break and no empty gap. The outer card
- * shell below applies to multi-member events only, so single members keep
- * their ordinary bordered member card without a doubled frame. Inner
+ * shell below applies to multi-member events, and (PFOA 0.1.125) to solo
+ * events via the dedicated solo shell — singles carry the border on the
+ * outer wrapper with a borderless inner member, never a doubled frame. Inner
  * members stay an equal-thumbnail grid with the shared title below the
  * images; narrow breakpoints mirror the gallery columns with no horizontal
  * overflow and no blank row.
@@ -4784,6 +4785,48 @@ body.page-id-22514 .pfoa-adoption-event-date {
 
 body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-date {
 	margin: 0 0 var(--pfoa-space-2);
+}
+
+/* PFOA 0.1.125 — Solo event outer card shell (defect correction): the
+ * count-1 outer wrapper is the bordered card (same shell as multi), so
+ * photo + title + date all sit inside one border-box. The inner singleton
+ * member drops its own frame (no doubled border), mirroring the multi
+ * member reset; thumb gap is zeroed and title/date stack below the photo
+ * with the shared multi spacing. Redundant solo captions stay in markup
+ * for lightbox/a11y via screen-reader-text (zero flow); non-redundant
+ * captions keep a muted centered visible treatment. Photo dims, N-slot
+ * outer widths, spans, gaps, and breakpoints are untouched.
+ */
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-1 {
+	max-width: 100%;
+	margin: 0;
+	padding: var(--pfoa-space-2);
+	background: var(--pfoa-surface-page);
+	border: 1.5px solid #aeb4cd;
+	border-radius: var(--pfoa-radius);
+	box-sizing: border-box;
+}
+
+body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-member {
+	border: 0;
+	padding: 0;
+	background: transparent;
+}
+
+body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-thumb {
+	margin-bottom: 0;
+}
+
+body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-title {
+	margin: var(--pfoa-space-3) 0 0;
+}
+
+body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-date {
+	margin: var(--pfoa-space-2) 0 0;
+}
+
+body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-caption:not(.screen-reader-text) {
+	margin: var(--pfoa-space-2) 0 0;
 }
 
 /* Decorative filler panel (AG-09): exactly one per incomplete row, placed

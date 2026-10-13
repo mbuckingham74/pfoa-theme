@@ -3658,8 +3658,17 @@ function pfoa_present_adoption_events( $content ) {
 			$event_date_html = '<p class="pfoa-adoption-event-date">' . esc_html( $event_date_text ) . '</p>';
 		}
 
-		if ( 1 >= $member_count && '' !== $combined_title ) {
-			$events_html .= $combined_title . $event_date_html;
+		// PFOA 0.1.125 — presentation only: every event renders members
+		// first, then the combined title + date below the photographs
+		// (image->names for singles and multis alike). Solo titles/dates
+		// previously rendered above the member figure, outside the only
+		// bordered box, so six solos showed name + date outside the card
+		// while multis enclosed all correctly. Stored captions, names,
+		// order, links/lightbox, and metadata are unchanged.
+		$single_name = '';
+
+		if ( 1 === $member_count && ! empty( $names ) ) {
+			$single_name = (string) $names[0];
 		}
 
 		$events_html .= '<div class="pfoa-adoption-event-members pfoa-adoption-event-members-' . $count_class . '">';
@@ -3674,10 +3683,20 @@ function pfoa_present_adoption_events( $content ) {
 
 			// PFOA 0.1.75 — presentation only: multi-member events show the
 			// combined heading only; per-member figcaptions are suppressed
-			// from markup while stored snapshots stay untouched. Single-cat
-			// events keep their visible caption exactly as before.
+			// from markup while stored snapshots stay untouched.
+			// PFOA 0.1.125 — presentation only: single-cat events keep
+			// their caption in markup always (alt, data-pfoa-caption, and
+			// figcaption preserved for lightbox/a11y). When the stored
+			// caption redundantly repeats the solo title name, hide it
+			// visually with screen-reader-text only — never delete.
 			if ( '' !== $event_member['caption'] && 1 >= $member_count ) {
-				$events_html .= '<figcaption class="pfoa-adoption-event-caption">' . esc_html( $event_member['caption'] ) . '</figcaption>';
+				$caption_class = 'pfoa-adoption-event-caption';
+
+				if ( '' !== $single_name && 0 === strcasecmp( trim( (string) $event_member['caption'] ), trim( $single_name ) ) ) {
+					$caption_class .= ' screen-reader-text';
+				}
+
+				$events_html .= '<figcaption class="' . $caption_class . '">' . esc_html( $event_member['caption'] ) . '</figcaption>';
 			}
 
 			$events_html .= '</figure>';
@@ -3685,7 +3704,7 @@ function pfoa_present_adoption_events( $content ) {
 
 		$events_html .= '</div>';
 
-		if ( 1 < $member_count && '' !== $combined_title ) {
+		if ( '' !== $combined_title ) {
 			$events_html .= $combined_title . $event_date_html;
 		}
 
