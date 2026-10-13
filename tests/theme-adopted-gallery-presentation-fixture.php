@@ -434,6 +434,123 @@ fixture_assert( false !== strpos( $functions_source, 'pfoa-adopted-gallery-fille
 fixture_assert( false !== strpos( $functions_source, 'pfoa_adoption_event_member_media' ), 'media helper intact' );
 fixture_assert( false !== strpos( $functions_source, 'window.PFOAGalleryLightbox' ) || false !== strpos( (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/assets/js/pfoa-cat-dialog-controller.js' ), 'window.PFOAGalleryLightbox' ), 'lightbox: external overlay ownership intact' );
 
+// (AG-03/AG-04 chronological placement, PFOA 0.1.126) Legacy scan order
+// NEVER influences placement: the legacy gallery below runs oldest-first
+// (ascending), yet events must still render strict newest-first. The
+// pre-0.1.126 anchor-order insertion failed this (it followed the legacy
+// document order); chronological sequential insertion passes.
+$GLOBALS['fixture_event_ids'] = array( 101, 102, 103 );
+fixture_set_event( 101, 'uuid-asc-new', '2026-09-19', array( fixture_member( 1101, 'New' ) ) );
+fixture_set_event( 102, 'uuid-asc-mid', '2026-06-17', array( fixture_member( 1102, 'Mid' ) ) );
+fixture_set_event( 103, 'uuid-asc-old', '2026-04-28', array( fixture_member( 1103, 'Old' ) ) );
+$out_asc  = pfoa_present_adoption_events( fixture_gallery( array( 1103, 1102, 1101 ) ) );
+$pos_new  = fixture_pos( $out_asc, 'data-pfoa-adoption-event="uuid-asc-new"', 'chrono-legacy: newest placed' );
+$pos_mid  = fixture_pos( $out_asc, 'data-pfoa-adoption-event="uuid-asc-mid"', 'chrono-legacy: middle placed' );
+$pos_old  = fixture_pos( $out_asc, 'data-pfoa-adoption-event="uuid-asc-old"', 'chrono-legacy: oldest placed' );
+fixture_assert( $pos_new < $pos_mid && $pos_mid < $pos_old, 'chrono-legacy: DESC order despite ascending legacy gallery' );
+
+// (AG-03 Batch 5 regression pairs, PFOA 0.1.126) Exact historical misorder
+// cases: Salem 2026-02-26 before Stanley 2026-02-25, Wizzy 2026-01-20
+// before Bluey 2026-01-18, Moshe&Zelda 2026-01-08 before Turbo
+// 2026-01-02 — with the legacy gallery deliberately ordered wrong (the
+// older snapshot first in every pair).
+$GLOBALS['fixture_event_ids'] = array( 201, 202, 203, 204, 205, 206 );
+fixture_set_event( 201, 'uuid-stanley', '2026-02-25', array( fixture_member( 1201, 'Stanley' ) ) );
+fixture_set_event( 202, 'uuid-salem', '2026-02-26', array( fixture_member( 1202, 'Salem' ) ) );
+fixture_set_event( 203, 'uuid-bluey', '2026-01-18', array( fixture_member( 1203, 'Bluey' ) ) );
+fixture_set_event( 204, 'uuid-wizzy', '2026-01-20', array( fixture_member( 1204, 'Wizzy' ) ) );
+fixture_set_event( 205, 'uuid-turbo', '2026-01-02', array( fixture_member( 1205, 'Turbo' ) ) );
+fixture_set_event( 206, 'uuid-moshe-zelda', '2026-01-08', array( fixture_member( 1206, 'Moshe' ), fixture_member( 1207, 'Zelda' ) ) );
+$out_pairs   = pfoa_present_adoption_events( fixture_gallery( array( 1201, 1203, 1205, 1202, 1204, 1206, 1207 ) ) );
+$pos_salem   = fixture_pos( $out_pairs, 'data-pfoa-adoption-event="uuid-salem"', 'pairs: salem placed' );
+$pos_stanley = fixture_pos( $out_pairs, 'data-pfoa-adoption-event="uuid-stanley"', 'pairs: stanley placed' );
+$pos_wizzy   = fixture_pos( $out_pairs, 'data-pfoa-adoption-event="uuid-wizzy"', 'pairs: wizzy placed' );
+$pos_bluey   = fixture_pos( $out_pairs, 'data-pfoa-adoption-event="uuid-bluey"', 'pairs: bluey placed' );
+$pos_mz      = fixture_pos( $out_pairs, 'data-pfoa-adoption-event="uuid-moshe-zelda"', 'pairs: moshe-zelda placed' );
+$pos_turbo   = fixture_pos( $out_pairs, 'data-pfoa-adoption-event="uuid-turbo"', 'pairs: turbo placed' );
+fixture_assert( $pos_salem < $pos_stanley, 'pairs: Salem 2026-02-26 renders before Stanley 2026-02-25' );
+fixture_assert( $pos_wizzy < $pos_bluey, 'pairs: Wizzy 2026-01-20 renders before Bluey 2026-01-18' );
+fixture_assert( $pos_mz < $pos_turbo, 'pairs: Moshe&Zelda 2026-01-08 renders before Turbo 2026-01-02' );
+fixture_assert( $pos_stanley < $pos_wizzy, 'pairs: full DESC chain holds (Stanley before Wizzy)' );
+fixture_assert( $pos_bluey < $pos_mz, 'pairs: full DESC chain holds (Bluey before Moshe&Zelda)' );
+fixture_assert( 1 === substr_count( $out_pairs, 'data-pfoa-adoption-event="uuid-moshe-zelda"' ), 'pairs: multi-cat event grouped (renders once)' );
+
+// (AG-03/AG-04/AG-08 scale, PFOA 0.1.126) 46-event gallery: 43 distinct
+// dates plus a same-day trio exercising the stable ID-DESC tiebreak, with
+// the legacy gallery in scrambled order and unclaimed survivors (9001,
+// 9002) interleaved. Every event renders exactly once in strict DESC
+// date order; survivors are quarantined after all events in relative
+// order and can never displace chronology.
+$GLOBALS['fixture_event_ids'] = array();
+$GLOBALS['fixture_meta']      = array();
+$scale_specs = array();
+for ( $scale_i = 0; $scale_i < 43; $scale_i++ ) {
+	$scale_id   = 500 + $scale_i;
+	$scale_date = sprintf( '2026-%02d-%02d', 1 + (int) ( $scale_i / 28 ), 1 + ( $scale_i % 28 ) );
+	$scale_uuid = 'uuid-scale-' . $scale_id;
+	$GLOBALS['fixture_event_ids'][] = $scale_id;
+	fixture_set_event( $scale_id, $scale_uuid, $scale_date, array( fixture_member( 5000 + $scale_id, 'Cat' . $scale_id ) ) );
+	$scale_specs[] = array( 'uuid' => $scale_uuid, 'date' => $scale_date, 'id' => $scale_id );
+}
+$GLOBALS['fixture_event_ids'][] = 950;
+$GLOBALS['fixture_event_ids'][] = 951;
+$GLOBALS['fixture_event_ids'][] = 952;
+fixture_set_event( 950, 'uuid-scale-same-low', '2026-12-25', array( fixture_member( 5950, 'SameLow' ) ) );
+fixture_set_event( 951, 'uuid-scale-same-mid', '2026-12-25', array( fixture_member( 5951, 'SameMid' ) ) );
+fixture_set_event( 952, 'uuid-scale-same-high', '2026-12-25', array( fixture_member( 5952, 'SameHigh' ) ) );
+$scale_specs[] = array( 'uuid' => 'uuid-scale-same-low', 'date' => '2026-12-25', 'id' => 950 );
+$scale_specs[] = array( 'uuid' => 'uuid-scale-same-mid', 'date' => '2026-12-25', 'id' => 951 );
+$scale_specs[] = array( 'uuid' => 'uuid-scale-same-high', 'date' => '2026-12-25', 'id' => 952 );
+usort(
+	$scale_specs,
+	function ( $a, $b ) {
+		$date_cmp = strcmp( (string) $b['date'], (string) $a['date'] );
+		if ( 0 !== $date_cmp ) {
+			return $date_cmp;
+		}
+		if ( (int) $b['id'] === (int) $a['id'] ) {
+			return 0;
+		}
+		return (int) $b['id'] > (int) $a['id'] ? 1 : -1;
+	}
+);
+$scale_gallery_ids = array( 9001 );
+foreach ( $scale_specs as $scale_spec ) {
+	$scale_gallery_ids[] = 5000 + $scale_spec['id'];
+}
+$scale_gallery_ids[] = 9002;
+$out_scale = pfoa_present_adoption_events( fixture_gallery( $scale_gallery_ids ) );
+$scale_prev_pos = -1;
+foreach ( $scale_specs as $scale_spec ) {
+	fixture_assert( 1 === substr_count( $out_scale, 'data-pfoa-adoption-event="' . $scale_spec['uuid'] . '"' ), 'scale: ' . $scale_spec['uuid'] . ' renders exactly once (46 total, never deduped)' );
+	$scale_pos = fixture_pos( $out_scale, 'data-pfoa-adoption-event="' . $scale_spec['uuid'] . '"', 'scale: ' . $scale_spec['uuid'] . ' placed' );
+	fixture_assert( $scale_pos > $scale_prev_pos, 'scale: strict DESC DOM order at ' . $scale_spec['uuid'] . ' (' . $scale_spec['date'] . ')' );
+	$scale_prev_pos = $scale_pos;
+}
+$scale_last_event = $scale_prev_pos;
+$scale_surv_a     = fixture_pos( $out_scale, 'gallery-1-9001', 'scale: survivor 9001 kept' );
+$scale_surv_b     = fixture_pos( $out_scale, 'gallery-1-9002', 'scale: survivor 9002 kept' );
+fixture_assert( $scale_surv_a > $scale_last_event && $scale_surv_b > $scale_surv_a, 'scale: legacy survivors quarantined after all events in relative order' );
+$pos_same_high = fixture_pos( $out_scale, 'data-pfoa-adoption-event="uuid-scale-same-high"', 'scale: same-day high placed' );
+$pos_same_mid  = fixture_pos( $out_scale, 'data-pfoa-adoption-event="uuid-scale-same-mid"', 'scale: same-day mid placed' );
+$pos_same_low  = fixture_pos( $out_scale, 'data-pfoa-adoption-event="uuid-scale-same-low"', 'scale: same-day low placed' );
+fixture_assert( $pos_same_high < $pos_same_mid && $pos_same_mid < $pos_same_low, 'scale: same-day tiebreak is stable ID-DESC' );
+
+// (AG-01/AG-02 repeat at scale, PFOA 0.1.126) The same cat adopted twice
+// with the same photograph: both occurrences render with the photo
+// visible in each — repeats are coverage, never duplicates, and the
+// newer occurrence still leads chronologically.
+$GLOBALS['fixture_event_ids'] = array( 601, 602 );
+fixture_set_event( 601, 'uuid-repeat-new', '2026-06-17', array( fixture_member( 6601, 'Spencer' ), fixture_member( 6602, 'Thompson' ) ) );
+fixture_set_event( 602, 'uuid-repeat-old', '2026-04-28', array( fixture_member( 6601, 'Spencer' ), fixture_member( 6602, 'Thompson' ) ) );
+$out_scale_repeat = pfoa_present_adoption_events( fixture_gallery( array( 6601, 6602 ) ) );
+fixture_assert( 1 === substr_count( $out_scale_repeat, 'data-pfoa-adoption-event="uuid-repeat-new"' ), 'scale-repeat: newer occurrence renders once' );
+fixture_assert( 1 === substr_count( $out_scale_repeat, 'data-pfoa-adoption-event="uuid-repeat-old"' ), 'scale-repeat: older occurrence renders once (never deduped)' );
+$pos_rep_new = fixture_pos( $out_scale_repeat, 'data-pfoa-adoption-event="uuid-repeat-new"', 'scale-repeat: newer placed' );
+$pos_rep_old = fixture_pos( $out_scale_repeat, 'data-pfoa-adoption-event="uuid-repeat-old"', 'scale-repeat: older placed' );
+fixture_assert( $pos_rep_new < $pos_rep_old, 'scale-repeat: newer occurrence leads chronologically' );
+fixture_assert( 2 === substr_count( $out_scale_repeat, 'med6601.jpg' ), 'scale-repeat: reused photo visible in both occurrences' );
+
 // No writes, no throws, read-only meta access.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during presentation' );
 

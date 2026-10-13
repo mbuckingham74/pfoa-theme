@@ -3715,12 +3715,12 @@ function pfoa_present_adoption_events( $content ) {
 
 	// PFOA 0.1.120 — presentation only: collect the validated explicit
 	// anchors (member $claimed_ids stays untouched). Anchors join discovery
-	// + removal + placement only, so a valid anchor's standalone
-	// .gallery-item is suppressed while the grouped event still renders
-	// its own member images inside .pfoa-adoption-event. Media Library
-	// attachments are never deleted, only DOM-removed.
-	$anchor_ids   = array();
-	$anchor_event = array();
+	// + removal only (suppression-only since 0.1.126, never placement), so
+	// a valid anchor's standalone .gallery-item is suppressed while the
+	// grouped event still renders its own member images inside
+	// .pfoa-adoption-event. Media Library attachments are never deleted,
+	// only DOM-removed.
+	$anchor_ids = array();
 
 	foreach ( $events as $event ) {
 		$event_anchor = isset( $event['legacy_anchor'] ) ? (int) $event['legacy_anchor'] : 0;
@@ -3729,8 +3729,7 @@ function pfoa_present_adoption_events( $content ) {
 			continue;
 		}
 
-		$anchor_ids[ $event_anchor ]   = true;
-		$anchor_event[ $event_anchor ] = $event['uuid'];
+		$anchor_ids[ $event_anchor ] = true;
 	}
 
 	$discovery_ids = $claimed_ids;
@@ -3740,11 +3739,11 @@ function pfoa_present_adoption_events( $content ) {
 	}
 
 	// Step 4: suppress claimed figures from the rendered legacy gallery
-	// (exact attachment-ID match only) and insert each event wrapper at
-	// its earliest claimed snapshot position inside the same legacy
-	// gallery (PFOA 0.1.79 shared grid; fallback: before the first
-	// remaining gallery, else prepend). Without DOM support the events
-	// still render (prepended) while the legacy gallery is left untouched.
+	// (exact attachment-ID match only) and insert event wrappers
+	// chronologically into the canonical container below (PFOA 0.1.79
+	// shared grid; fallback: before remaining content). Without DOM support
+	// the events still render (prepended) while the legacy gallery is left
+	// untouched.
 	if ( ! class_exists( 'DOMDocument' ) || ! class_exists( 'DOMXPath' ) ) {
 		return $events_html . $content;
 	}
@@ -3786,25 +3785,8 @@ function pfoa_present_adoption_events( $content ) {
 	// only from figcaption[id^=gallery-N-ID] and/or img[aria-describedby])
 	// but strips every exact claimed match: no workflow claims, no
 	// cat/name/caption/adjacency dedupe, no ambiguity logic.
-	// PFOA 0.1.79 — presentation only: map each claimed snapshot image to
-	// its owning event (claimed IDs only, no caption/name inference; first
-	// event wins on a shared image) so per-event wrappers can re-enter at
-	// their earliest claimed snapshot position below.
-	$claimed_event = array();
-
-	foreach ( $events as $event ) {
-		foreach ( $event['members'] as $event_member ) {
-			if ( 0 < $event_member['image_id'] && ! isset( $claimed_event[ $event_member['image_id'] ] ) ) {
-				$claimed_event[ $event_member['image_id'] ] = $event['uuid'];
-			}
-		}
-	}
-
-	// attachment ID => array( parent gallery element, next sibling,
-	// order, plus ref: first surviving successor resolved pre-removal ).
-	$claimed_anchors = array();
-	$scan_order      = 0;
-
+	// attachment IDs found in the legacy scan are suppressed by exact
+	// match only; scan positions never influence event placement.
 	if ( ! empty( $discovery_ids ) ) {
 		$item_list = $xpath->query(
 			'.//*[contains(concat(" ", normalize-space(@class), " "), " gallery-item ")]',
@@ -3815,8 +3797,6 @@ function pfoa_present_adoption_events( $content ) {
 			$removable = array();
 
 			foreach ( $item_list as $item_node ) {
-				$item_order = $scan_order;
-				$scan_order++;
 
 				if ( ! $item_node instanceof DOMElement ) {
 					continue;
@@ -3889,45 +3869,13 @@ function pfoa_present_adoption_events( $content ) {
 				// after the fail-closed validation above).
 				if ( 0 < $attachment_id && isset( $discovery_ids[ $attachment_id ] ) ) {
 					$removable[] = $item_node;
-
-					if ( ! isset( $claimed_anchors[ $attachment_id ] ) ) {
-						$claimed_anchors[ $attachment_id ] = array(
-							'parent' => $parent,
-							'next'   => $item_node->nextSibling,
-							'order'  => $item_order,
-						);
-					}
 				}
 			}
 
-			// Resolve each recorded anchor's insertion reference BEFORE
-			// removal: from the claimed node's raw nextSibling, walk forward
-			// past any sibling queued for removal to the first surviving
-			// sibling in the same gallery (null when consecutive claims run
-			// to the gallery end). Surviving nodes are never removed below,
-			// so the reference stays a valid insertion point.
-			$removal_ids = array();
-
-			foreach ( $removable as $removable_node ) {
-				$removal_ids[ spl_object_id( $removable_node ) ] = true;
-			}
-
-			foreach ( $claimed_anchors as $anchor_id => $anchor ) {
-				$successor = $anchor['next'];
-
-				while ( $successor instanceof DOMNode
-					&& isset( $removal_ids[ spl_object_id( $successor ) ] )
-					&& $successor->parentNode === $anchor['parent'] ) {
-					$successor = $successor->nextSibling;
-				}
-
-				if ( ! $successor instanceof DOMNode || $successor->parentNode !== $anchor['parent'] ) {
-					$successor = null;
-				}
-
-				$claimed_anchors[ $anchor_id ]['ref'] = $successor;
-			}
-
+			// PFOA 0.1.126 — presentation only: removal without insertion
+			// references. Legacy anchors are suppression-only (AG-03/AG-04);
+			// placement below is chronological and never consumes anchor
+			// positions, so no successor reference is resolved here.
 			foreach ( $removable as $removable_node ) {
 				if ( null !== $removable_node->parentNode ) {
 					$removable_node->parentNode->removeChild( $removable_node );
@@ -3936,42 +3884,12 @@ function pfoa_present_adoption_events( $content ) {
 		}
 	}
 
-	// event UUID => earliest claimed snapshot anchor (min document order
-	// over that event's member image IDs actually found in the gallery).
-	// PFOA 0.1.120 — presentation only: a valid explicit legacy anchor
-	// found in the DOM wins over the min-member-order derivation for its
-	// owning event. An anchor absent from the DOM falls through to the
-	// existing derivation + fallback below (natural fallback, byte-identical
-	// to the no-anchor path).
-	$event_anchors = array();
-
-	foreach ( $events as $event ) {
-		$event_anchor = isset( $event['legacy_anchor'] ) ? (int) $event['legacy_anchor'] : 0;
-
-		if ( 0 >= $event_anchor || isset( $event_anchors[ $event['uuid'] ] ) ) {
-			continue;
-		}
-
-		if ( isset( $claimed_anchors[ $event_anchor ] )
-			&& isset( $anchor_event[ $event_anchor ] )
-			&& $anchor_event[ $event_anchor ] === $event['uuid'] ) {
-			$event_anchors[ $event['uuid'] ] = $claimed_anchors[ $event_anchor ];
-		}
-	}
-
-	foreach ( $claimed_anchors as $anchor_id => $anchor ) {
-		if ( ! isset( $claimed_event[ $anchor_id ] ) ) {
-			continue;
-		}
-
-		$anchor_uuid = $claimed_event[ $anchor_id ];
-
-		if ( isset( $event_anchors[ $anchor_uuid ] ) ) {
-			continue;
-		}
-
-		$event_anchors[ $anchor_uuid ] = $anchor;
-	}
+	// PFOA 0.1.126 — presentation only: legacy anchors are
+	// suppression-only and never set position. The validated anchors above
+	// join discovery + removal (a valid anchor's standalone gallery item is
+	// suppressed while its grouped event renders its own member images), but
+	// no per-event anchor position is derived: placement below iterates
+	// $events directly in adoption-date-DESC order (AG-03/AG-04/AG-08).
 
 	// Import each event wrapper individually through a second document so
 	// snapshot captions/names survive encoding intact. The outer section is
@@ -4071,98 +3989,96 @@ function pfoa_present_adoption_events( $content ) {
 		return $events_html . ( '' !== $output ? $output : $content );
 	}
 
-	// PFOA 0.1.79 — presentation only: shared-grid insertion. Each event
-	// wrapper re-enters at its earliest claimed snapshot position inside
-	// the same legacy .gallery: insertBefore the first surviving successor
-	// at/after that position (resolved pre-removal past consecutive
-	// claims), else append to that gallery when claims run to its end.
-	// Anchors run in ascending document order so multiple events insert
-	// stably and never merge. Only an event with no anchor parent (no
-	// found snapshot node, or parent gone) keeps the prior behavior
-	// (before the first remaining .gallery, else prepend).
-	$ordered_uuids = array();
+	// PFOA 0.1.126 — presentation only: chronological sequential insertion
+	// (AG-03 strict reverse chronology, AG-04 immutable sequence, AG-08
+	// chronology-first packing). Events enter the canonical container —
+	// the first remaining .gallery under the wrapper — consecutively in
+	// $events order (adoption date DESC, event post ID DESC), which is the
+	// visual reading order. Legacy scan positions NEVER influence
+	// placement: anchors are suppression-only (see discovery above) and
+	// cannot displace, reorder, or interleave events. Legacy-only
+	// survivors (unclaimed gallery items, which carry no event dates) are
+	// quarantined AFTER all events in their original relative order, so
+	// they can never invent chronology by interleaving. Other galleries on
+	// the page are left untouched; DOM order equals visual reading order.
+	$canonical_gallery = null;
 
-	foreach ( $events as $event_index => $event ) {
-		if ( ! isset( $event_nodes[ $event['uuid'] ] ) ) {
-			continue;
-		}
-
-		$ordered_uuids[] = array(
-			'uuid'  => $event['uuid'],
-			'order' => isset( $event_anchors[ $event['uuid'] ] ) ? (int) $event_anchors[ $event['uuid'] ]['order'] : PHP_INT_MAX,
-			'index' => (int) $event_index,
-		);
-	}
-
-	usort(
-		$ordered_uuids,
-		function ( $a, $b ) {
-			if ( (int) $a['order'] !== (int) $b['order'] ) {
-				return (int) $a['order'] > (int) $b['order'] ? 1 : -1;
-			}
-
-			if ( (int) $a['index'] === (int) $b['index'] ) {
-				return 0;
-			}
-
-			return (int) $a['index'] > (int) $b['index'] ? 1 : -1;
-		}
+	$gallery_list = $xpath->query(
+		'.//*[contains(concat(" ", normalize-space(@class), " "), " gallery ")]',
+		$wrapper
 	);
 
-	foreach ( $ordered_uuids as $ordered ) {
-		$insert_node = $event_nodes[ $ordered['uuid'] ];
-		$placed      = false;
-
-		if ( isset( $event_anchors[ $ordered['uuid'] ] ) ) {
-			$anchor        = $event_anchors[ $ordered['uuid'] ];
-			$anchor_parent = $anchor['parent'];
-			$anchor_ref    = isset( $anchor['ref'] ) ? $anchor['ref'] : null;
-			$connected     = false;
-
-			if ( $anchor_parent instanceof DOMElement && $anchor_parent->ownerDocument === $dom ) {
-				$ancestor = $anchor_parent;
-
-				while ( $ancestor instanceof DOMNode && $ancestor !== $wrapper ) {
-					$ancestor = $ancestor->parentNode;
-				}
-
-				$connected = ( $ancestor === $wrapper );
+	if ( $gallery_list instanceof DOMNodeList && 0 < $gallery_list->length ) {
+		foreach ( $gallery_list as $gallery_node ) {
+			if ( $gallery_node instanceof DOMElement ) {
+				$canonical_gallery = $gallery_node;
+				break;
 			}
+		}
+	}
 
-			if ( $connected ) {
-				if ( $anchor_ref instanceof DOMNode && $anchor_ref->parentNode === $anchor_parent ) {
-					$anchor_parent->insertBefore( $insert_node, $anchor_ref );
-				} else {
-					$anchor_parent->appendChild( $insert_node );
-				}
+	if ( $canonical_gallery instanceof DOMElement ) {
+		// Snapshot surviving gallery items inside the canonical container
+		// in document order first (DOMNodeList is live), detach them, then
+		// re-append events followed by survivors in original relative
+		// order. Items in any other gallery stay exactly where they are.
+		$survivor_snapshot = array();
 
-				$placed = true;
+		$survivor_list = $xpath->query(
+			'.//*[contains(concat(" ", normalize-space(@class), " "), " gallery-item ")]',
+			$canonical_gallery
+		);
+
+		if ( $survivor_list instanceof DOMNodeList && 0 < $survivor_list->length ) {
+			foreach ( $survivor_list as $survivor_node ) {
+				$survivor_snapshot[] = $survivor_node;
 			}
 		}
 
-		if ( ! $placed ) {
-			$fallback_gallery = null;
+		$survivors = array();
 
-			$gallery_list = $xpath->query(
-				'.//*[contains(concat(" ", normalize-space(@class), " "), " gallery ")]',
-				$wrapper
-			);
-
-			if ( $gallery_list instanceof DOMNodeList && 0 < $gallery_list->length ) {
-				foreach ( $gallery_list as $gallery_node ) {
-					if ( $gallery_node instanceof DOMElement ) {
-						$fallback_gallery = $gallery_node;
-						break;
-					}
-				}
+		foreach ( $survivor_snapshot as $survivor_node ) {
+			if ( ! $survivor_node instanceof DOMElement ) {
+				continue;
 			}
 
-			if ( $fallback_gallery instanceof DOMElement && null !== $fallback_gallery->parentNode ) {
-				$fallback_gallery->parentNode->insertBefore( $insert_node, $fallback_gallery );
-			} else {
-				$first_child = $wrapper->firstChild;
-				$wrapper->insertBefore( $insert_node, $first_child );
+			$survivor_tag = strtolower( $survivor_node->nodeName );
+
+			if ( 'figure' !== $survivor_tag && 'dl' !== $survivor_tag ) {
+				continue;
 			}
+
+			if ( null !== $survivor_node->parentNode ) {
+				$survivor_node->parentNode->removeChild( $survivor_node );
+			}
+
+			$survivors[] = $survivor_node;
+		}
+
+		foreach ( $events as $event ) {
+			if ( ! isset( $event_nodes[ $event['uuid'] ] ) ) {
+				continue;
+			}
+
+			$canonical_gallery->appendChild( $event_nodes[ $event['uuid'] ] );
+		}
+
+		foreach ( $survivors as $survivor_node ) {
+			$canonical_gallery->appendChild( $survivor_node );
+		}
+	} else {
+		// No gallery container: keep the prior fallback shape (events
+		// before remaining content) but in chronological $events order.
+		// Inserting each event before the same first-child reference keeps
+		// the sequence stable; a single event is simply prepended.
+		$fallback_ref = $wrapper->firstChild;
+
+		foreach ( $events as $event ) {
+			if ( ! isset( $event_nodes[ $event['uuid'] ] ) ) {
+				continue;
+			}
+
+			$wrapper->insertBefore( $event_nodes[ $event['uuid'] ], $fallback_ref );
 		}
 	}
 
