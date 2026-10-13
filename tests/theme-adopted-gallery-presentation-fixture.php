@@ -324,6 +324,23 @@ fixture_assert( false !== strpos( $filler, 'PfoaAdoptedGalleryFiller' ), 'filler
 fixture_assert( false !== strpos( $css, '.pfoa-adopted-filler' ), 'css: filler style present' );
 fixture_assert( false !== strpos( $css, 'pointer-events: none' ), 'css: filler noninteractive' );
 
+// (AG-09) Shared gallery card geometry: N-slot filler == N-slot real card.
+// Border-box, shared photo/gap/shell tokens, same row height/alignment,
+// no independent filler widths/margins/photo stretches, no interior gaps.
+fixture_assert( false !== strpos( $filler, 'total - used' ), 'filler: span == remaining slots (total - used)' );
+fixture_assert( false !== strpos( $filler, 'buildFiller(remaining)' ), 'filler: filler span consumes exact remainder' );
+$filler_css_end   = ( false === $filler_css_pos ) ? false : strpos( $css, '}', (int) $stretch_pos );
+$filler_css_block = ( false === $filler_css_pos || false === $filler_css_end ) ? '' : substr( $css, (int) $filler_css_pos, (int) $filler_css_end - (int) $filler_css_pos );
+fixture_assert( false !== strpos( $filler_css_block, 'box-sizing: border-box' ), 'css: filler border-box (shared card geometry)' );
+fixture_assert( false !== strpos( $filler_css_block, 'padding: var(--pfoa-space-2)' ), 'css: filler shell padding == event card shell token' );
+fixture_assert( false !== strpos( $filler_css_block, '1.5px solid #aeb4cd' ), 'css: filler shell border == event card shell token' );
+fixture_assert( false !== strpos( $filler_css_block, 'border-radius: var(--pfoa-radius)' ), 'css: filler shell radius == event card shell token' );
+fixture_assert( false !== strpos( $filler_css_block, 'min-height: var(--pfoa-adopted-photo)' ), 'css: filler row height shares photo token' );
+fixture_assert( false !== strpos( $css, 'gap: var(--pfoa-space-2)' ), 'css: shared gallery gutter token' );
+fixture_assert( false === strpos( $filler_css_block, 'gap:' ), 'css: filler has no interior gaps' );
+fixture_assert( false !== strpos( $filler_css_block, 'margin: 0' ), 'css: filler no independent margins' );
+fixture_assert( false === strpos( $filler_css_block, 'width: var(--pfoa-adopted-photo)' ), 'css: filler no independent photo stretch' );
+
 // Enqueue wiring: filler script enqueued presentation-only on the target page.
 $functions_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
 fixture_assert( false !== strpos( $functions_source, 'pfoa-adopted-gallery-filler' ), 'enqueue: filler handle wired' );

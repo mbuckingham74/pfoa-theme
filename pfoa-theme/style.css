@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.122
+ Version: 0.1.123
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4399,33 +4399,28 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
 	}
 }
 
-/* PFOA 0.1.80 — Equal outer-height for multi-member adoption events (DEV
- * scope, page 22514 only). The multi outer shell carries singleton-shell
- * padding/border while inner members are stripped (border:0, padding:0),
- * so an unconstrained inner grid renders larger squares than singleton
- * cards and the multi outer card ends up taller than its single-cat
- * neighbors. Shrink the inner member grid by one singleton shell (pair:
- * 2 x space-2 + 3px combined border; trio/N 3-up: 4 x space-2 + 6px) and
- * center it, so each inner square resolves to singleton width and outer
- * heights equalize. Title gap below the member row is space-3 alone
- * (PFOA 0.1.81 margin-collapse correction): the singleton 28px stack
- * (icon margin-bottom space-2 + caption margin-top space-3) collapses to
- * the 16px max, while the multi members grid carries margin 0 so nothing
+/* PFOA 0.1.80 — Superseded by the shared N-slot card geometry below
+ * (AG-121 block reuses --pfoa-adopted-photo / --pfoa-adopted-gap /
+ * --pfoa-adopted-card-shell with explicit outer widths). The inner member
+ * grids below stay full-width so content sums to the shared shell; the
+ * outer N-slot width carries the shell. Title gap below the member row is
+ * space-3 alone (PFOA 0.1.81 margin-collapse correction): the singleton 28px
+ * stack (icon margin-bottom space-2 + caption margin-top space-3) collapses
+ * to the 16px max, while the multi members grid carries margin 0 so nothing
  * collapses — space-2 + space-3 would sit titles ~12px low and leave
- * events ~11.5px taller. Token-based calc with repeated var()
- * subtraction, no hard-coded rem. No markup, span, typography, image,
- * or breakpoint change.
+ * events ~11.5px taller. No markup, span, typography, image, or breakpoint
+ * change.
  */
 body.page-id-22514 .pfoa-adoption-event-members-2,
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-2 {
-	width: calc(100% - var(--pfoa-space-2) - var(--pfoa-space-2) - 3px);
-	margin-inline: auto;
+	width: 100%;
+	margin: 0;
 }
 
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-3,
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-n {
-	width: calc(100% - var(--pfoa-space-2) - var(--pfoa-space-2) - var(--pfoa-space-2) - var(--pfoa-space-2) - 6px);
-	margin-inline: auto;
+	width: 100%;
+	margin: 0;
 }
 
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
@@ -4618,6 +4613,8 @@ body.page-id-22514 .entry-content .gallery {
 	container-type: inline-size;
 	container-name: pfoa-adopted-gallery;
 	--pfoa-adopted-photo: 123px;
+	--pfoa-adopted-gap: var(--pfoa-space-2);
+	--pfoa-adopted-card-shell: calc(var(--pfoa-space-2) * 2 + 3px);
 }
 
 @supports (width: 1cqw) {
@@ -4658,16 +4655,48 @@ body.page-id-22514 .pfoa-adoption-event-thumb-missing {
  */
 body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event {
 	justify-self: start;
-	width: fit-content;
+	min-width: 0;
 	max-width: 100%;
+	box-sizing: border-box;
+}
+
+/* Shared N-slot card geometry (AG-07 left-align kept): every event shell
+ * uses one formula so shell == its N-slot span content. width(N) = N photo
+ * + (N-1) gap + shell, where shell = 2 x space-2 pad + 3px combined border
+ * (1.5px x 2). Legacy .gallery-item stretches to its track (track ==
+ * photo + shell), so N=1 matches singles exactly; multis carry the same
+ * shell once around N uniformly sized photos + (N-1) inner gaps.
+ */
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-1 {
+	width: calc(var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell));
+}
+
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-2 {
+	width: calc(var(--pfoa-adopted-photo) * 2 + var(--pfoa-adopted-gap) + var(--pfoa-adopted-card-shell));
+}
+
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-3 {
+	width: calc(var(--pfoa-adopted-photo) * 3 + var(--pfoa-adopted-gap) * 2 + var(--pfoa-adopted-card-shell));
+}
+
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
+	width: calc(var(--pfoa-adopted-photo) * 4 + var(--pfoa-adopted-gap) * 3 + var(--pfoa-adopted-card-shell));
 }
 
 body.page-id-22514 .pfoa-adoption-event-members {
 	justify-content: center;
+	gap: var(--pfoa-adopted-gap);
 }
 
+/* Single-member event inner grid fills the outer content box: the lone
+ * member keeps its singleton shell (padding + border, not stripped like
+ * multis), so a fixed photo track would leave the member content one shell
+ * short and shrink the photograph via max-width:100%. 1fr lets the track
+ * derive from the N=1 outer width (photo + shell), giving member content ==
+ * photo exactly at every viewport — uniform with legacy singles.
+ */
 body.page-id-22514 .pfoa-adoption-event-members-1 {
-	grid-template-columns: var(--pfoa-adopted-photo);
+	grid-template-columns: minmax(0, 1fr);
 }
 
 body.page-id-22514 .pfoa-adoption-event-members-2 {
@@ -4686,6 +4715,7 @@ body.page-id-22514 .pfoa-adoption-event-members-n {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: center;
+	gap: var(--pfoa-adopted-gap);
 }
 
 body.page-id-22514 .pfoa-adoption-event-members-n > .pfoa-adoption-event-member {
@@ -4694,19 +4724,35 @@ body.page-id-22514 .pfoa-adoption-event-members-n > .pfoa-adoption-event-member 
 	box-sizing: border-box;
 }
 
+/* Inner member grids fill the outer content box exactly (content sums to
+ * the shared shell): outer N-slot width minus the one shell equals N photos
+ * + (N-1) gaps, so width:100% with the shared gap never narrows or centers
+ * short of the shell. No max-content shrink, no auto-centering.
+ */
 body.page-id-22514 .pfoa-adoption-event-members-2,
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-2 {
-	width: max-content;
+	width: 100%;
 	max-width: 100%;
-	margin-inline: auto;
+	margin: 0;
+	justify-content: center;
+	gap: var(--pfoa-adopted-gap);
 }
 
-body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-3,
-body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-n {
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-3 {
 	grid-template-columns: repeat(3, var(--pfoa-adopted-photo));
-	width: max-content;
+	width: 100%;
 	max-width: 100%;
-	margin-inline: auto;
+	margin: 0;
+	justify-content: center;
+	gap: var(--pfoa-adopted-gap);
+}
+
+body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-n {
+	width: 100%;
+	max-width: 100%;
+	margin: 0;
+	justify-content: center;
+	gap: var(--pfoa-adopted-gap);
 }
 
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-n {
@@ -4747,7 +4793,9 @@ body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler {
 	align-items: center;
 	justify-content: center;
 	align-self: stretch;
+	justify-self: start;
 	min-width: 0;
+	max-width: 100%;
 	min-height: var(--pfoa-adopted-photo);
 	margin: 0;
 	padding: var(--pfoa-space-2);
@@ -4757,6 +4805,33 @@ body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler {
 	box-sizing: border-box;
 	overflow: hidden;
 	pointer-events: none;
+}
+
+/* Filler N-slot convergence (AG-09): the filler spans the row remainder via
+ * JS (span N) and left-aligns with the identical N-slot outer width as the
+ * equivalent real event card, so filler-1 == single and filler-2 ==
+ * Sugar&Spice pair with no unused interior column. Same pad/border/shell,
+ * same photo/gap tokens; the paw never stretches (clamp below). JS span
+ * logic is untouched — geometry converges purely through these shared vars.
+ */
+body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler[data-pfoa-filler-span="1"] {
+	width: calc(var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell));
+}
+
+body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler[data-pfoa-filler-span="2"] {
+	width: calc(var(--pfoa-adopted-photo) * 2 + var(--pfoa-adopted-gap) + var(--pfoa-adopted-card-shell));
+}
+
+body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler[data-pfoa-filler-span="3"] {
+	width: calc(var(--pfoa-adopted-photo) * 3 + var(--pfoa-adopted-gap) * 2 + var(--pfoa-adopted-card-shell));
+}
+
+body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler[data-pfoa-filler-span="4"] {
+	width: calc(var(--pfoa-adopted-photo) * 4 + var(--pfoa-adopted-gap) * 3 + var(--pfoa-adopted-card-shell));
+}
+
+body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler[data-pfoa-filler-span="5"] {
+	width: calc(var(--pfoa-adopted-photo) * 5 + var(--pfoa-adopted-gap) * 4 + var(--pfoa-adopted-card-shell));
 }
 
 body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler svg {
@@ -4796,6 +4871,7 @@ body.page-id-22514 .pfoa-adopted-filler-wordmark {
 	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-3,
 	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
 		grid-column: 1 / -1;
+		width: 100%;
 	}
 
 	/* Trios wrap 2+1, quads+ sit 2x2 inside their own full-row card. */
@@ -4808,7 +4884,8 @@ body.page-id-22514 .pfoa-adopted-filler-wordmark {
 	}
 
 	body.page-id-22514 .pfoa-adoption-event-members-n {
-		max-width: calc(var(--pfoa-adopted-photo) * 2 + var(--pfoa-space-2));
+		width: 100%;
+		max-width: calc(var(--pfoa-adopted-photo) * 2 + var(--pfoa-adopted-gap));
 		margin-inline: auto;
 	}
 }
@@ -4824,8 +4901,11 @@ body.page-id-22514 .pfoa-adopted-filler-wordmark {
 		}
 	}
 
-	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-2 {
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-2,
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-3,
+	body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
 		grid-column: 1 / -1;
+		width: 100%;
 	}
 
 	body.page-id-22514 .pfoa-adoption-event-members-2,

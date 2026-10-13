@@ -186,6 +186,27 @@ assert.strictEqual(fillers[1].style.gridColumnStart, 'span 4', 'row3 remainder s
 assert.strictEqual(fillers[0].getAttribute('data-pfoa-filler-span'), '1', 'row1 span marker 1');
 assert.strictEqual(fillers[1].getAttribute('data-pfoa-filler-span'), '4', 'row3 span marker 4');
 
+// AG-09 shared card geometry: N-slot filler == N-slot real card outer
+// geometry — filler span plus row used slots equals row capacity, so the
+// filler occupies exactly the remainder with no independent sizing.
+function spanCount(f) {
+	return parseInt(String(f.style.gridColumnStart || '').replace(/[^0-9]/g, ''), 10) || 0;
+}
+assert.strictEqual(spanCount(fillers[0]) + 5, 6, 'row1 N-slot outer geometry: 5 used + span 1 == 6');
+assert.strictEqual(spanCount(fillers[1]) + 2, 6, 'row3 N-slot outer geometry: 2 used + span 4 == 6');
+assert.strictEqual(gallery.children[2], fillers[0], 'row1 filler aligned directly after row final event card');
+assert.strictEqual(gallery.children[gallery.children.length - 1], fillers[1], 'row3 filler aligned directly after row final event card');
+for (const f of fillers) {
+	assert.strictEqual(f.style.width, undefined, 'no independent filler width (span-only geometry)');
+	assert.strictEqual(f.style.margin, undefined, 'no independent filler margin');
+	assert.strictEqual(f.style.height, undefined, 'no independent filler height (stretch row alignment only)');
+	assert.strictEqual(f.style.padding, undefined, 'no independent filler padding override via JS');
+	assert.strictEqual(f.style.gap, undefined, 'no interior gaps on filler');
+	assert.strictEqual(f.style.columnGap, undefined, 'no interior column gaps on filler');
+	assert.strictEqual(f.style.rowGap, undefined, 'no interior row gaps on filler');
+	assert.strictEqual(f.textContent, '', 'no interior text gaps in filler');
+}
+
 // Idempotency: refresh + resize must not duplicate.
 api.refresh();
 api.refresh();
