@@ -292,6 +292,39 @@ fixture_assert( 1 === preg_match( '/--pfoa-adopted-photo:\s*204px/', $css ), 'cs
 fixture_assert( 1 === preg_match( '/--pfoa-adopted-photo:\s*191px/', $css ), 'css: 3-slot Sol fallback ~191px' );
 fixture_assert( 1 === preg_match( '/--pfoa-adopted-photo:\s*142px/', $css ), 'css: 2-slot Sol fallback 142px' );
 
+// (AG-07 track allocation, PFOA 0.1.124) Single coherent sizing system:
+// width(N) = N * (photo + shell) + (N-1) * gap, i.e. N shells, not 1, so
+// the outer width equals the full N-track grid allocation. At 1440px
+// (photo 123, gap 12, shell 27) this yields 150/312/474/636.
+fixture_assert( false !== strpos( $css, '(var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 2 + var(--pfoa-adopted-gap)' ), 'css: count-2 carries 2 shells (track unit * 2 + gap)' );
+fixture_assert( false !== strpos( $css, '(var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 3 + var(--pfoa-adopted-gap) * 2' ), 'css: count-3 carries 3 shells (track unit * 3 + 2 gaps)' );
+fixture_assert( false !== strpos( $css, '(var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 4 + var(--pfoa-adopted-gap) * 3' ), 'css: count-n carries 4 shells (track unit * 4 + 3 gaps)' );
+fixture_assert( false === strpos( $css, 'var(--pfoa-adopted-photo) * 2 + var(--pfoa-adopted-gap) + var(--pfoa-adopted-card-shell)' ), 'css: no competing single-shell count-2 formula' );
+fixture_assert( false === strpos( $css, 'var(--pfoa-adopted-photo) * 3 + var(--pfoa-adopted-gap) * 2 + var(--pfoa-adopted-card-shell)' ), 'css: no competing single-shell count-3 formula' );
+fixture_assert( false === strpos( $css, 'var(--pfoa-adopted-photo) * 4 + var(--pfoa-adopted-gap) * 3 + var(--pfoa-adopted-card-shell)' ), 'css: no competing single-shell count-n formula' );
+fixture_assert( false === strpos( $css, 'var(--pfoa-adopted-photo) * 5 + var(--pfoa-adopted-gap) * 4 + var(--pfoa-adopted-card-shell)' ), 'css: no competing single-shell filler-5 formula' );
+function fixture_track_width( $n, $photo, $gap, $shell ) {
+	return $n * ( $photo + $shell ) + ( $n - 1 ) * $gap;
+}
+fixture_assert( 150 === fixture_track_width( 1, 123, 12, 27 ), 'geometry: 1440px count-1 == 150' );
+fixture_assert( 312 === fixture_track_width( 2, 123, 12, 27 ), 'geometry: 1440px count-2 == 312' );
+fixture_assert( 474 === fixture_track_width( 3, 123, 12, 27 ), 'geometry: 1440px count-3 == 474' );
+fixture_assert( 636 === fixture_track_width( 4, 123, 12, 27 ), 'geometry: 1440px count-n == 636' );
+fixture_assert( 231 === fixture_track_width( 1, 204, 12, 27 ), 'geometry: 4-slot responsive count-1 == 231' );
+fixture_assert( 474 === fixture_track_width( 2, 204, 12, 27 ), 'geometry: 4-slot responsive count-2 == 474' );
+fixture_assert( 218 === fixture_track_width( 1, 191, 12, 27 ), 'geometry: 3-slot responsive count-1 == 218' );
+fixture_assert( 448 === fixture_track_width( 2, 191, 12, 27 ), 'geometry: 3-slot responsive count-2 == 448' );
+fixture_assert( 169 === fixture_track_width( 1, 142, 12, 27 ), 'geometry: 2-slot responsive count-1 == 169' );
+fixture_assert( 350 === fixture_track_width( 2, 142, 12, 27 ), 'geometry: 2-slot responsive count-2 == 350' );
+// Filler parity: identical outer sizing per span, so filler-2 == 312,
+// filler-3 == 474, filler-4 == 636 at 1440px.
+fixture_assert( 1 === preg_match( '/pfoa-adopted-filler\[data-pfoa-filler-span="2"\][\s\S]*?\(\s*var\(--pfoa-adopted-photo\)\s*\+\s*var\(--pfoa-adopted-card-shell\)\s*\)\s*\*\s*2\s*\+\s*var\(--pfoa-adopted-gap\)/', $css ), 'css: filler-2 shares count-2 outer sizing' );
+fixture_assert( 1 === preg_match( '/pfoa-adopted-filler\[data-pfoa-filler-span="3"\][\s\S]*?\(\s*var\(--pfoa-adopted-photo\)\s*\+\s*var\(--pfoa-adopted-card-shell\)\s*\)\s*\*\s*3\s*\+\s*var\(--pfoa-adopted-gap\)\s*\*\s*2/', $css ), 'css: filler-3 shares count-3 outer sizing' );
+fixture_assert( 1 === preg_match( '/pfoa-adopted-filler\[data-pfoa-filler-span="4"\][\s\S]*?\(\s*var\(--pfoa-adopted-photo\)\s*\+\s*var\(--pfoa-adopted-card-shell\)\s*\)\s*\*\s*4\s*\+\s*var\(--pfoa-adopted-gap\)\s*\*\s*3/', $css ), 'css: filler-4 shares count-n outer sizing' );
+// Legacy singles share the same outer box model (12px pad + 1.5px border,
+// border-box global) — no divergence from the N=1 track.
+fixture_assert( false !== strpos( $css, '.entry-content .gallery-item' ), 'css: legacy gallery-item rule intact' );
+
 // (AG-06/AG-09) Filler contract: JS present, decorative-only, aria-hidden,
 // data-pfoa-filler + data-pfoa-filler-span, explicit span remainder
 // (gridColumnStart 'span N', gridColumnEnd 'auto', never -1), full row

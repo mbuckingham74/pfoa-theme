@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.123
+ Version: 0.1.124
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4660,27 +4660,30 @@ body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event {
 	box-sizing: border-box;
 }
 
-/* Shared N-slot card geometry (AG-07 left-align kept): every event shell
- * uses one formula so shell == its N-slot span content. width(N) = N photo
- * + (N-1) gap + shell, where shell = 2 x space-2 pad + 3px combined border
- * (1.5px x 2). Legacy .gallery-item stretches to its track (track ==
- * photo + shell), so N=1 matches singles exactly; multis carry the same
- * shell once around N uniformly sized photos + (N-1) inner gaps.
+/* Shared N-slot card geometry (AG-07 left-align kept, PFOA 0.1.124 track
+ * allocation correction): every event shell uses one formula so the outer
+ * width equals its full N-track grid allocation. width(N) = N * (photo +
+ * shell) + (N-1) * gap, where shell = 2 x space-2 pad + 3px combined border
+ * (1.5px x 2) and one track == photo + shell. At 1440px (photo 123, gap 12,
+ * shell 27) this yields 150/312/474/636, matching N*150+(N-1)*12. Legacy
+ * .gallery-item keeps the identical shell (12px pad + 1.5px border,
+ * border-box), so N=1 matches singles exactly; multis carry the same shell
+ * per track around N uniformly sized photos + (N-1) inner gaps.
  */
 body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-1 {
-	width: calc(var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell));
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 1);
 }
 
 body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-2 {
-	width: calc(var(--pfoa-adopted-photo) * 2 + var(--pfoa-adopted-gap) + var(--pfoa-adopted-card-shell));
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 2 + var(--pfoa-adopted-gap));
 }
 
 body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-3 {
-	width: calc(var(--pfoa-adopted-photo) * 3 + var(--pfoa-adopted-gap) * 2 + var(--pfoa-adopted-card-shell));
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 3 + var(--pfoa-adopted-gap) * 2);
 }
 
 body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
-	width: calc(var(--pfoa-adopted-photo) * 4 + var(--pfoa-adopted-gap) * 3 + var(--pfoa-adopted-card-shell));
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 4 + var(--pfoa-adopted-gap) * 3);
 }
 
 body.page-id-22514 .pfoa-adoption-event-members {
@@ -4724,10 +4727,11 @@ body.page-id-22514 .pfoa-adoption-event-members-n > .pfoa-adoption-event-member 
 	box-sizing: border-box;
 }
 
-/* Inner member grids fill the outer content box exactly (content sums to
- * the shared shell): outer N-slot width minus the one shell equals N photos
- * + (N-1) gaps, so width:100% with the shared gap never narrows or centers
- * short of the shell. No max-content shrink, no auto-centering.
+/* Inner member grids fill the outer content box (PFOA 0.1.124): outer
+ * N-slot width minus the one outer shell equals N photos + (N-1) gaps +
+ * (N-1) shells of centered slack, so width:100% with the shared gap never
+ * narrows or shrink-wraps short of the shell. No max-content shrink, no
+ * auto-centering change.
  */
 body.page-id-22514 .pfoa-adoption-event-members-2,
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-2 {
@@ -4807,31 +4811,34 @@ body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler {
 	pointer-events: none;
 }
 
-/* Filler N-slot convergence (AG-09): the filler spans the row remainder via
- * JS (span N) and left-aligns with the identical N-slot outer width as the
- * equivalent real event card, so filler-1 == single and filler-2 ==
- * Sugar&Spice pair with no unused interior column. Same pad/border/shell,
- * same photo/gap tokens; the paw never stretches (clamp below). JS span
- * logic is untouched — geometry converges purely through these shared vars.
+/* Filler N-slot convergence (AG-09, PFOA 0.1.124 track allocation
+ * correction): the filler spans the row remainder via JS (span N) and
+ * left-aligns with the identical N-slot outer width as the equivalent real
+ * event card — width(N) = N * (photo + shell) + (N-1) * gap — so filler-1
+ * == single (150), filler-2 == pair (312), filler-3 == trio (474),
+ * filler-4 == quad (636) at 1440px, with no unused interior column. Same
+ * pad/border/shell, same photo/gap tokens; the paw never stretches (clamp
+ * below). JS span logic is untouched — geometry converges purely through
+ * these shared vars.
  */
 body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler[data-pfoa-filler-span="1"] {
-	width: calc(var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell));
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 1);
 }
 
 body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler[data-pfoa-filler-span="2"] {
-	width: calc(var(--pfoa-adopted-photo) * 2 + var(--pfoa-adopted-gap) + var(--pfoa-adopted-card-shell));
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 2 + var(--pfoa-adopted-gap));
 }
 
 body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler[data-pfoa-filler-span="3"] {
-	width: calc(var(--pfoa-adopted-photo) * 3 + var(--pfoa-adopted-gap) * 2 + var(--pfoa-adopted-card-shell));
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 3 + var(--pfoa-adopted-gap) * 2);
 }
 
 body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler[data-pfoa-filler-span="4"] {
-	width: calc(var(--pfoa-adopted-photo) * 4 + var(--pfoa-adopted-gap) * 3 + var(--pfoa-adopted-card-shell));
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 4 + var(--pfoa-adopted-gap) * 3);
 }
 
 body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler[data-pfoa-filler-span="5"] {
-	width: calc(var(--pfoa-adopted-photo) * 5 + var(--pfoa-adopted-gap) * 4 + var(--pfoa-adopted-card-shell));
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 5 + var(--pfoa-adopted-gap) * 4);
 }
 
 body.page-id-22514 .entry-content .gallery > .pfoa-adopted-filler svg {

@@ -11,6 +11,8 @@
 'use strict';
 
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 
 function makeEl(tag, opts) {
 	opts = opts || {};
@@ -196,6 +198,34 @@ assert.strictEqual(spanCount(fillers[0]) + 5, 6, 'row1 N-slot outer geometry: 5 
 assert.strictEqual(spanCount(fillers[1]) + 2, 6, 'row3 N-slot outer geometry: 2 used + span 4 == 6');
 assert.strictEqual(gallery.children[2], fillers[0], 'row1 filler aligned directly after row final event card');
 assert.strictEqual(gallery.children[gallery.children.length - 1], fillers[1], 'row3 filler aligned directly after row final event card');
+
+// Track-allocation geometry regression (PFOA 0.1.124): single coherent
+// sizing width(N) = N * (photo + shell) + (N-1) * gap, so filler spans
+// share the identical outer sizing as event cards — filler-2 == 312,
+// filler-3 == 474, filler-4 == 636 at 1440px (photo 123, gap 12,
+// shell 27). Responsive photo fallbacks scale proportionally (still N
+// shells): 204/191/142.
+const cssPath = path.join(__dirname, '..', 'pfoa-theme', 'style.css');
+const css = fs.readFileSync(cssPath, 'utf8');
+assert(css.includes('(var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 2 + var(--pfoa-adopted-gap)'), 'css: 2-slot track-unit formula (2 shells)');
+assert(css.includes('(var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 3 + var(--pfoa-adopted-gap) * 2'), 'css: 3-slot track-unit formula (3 shells)');
+assert(css.includes('(var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 4 + var(--pfoa-adopted-gap) * 3'), 'css: 4-slot track-unit formula (4 shells)');
+assert(!css.includes('var(--pfoa-adopted-photo) * 2 + var(--pfoa-adopted-gap) + var(--pfoa-adopted-card-shell)'), 'css: no competing single-shell 2-slot formula');
+assert(!css.includes('var(--pfoa-adopted-photo) * 3 + var(--pfoa-adopted-gap) * 2 + var(--pfoa-adopted-card-shell)'), 'css: no competing single-shell 3-slot formula');
+assert(!css.includes('var(--pfoa-adopted-photo) * 4 + var(--pfoa-adopted-gap) * 3 + var(--pfoa-adopted-card-shell)'), 'css: no competing single-shell 4-slot formula');
+function trackWidth(n, photo, gap, shell) {
+	return n * (photo + shell) + (n - 1) * gap;
+}
+assert.strictEqual(trackWidth(1, 123, 12, 27), 150, 'geometry: 1440px slot-1 == 150');
+assert.strictEqual(trackWidth(2, 123, 12, 27), 312, 'geometry: 1440px slot-2 == 312');
+assert.strictEqual(trackWidth(3, 123, 12, 27), 474, 'geometry: 1440px slot-3 == 474');
+assert.strictEqual(trackWidth(4, 123, 12, 27), 636, 'geometry: 1440px slot-4 == 636');
+assert.strictEqual(trackWidth(1, 204, 12, 27), 231, 'geometry: 4-slot responsive slot-1 == 231');
+assert.strictEqual(trackWidth(2, 204, 12, 27), 474, 'geometry: 4-slot responsive slot-2 == 474');
+assert.strictEqual(trackWidth(1, 191, 12, 27), 218, 'geometry: 3-slot responsive slot-1 == 218');
+assert.strictEqual(trackWidth(2, 191, 12, 27), 448, 'geometry: 3-slot responsive slot-2 == 448');
+assert.strictEqual(trackWidth(1, 142, 12, 27), 169, 'geometry: 2-slot responsive slot-1 == 169');
+assert.strictEqual(trackWidth(2, 142, 12, 27), 350, 'geometry: 2-slot responsive slot-2 == 350');
 for (const f of fillers) {
 	assert.strictEqual(f.style.width, undefined, 'no independent filler width (span-only geometry)');
 	assert.strictEqual(f.style.margin, undefined, 'no independent filler margin');
