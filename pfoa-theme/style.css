@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.136
+ Version: 0.1.137
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -1323,6 +1323,8 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
  * visible tab: no inner-edge squaring is applied. Dropdown anchoring is
  * preserved: .sub-menu is positioned against the <li> (top:100%), not
  * the <a>, so <a> margins do not move it. Mobile (<=1319px) untouched.
+ * Single-highlight coordination below: while pointer/focus is elsewhere
+ * in the nav, the current-page tab rests so exactly one blue tab shows.
  */
 @media (min-width: 1320px) {
 	.primary-menu > .menu-item > a:hover,
@@ -1335,6 +1337,24 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 		margin-block: 6px;
 		margin-inline: 4px;
 		border-radius: 12px;
+	}
+
+	/* While the nav carries hover/focus elsewhere, rest the current-page
+	 * tab (transparent bg, resting text color, no float) so the blue tab
+	 * follows the hovered/focused item. The :not guards keep the highlight
+	 * when the current item itself is hovered, focused, or expanded —
+	 * including submenu interaction, which keeps :hover/:focus-within on
+	 * the parent <li>. Leaving the nav drops :hover/:focus-within, so the
+	 * current-page highlight returns on its own. */
+	.primary-menu:hover > .menu-item.current-menu-item:not(:hover):not(:focus-within):not(.is-open) > a,
+	.primary-menu:hover > .menu-item.current-menu-ancestor:not(:hover):not(:focus-within):not(.is-open) > a,
+	.primary-menu:focus-within > .menu-item.current-menu-item:not(:hover):not(:focus-within):not(.is-open) > a,
+	.primary-menu:focus-within > .menu-item.current-menu-ancestor:not(:hover):not(:focus-within):not(.is-open) > a {
+		background: transparent;
+		color: var(--pfoa-text-on-structural);
+		margin-block: 0;
+		margin-inline: 0;
+		border-radius: 0;
 	}
 }
 
