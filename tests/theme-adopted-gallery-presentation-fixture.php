@@ -280,6 +280,57 @@ fixture_assert( false !== strpos( $out, 'pfoa-adoption-event-count-3' ), 'groupi
 fixture_assert( false !== strpos( $out, 'pfoa-adoption-event-count-n' ), 'grouping: quad count class' );
 fixture_assert( false !== strpos( $out, 'pfoa-adoption-event-count-1' ), 'grouping: single count class' );
 
+// (AG-12 universal green, PFOA 0.1.129) Singleton carries no badge; each
+// of the 5 multi-cat events (2 trios, 1 quad, 2 pairs) carries exactly one
+// green Adopted Together badge; no red bonded badge renders anywhere.
+fixture_assert( 5 === substr_count( $out, 'pfoa-adoption-event-together-badge' ), 'badges: every multi-cat event carries the green badge (5 multis)' );
+fixture_assert( 5 === substr_count( $out, 'Adopted Together' ), 'badges: green badge text on all multis' );
+fixture_assert( 0 === substr_count( $out, 'pfoa-adoption-event-bonded-badge' ), 'badges: no red bonded badge on adopted gallery' );
+$solo_badge_evt  = strpos( $out, 'data-pfoa-adoption-event="uuid-same-low"' );
+$solo_badge_next = strpos( $out, 'data-pfoa-adoption-event="uuid-same-high"', (int) $solo_badge_evt );
+$solo_badge_card = substr( $out, (int) $solo_badge_evt, (int) $solo_badge_next - (int) $solo_badge_evt );
+fixture_assert( false === strpos( $solo_badge_card, 'badge' ), 'badges: singleton carries no badge' );
+
+// (AG-12 universal green on TRUE bonded pairs, PFOA 0.1.129) A reciprocal
+// bonded pair keeps its --bonded classification (class + metadata) but
+// renders the same green badge — never the red one.
+function pfoa_cat_is_bonded( $cat_id ) {
+	return in_array( (int) $cat_id, array( 701, 702 ), true );
+}
+function pfoa_cat_get_bonded_pair( $cat_id ) {
+	if ( in_array( (int) $cat_id, array( 701, 702 ), true ) ) {
+		return array( 701, 702 );
+	}
+	return array();
+}
+$GLOBALS['fixture_event_ids'] = array( 30 );
+fixture_set_event(
+	30,
+	'uuid-jun-bonded',
+	'2026-06-17',
+	array(
+		array(
+			'image_id'          => 701,
+			'cat_name_at_event' => 'Spencer',
+			'caption'           => 'Spencer',
+			'cat_post_id'       => 701,
+		),
+		array(
+			'image_id'          => 702,
+			'cat_name_at_event' => 'Thompson',
+			'caption'           => 'Thompson',
+			'cat_post_id'       => 702,
+		),
+	)
+);
+$out_bonded = pfoa_present_adoption_events( fixture_gallery( array( 701, 702 ) ) );
+fixture_assert( false !== strpos( $out_bonded, 'pfoa-adoption-event--bonded' ), 'badges: true bonded pair keeps --bonded class' );
+fixture_assert( false !== strpos( $out_bonded, 'pfoa-adoption-event-count-2' ), 'badges: bonded pair keeps count-2 class' );
+fixture_assert( 1 === substr_count( $out_bonded, 'pfoa-adoption-event-together-badge' ), 'badges: bonded pair renders the green together badge' );
+fixture_assert( 1 === substr_count( $out_bonded, 'Adopted Together' ), 'badges: bonded pair green badge text' );
+fixture_assert( false === strpos( $out_bonded, 'pfoa-adoption-event-bonded-badge' ), 'badges: bonded pair renders no red badge' );
+fixture_assert( false === strpos( $out_bonded, 'Bonded Pair' ), 'badges: no bonded-pair text on adopted gallery' );
+
 // (PFOA 0.1.125 regression) Solo title + date remain within the solo card:
 // members render first, then title, then date — all inside the same
 // count-1 wrapper. The pre-fix order (title + date above members, outside
@@ -343,8 +394,15 @@ fixture_assert( 1 === preg_match( '/--pfoa-adopted-photo:\s*142px/', $css ), 'cs
 fixture_assert( 1 === preg_match( '/\.entry-content \.gallery > \.pfoa-adoption-event-count-1[\s\S]*?background:\s*var\(--pfoa-surface-page\)/', $css ), 'css: solo outer shell background' );
 fixture_assert( 1 === preg_match( '/\.entry-content \.gallery > \.pfoa-adoption-event-count-1[\s\S]*?border:\s*1\.5px solid #aeb4cd/', $css ), 'css: solo outer shell border' );
 fixture_assert( 1 === preg_match( '/\.pfoa-adoption-event-count-1 \.pfoa-adoption-event-member[\s\S]*?border:\s*0/', $css ), 'css: solo inner member borderless (no doubled frame)' );
-fixture_assert( 1 === preg_match( '/\.pfoa-adoption-event-count-1 \.pfoa-adoption-event-title[\s\S]*?margin:\s*var\(--pfoa-space-3\) 0 0/', $css ), 'css: solo title below photo (shared multi spacing)' );
-fixture_assert( 1 === preg_match( '/\.pfoa-adoption-event-count-1 \.pfoa-adoption-event-date[\s\S]*?margin:\s*var\(--pfoa-space-2\) 0 0/', $css ), 'css: solo date beneath title inside card' );
+fixture_assert( 1 === preg_match( '/\.pfoa-adoption-event-count-1 \.pfoa-adoption-event-title[\s\S]*?margin:\s*10px 0 0/', $css ), 'css: solo title 10px below photo (0.1.129 photo-to-name)' );
+fixture_assert( 1 === preg_match( '/\.pfoa-adoption-event-count-1 \.pfoa-adoption-event-date[\s\S]*?margin:\s*8px 0 0/', $css ), 'css: solo date 8px beneath title (0.1.129 name-to-date)' );
+
+// (PFOA 0.1.129 vertical rhythm) Adopted 2026 page-scoped spacing: 28px
+// row gap with the shared 12px column gutter, 10px photo-to-name on multi
+// titles, 8px name-to-date, two-line date reserve preserved.
+fixture_assert( 1 === preg_match( '/body\.page-id-22514 \.entry-content \.gallery\s*\{[^}]*gap:\s*28px var\(--pfoa-space-2\)/', $css ), 'css: gallery row gap 28px, column gap keeps 12px gutter (0.1.129)' );
+fixture_assert( 1 === preg_match( '/\.pfoa-adoption-event-multi \.pfoa-adoption-event-title[\s\S]*?margin-top:\s*10px/', $css ), 'css: multi title 10px below photo grid (0.1.129 photo-to-name)' );
+fixture_assert( 1 === preg_match( '/body\.page-id-22514 \.pfoa-adoption-event-date\s*\{[^}]*margin:\s*8px 0 0/', $css ), 'css: date 8px beneath title (0.1.129 name-to-date)' );
 
 // (AG-07 track allocation, PFOA 0.1.124) Single coherent sizing system:
 // width(N) = N * (photo + shell) + (N-1) * gap, i.e. N shells, not 1, so
@@ -423,7 +481,7 @@ fixture_assert( false !== strpos( $filler_css_block, 'padding: var(--pfoa-space-
 fixture_assert( false !== strpos( $filler_css_block, '1.5px solid #aeb4cd' ), 'css: filler shell border == event card shell token' );
 fixture_assert( false !== strpos( $filler_css_block, 'border-radius: var(--pfoa-radius)' ), 'css: filler shell radius == event card shell token' );
 fixture_assert( false !== strpos( $filler_css_block, 'min-height: var(--pfoa-adopted-photo)' ), 'css: filler row height shares photo token' );
-fixture_assert( false !== strpos( $css, 'gap: var(--pfoa-space-2)' ), 'css: shared gallery gutter token' );
+fixture_assert( false !== strpos( $css, 'gap: 28px var(--pfoa-space-2)' ), 'css: gallery 28px/12px gaps keep the shared gutter token' );
 fixture_assert( false === strpos( $filler_css_block, 'gap:' ), 'css: filler has no interior gaps' );
 fixture_assert( false !== strpos( $filler_css_block, 'margin: 0' ), 'css: filler no independent margins' );
 fixture_assert( false === strpos( $filler_css_block, 'width: var(--pfoa-adopted-photo)' ), 'css: filler no independent photo stretch' );

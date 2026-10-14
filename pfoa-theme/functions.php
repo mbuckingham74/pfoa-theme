@@ -3634,15 +3634,17 @@ function pfoa_present_adoption_events( $content ) {
 		if ( ! empty( $names ) ) {
 			$combined_title = '<h2 class="pfoa-adoption-event-title">' . implode( ' &amp; ', array_map( 'esc_html', $names ) );
 
-			// PFOA 0.1.82 — presentation only: visible "Bonded Pair" badge
-			// inside the existing title (names stay primary). Absolutely
-			// positioned by CSS so title/card geometry is unchanged; the
-			// visually-hidden suffix gives assistive-tech context.
-			if ( $is_bonded_pair ) {
-				$combined_title .= ' <span class="pfoa-adoption-event-bonded-badge">' . esc_html__( 'Bonded Pair', 'pfoa-theme' ) . '<span class="screen-reader-text"> ' . esc_html__( 'adopted together as a bonded pair', 'pfoa-theme' ) . '</span></span>';
-			} elseif ( $is_adopted_together ) {
-				$combined_title .= ' <span class="pfoa-adoption-event-together-badge">' . esc_html__( 'Adopted Together', 'pfoa-theme' ) . '<span class="screen-reader-text"> ' . esc_html__( 'in the same adoption event', 'pfoa-theme' ) . '</span></span>';
-			}
+		// PFOA 0.1.129 — presentation only: universal green "Adopted
+		// Together" badge on every multi-cat event (count 2+, bonded or
+		// not); singletons stay badge-free. Absolutely positioned by CSS
+		// so title/card geometry is unchanged; the visually-hidden suffix
+		// gives assistive-tech context. The $is_bonded_pair /
+		// $is_adopted_together calculation, semantic classes, and
+		// metadata above are preserved untouched — only this public badge
+		// render branch is unified.
+		if ( 1 < $member_count ) {
+			$combined_title .= ' <span class="pfoa-adoption-event-together-badge">' . esc_html__( 'Adopted Together', 'pfoa-theme' ) . '<span class="screen-reader-text"> ' . esc_html__( 'in the same adoption event', 'pfoa-theme' ) . '</span></span>';
+		}
 
 			$combined_title .= '</h2>';
 		}

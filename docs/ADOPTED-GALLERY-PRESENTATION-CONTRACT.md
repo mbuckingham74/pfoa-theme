@@ -2,7 +2,7 @@
 
 **Status:** Adopted
 **Date:** 2026-10-13
-**Amendment:** 2026-10-13 — Board-mandated adoption event photo coverage (AG-02 strengthened; AG-01 and AG-12 clarified; acceptance matrix extended; Board-Mandated Release Gate added); 2026-10-13 — AG-09 black-paw + explicit span correction
+**Amendment:** 2026-10-13 — Board-mandated adoption event photo coverage (AG-02 strengthened; AG-01 and AG-12 clarified; acceptance matrix extended; Board-Mandated Release Gate added); 2026-10-13 — AG-09 black-paw + explicit span correction; 2026-10-13 — AG-12 universal-green badge + Adopted 2026 vertical rhythm 28/12/10/8 (0.1.129)
 **Repository:** PFOA Theme
 **Related contracts:** `docs/pfoa-compatibility-baseline.md`; PFOA Gallery Lightbox shared gallery/lightbox interaction behavior
 
@@ -37,14 +37,15 @@ Requirement AG-10 — Preserve semantics at every viewport. Responsive layouts m
 Requirement AG-11 — Separation of responsibilities. Cat Profiles own canonical cat identity, metadata, and current Adoptable/Adopted state. Adoption Events own historical adoption records, dates, membership, and event classifications. PFOA Theme owns public gallery layout, event cards, responsive geometry, photograph arrangement, decorative filler panels, dates, and badges. PFOA Gallery Lightbox owns shared gallery/lightbox interactions. Presentation layout must not require modifications to historical event data.
 
 ## 10. Established visual behavior
-Requirement AG-12 — Preserve accepted presentation semantics. Retain: red Bonded Pair badges for qualifying two-member bonded events; green Adopted Together badges for qualifying multi-cat events; existing approved captions and adoption dates; correct event image associations; working lightbox interactions; legacy-gallery duplicate suppression only within the same represented event entry to avoid exact-duplicate display inside one event. Duplicate suppression, layout optimization, responsive behavior, and image-selection logic must never remove, hide, collapse, or relegate to lightbox-only any photograph required by AG-02. In particular, duplicate suppression must never operate across separate historical Adoption Events and must never eliminate a required participant photograph on the ground that the same cat, image file, or derivative appeared in a different event. Valid repeated photographs across events are required coverage, not duplicates. Bonded relationships remain independent of historical Adoption Event membership.
+Requirement AG-12 — Preserve accepted presentation semantics. Retain: no badge on single-cat events; one green Adopted Together badge on every multi-cat event (two-member bonded pairs, non-bonded pairs, trios, quads and larger alike); bonded-pair classification retained in event classes and metadata (never a public red badge on the Adopted gallery — red Bonded Pair remains an Adoptable Cats presentation label only); existing approved captions and adoption dates; correct event image associations; working lightbox interactions; legacy-gallery duplicate suppression only within the same represented event entry to avoid exact-duplicate display inside one event. Duplicate suppression, layout optimization, responsive behavior, and image-selection logic must never remove, hide, collapse, or relegate to lightbox-only any photograph required by AG-02. In particular, duplicate suppression must never operate across separate historical Adoption Events and must never eliminate a required participant photograph on the ground that the same cat, image file, or derivative appeared in a different event. Valid repeated photographs across events are required coverage, not duplicates. Bonded relationships remain independent of historical Adoption Event membership.
 
 ## 11. Acceptance tests
 Future changes to the gallery must verify the following scenarios:
-- Single-cat event → One required cat photograph
-- Bonded pair → Both cats visible, correct red badge
-- Three-cat event → Three participants visible, correct classification
-- Four-cat event → All four participants visible in one event card
+- Single-cat event → One required cat photograph, no badge
+- Bonded pair → Both cats visible, green Adopted Together badge (bonded classification retained in event classes/metadata, never a red badge)
+- Non-bonded two-cat event → Both cats visible, green Adopted Together badge
+- Three-cat event → Three participants visible, green Adopted Together badge
+- Four-cat event → All four participants visible in one event card, green Adopted Together badge
 - Repeat adoption → Same cat appears in each applicable historical event
 - Event-specific photographic association → Every visible participant photograph is associated with the specific Adoption Event displayed; a generic Cat Profile photograph or a photograph from a different occurrence does not satisfy AG-02 unless its association with the displayed occurrence is independently valid
 - Repeated adoption occurrences → Repeated events for the same cat or pair remain independently visible with per-event participant photographs (for example, Spencer/Thompson April 28, June 17, and September 19 events)
@@ -78,6 +79,6 @@ These notes clarify presentation terms used in this contract without changing ag
 - event card in this contract means the Adopted Event panel; distinct from managed card / stored card / `pfoa_cat_cards`.
 - filler panel is new; distinct from manual cards / editorial content; decorative only.
 - photograph in this contract means image / attachment / display derivative; use image-fit without distortion.
-- badge in this contract means presentation classification label (red Bonded Pair, green Adopted Together); not the bonded-pair labels previously noted as non-adoption badges.
+- badge in this contract means presentation classification label (Adopted gallery: green Adopted Together on every multi-cat event, none on single-cat events; bonded classification retained in classes/metadata; red Bonded Pair is an Adoptable Cats label, not shown on the Adopted gallery); not the bonded-pair labels previously noted as non-adoption badges.
 - caption reuses existing WP/gallery hierarchy (visible caption > title, never filename/alt).
 - chronology in this contract means historical adoption-date order; distinct from rendered page order / event order / admission sequence.

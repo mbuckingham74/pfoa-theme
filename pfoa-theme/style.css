@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.128
+ Version: 0.1.129
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -759,10 +759,15 @@ body.page-id-22514 .entry-content > p {
 	margin-bottom: var(--pfoa-space-3);
 }
 
+/* PFOA 0.1.129 — Adopted 2026 vertical rhythm (page 22514 scope only):
+ * row gap 12px -> 28px for breathing room between event rows; column gap
+ * keeps the shared 12px gutter so N-slot widths, spans, and filler
+ * geometry are untouched.
+ */
 body.page-id-22514 .entry-content .gallery {
 	max-width: 100%;
 	grid-template-columns: repeat(6, minmax(0, 1fr));
-	gap: var(--pfoa-space-2);
+	gap: 28px var(--pfoa-space-2);
 	align-items: stretch;
 }
 
@@ -4352,7 +4357,7 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-thumb {
  * title rules above are untouched; no grid/sizing change.
  */
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
-	margin: var(--pfoa-space-2) 0 0;
+	margin: 10px 0 0;
 }
 
 @media (max-width: 1319px) {
@@ -4404,13 +4409,14 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
  * (AG-121 block reuses --pfoa-adopted-photo / --pfoa-adopted-gap /
  * --pfoa-adopted-card-shell with explicit outer widths). The inner member
  * grids below stay full-width so content sums to the shared shell; the
- * outer N-slot width carries the shell. Title gap below the member row is
+ * outer N-slot width carries the shell. Title gap below the member row was
  * space-3 alone (PFOA 0.1.81 margin-collapse correction): the singleton 28px
  * stack (icon margin-bottom space-2 + caption margin-top space-3) collapses
  * to the 16px max, while the multi members grid carries margin 0 so nothing
  * collapses — space-2 + space-3 would sit titles ~12px low and leave
- * events ~11.5px taller. No markup, span, typography, image, or breakpoint
- * change.
+ * events ~11.5px taller. PFOA 0.1.129 tightens photo-to-name to 10px and
+ * name-to-date to 8px in the title/date rules below. No markup, span,
+ * typography, image, or breakpoint change.
  */
 body.page-id-22514 .pfoa-adoption-event-members-2,
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-2 {
@@ -4425,7 +4431,7 @@ body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-members-n {
 }
 
 body.page-id-22514 .pfoa-adoption-event-multi .pfoa-adoption-event-title {
-	margin-top: var(--pfoa-space-3);
+	margin-top: 10px;
 }
 
 /* PFOA 0.1.86 — Bonded-pair + adopted-together pills straddling the BOTTOM
@@ -4776,7 +4782,7 @@ body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
  * badge geometry (absolute, zero flow) is untouched.
  */
 body.page-id-22514 .pfoa-adoption-event-date {
-	margin: var(--pfoa-space-2) 0 0;
+	margin: 8px 0 0;
 	color: var(--pfoa-text-muted);
 	font-size: 0.85rem;
 	line-height: 1.45;
@@ -4784,7 +4790,7 @@ body.page-id-22514 .pfoa-adoption-event-date {
 }
 
 body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-date {
-	margin: 0 0 var(--pfoa-space-2);
+	margin: 0 0 8px;
 }
 
 /* PFOA 0.1.125 — Solo event outer card shell (defect correction): the
@@ -4818,11 +4824,11 @@ body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-thumb {
 }
 
 body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-title {
-	margin: var(--pfoa-space-3) 0 0;
+	margin: 10px 0 0;
 }
 
 body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-date {
-	margin: var(--pfoa-space-2) 0 0;
+	margin: 8px 0 0;
 }
 
 body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-caption:not(.screen-reader-text) {
