@@ -1,31 +1,57 @@
 <?php
 /**
  * Focused fixture for the Senior Shadow caption-less legacy duplicate
- * (Step-4 stable-identity fallback hardening).
+ * (Step-4 stable-identity unanimity hardening + Adopted 2026 identity filter).
  *
  * Requires pfoa-theme/functions.php directly (never the plugin repo) with
  * WordPress doubles stubbed inline. No network, database, DEV, or provider
- * dependency. Covers:
+ * dependency.
  *
- *   S4 baseline: Event uuid-shadow / image 23270 + caption-less legacy
- *     duplicate carrying NO figcaption[id] / aria-describedby (empty
- *     post_excerpt) + unclaimed survivors 100, 102.
- *   S2 data-integrity: UUID/date validity + uniqueness, snapshot-only
- *     reads, exact-int claim, fail-closed validation, presentation-only
- *     (no storage writes; source asserts).
- *   S3 rendered: exactly-once per Event (UUID), correct visible date,
- *     date-DESC/ID-DESC order, photo counts, zero duplicate legacy node,
- *     no duplicated labels, missing caption yields no undated duplicate,
- *     survivors distinguishable + quarantined after events in relative
- *     order, no silent extras. All assertions key on UUIDs / attachment
- *     IDs, never cat names or filenames.
- *   S6 mutations (isolated, stubs only): duplicate via data-attribute,
- *     duplicate via ?attachment_id= href, disagreeing-fallback
- *     fail-closed, missing date, wrong date detectable, storage-order
- *     independence, missing image_id=0, duplicated name w/ distinct IDs.
+ * REAL production data (per Sol independent QA 2026-10-14):
+ *   Senior Shadow Event 24666, UUID 9fe76269-c9bb-4024-aef0-ad9fc51e5b57,
+ *     attachment 23330, 2026-06-19.
+ *   Second Shadow Event 24646, UUID d5ad93d2-7509-42b0-b965-129947f789fe,
+ *     attachment 23174, 2026-06-19 (proves same-name independence).
+ *   Real captionless gallery_shortcode() output shape for attachment 23330:
+ *     figure.gallery-item > div.gallery-icon.landscape >
+ *     a[href=file URL] > img.attachment-medium.size-medium with NO
+ *     wp-image-*, NO figcaption/aria, NO data-attachment-id/data-id,
+ *     NO ?attachment_id=. The data-attachment-id on the GREEN-path item
+ *     below is emitted by the NEW production filter
+ *     pfoa_adopted2026_gallery_image_attributes() (called directly); the
+ *     no-filter item is the verbatim real shape and survives as unmatched.
  *
- * Pre-fix this fixture FAILS (caption-less duplicate survives: the
- * zero-duplicate-legacy assertions trip). Post-fix it PASSES.
+ * RED/GREEN contract:
+ *   On the baseline presenter without the filter/fix (e03c005) this fixture
+ *   FAILS: the production filter function does not exist and the
+ *   filter-enabled real duplicate survives (zero-duplicate assertions trip).
+ *   With the fix it PASSES: filter-disabled real output survives as
+ *   unmatched (proving identity comes from the filter, not guessing),
+ *   filter-enabled real output is suppressed exactly once.
+ *
+ * Coverage:
+ *   R1 real captionless shape, filter DISABLED (verbatim WP output):
+ *     survives as unmatched (RED-baseline proof).
+ *   R2 real captionless shape, filter ENABLED (production filter output):
+ *     zero duplicate legacy photos after dedup, via the complete
+ *     the_content path (apply_filters stub -> production presenter).
+ *   R3 independence: both Shadow Events render once each, correct date,
+ *     date-DESC/ID-DESC order despite ascending storage order.
+ *   C1-C4 Sol conflict battery (each must preserve, fail-closed):
+ *     data-attachment-id vs data-id on one img; two wp-image tokens on one
+ *     img; two imgs disagreeing in one item; primary caption/aria vs
+ *     fallback class disagreeing.
+ *   C5 unanimous multi-signal agreement still suppresses (positive control).
+ *   C6 lone data-attribute agreement still suppresses (supplementary unit).
+ *   F1-F4 malformed/fractional IDs never match: "23330.9" via data-id,
+ *     class token, and href query; plus "0", "023330", "-5", "", "abc",
+ *     "23330 " battery (no truncation, no cast).
+ *   U1 legitimate unmatched photos (100, 102) remain visible, quarantined
+ *     after events in relative order.
+ *   M2/M3/M5 legacy supplementary: missing date, wrong date detectable,
+ *     image_id=0 placeholder. M6 same-name distinct IDs in one event.
+ *   S2 data-integrity: real RFC 4122 UUIDs, date validity, exact-int claim,
+ *     snapshot-only reads, presentation-only (no storage writes).
  *
  * Run with:
  *   php tests/theme-adoption-event-senior-shadow-fixture.php
@@ -60,12 +86,21 @@ $GLOBALS['fixture_hook_registered'] = false;
 $GLOBALS['fixture_db_touched']      = false;
 $GLOBALS['fixture_event_ids']       = array();
 $GLOBALS['fixture_meta']            = array();
+$GLOBALS['fixture_is_page_target']  = true;
+$GLOBALS['fixture_filters']         = array();
 
 function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
 	$GLOBALS['fixture_hook_registered'] = true;
 }
 function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
 	$GLOBALS['fixture_hook_registered'] = true;
+	$GLOBALS['fixture_filters'][]        = array( $hook, $callback );
+}
+function apply_filters( $hook, $value ) {
+	if ( 'the_content' === $hook && function_exists( 'pfoa_present_adoption_events' ) ) {
+		return pfoa_present_adoption_events( $value );
+	}
+	return $value;
 }
 function add_shortcode( $tag, $callback ) {
 	$GLOBALS['fixture_hook_registered'] = true;
@@ -100,11 +135,17 @@ function is_main_query() {
 	return true;
 }
 function is_page( $page = '' ) {
-	return true;
+	return ! empty( $GLOBALS['fixture_is_page_target'] );
 }
 function get_post( $post = null ) {
 	if ( null === $post ) {
 		$page            = new WP_Post();
+		if ( empty( $GLOBALS['fixture_is_page_target'] ) ) {
+			$page->ID        = 99999;
+			$page->post_type = 'page';
+			$page->post_name = 'elsewhere';
+			return $page;
+		}
 		$page->ID        = 22514;
 		$page->post_type = 'page';
 		$page->post_name = 'adopted2026';
@@ -190,29 +231,68 @@ function fixture_gallery( $attachment_ids ) {
 	return '<div class="gallery galleryid-1 gallery-columns-3">' . implode( '', $items ) . '</div>';
 }
 
-// Caption-less legacy node: what WP emits for a gallery item whose
-// attachment has an empty post_excerpt — no figcaption[id], no
-// img[aria-describedby]. Stable identity survives ONLY in the
-// img wp-image-<ID> class (primary discovery sees attachment_id=0).
-function fixture_shadow_item( $attachment_id ) {
-	$id = (int) $attachment_id;
-	return '<figure class="gallery-item"><img class="attachment-medium size-medium wp-image-' . $id . '" src="https://example.com/med' . $id . '.jpg" alt=""></figure>';
+// Real captionless WordPress gallery item for Senior Shadow attachment
+// 23330: figure.gallery-item > div.gallery-icon.landscape > a[href=file] >
+// img.attachment-medium.size-medium. No figcaption[id], no aria-describedby,
+// no wp-image-*, no data-id, and (when $with_identity is false) no
+// data-attachment-id — verbatim real shape. When $with_identity is true the
+// img attributes pass through the PRODUCTION filter
+// pfoa_adopted2026_gallery_image_attributes(), which adds the authoritative
+// data-attachment-id="23330". data-pfoa-attachment-title is a title, never
+// identity, and must be ignored by the presenter either way.
+function fixture_real_shadow_item( $with_identity ) {
+	$img_attrs = array(
+		'class'                      => 'attachment-medium size-medium',
+		'src'                        => 'https://example.com/uploads/2026/07/ShadowWeb4040-300x300.jpg',
+		'alt'                        => '',
+		'data-pfoa-attachment-title' => 'ShadowWeb4040',
+	);
+	if ( $with_identity ) {
+		fixture_assert( function_exists( 'pfoa_adopted2026_gallery_image_attributes' ), 'filter: production identity filter exists (RED on baseline without the fix)' );
+		$attachment     = new WP_Post();
+		$attachment->ID = 23330;
+		$filtered       = pfoa_adopted2026_gallery_image_attributes( $img_attrs, $attachment, 'medium' );
+		fixture_assert( is_array( $filtered ), 'filter: returns attribute array' );
+		fixture_assert( isset( $filtered['data-attachment-id'] ) && '23330' === (string) $filtered['data-attachment-id'], 'filter: emits authoritative data-attachment-id="23330"' );
+		foreach ( $img_attrs as $key => $value ) {
+			fixture_assert( isset( $filtered[ $key ] ) && (string) $filtered[ $key ] === (string) $value, 'filter: additive only, leaves ' . $key . ' untouched' );
+		}
+		$img_attrs = $filtered;
+	}
+	$parts = array();
+	foreach ( $img_attrs as $key => $value ) {
+		$parts[] = $key . '="' . esc_attr( $value ) . '"';
+	}
+	return '<figure class="gallery-item"><div class="gallery-icon landscape"><a href="https://example.com/uploads/2026/07/ShadowWeb4040.jpg"><img ' . implode( ' ', $parts ) . ' /></a></div></figure>';
 }
 
-function fixture_shadow_data_attr_item( $attachment_id ) {
-	$id = (int) $attachment_id;
-	return '<figure class="gallery-item"><img data-attachment-id="' . $id . '" src="https://example.com/med' . $id . '.jpg" alt=""></figure>';
+function fixture_disagreeing_data_attrs_item( $claimed_id, $other_id ) {
+	$c = (int) $claimed_id;
+	$d = (int) $other_id;
+	return '<figure class="gallery-item"><img data-attachment-id="' . $c . '" data-id="' . $d . '" src="https://example.com/med' . $c . '.jpg" alt=""></figure>';
 }
 
-function fixture_shadow_href_item( $attachment_id ) {
-	$id = (int) $attachment_id;
-	return '<figure class="gallery-item"><a href="https://example.com/?attachment_id=' . $id . '"><img src="https://example.com/med' . $id . '.jpg" alt=""></a></figure>';
+function fixture_two_class_tokens_item( $claimed_id, $other_id ) {
+	$c = (int) $claimed_id;
+	$d = (int) $other_id;
+	return '<figure class="gallery-item"><img class="attachment-medium size-medium wp-image-' . $c . ' wp-image-' . $d . '" src="https://example.com/med' . $c . '.jpg" alt=""></figure>';
 }
 
-function fixture_shadow_disagreeing_item( $class_id, $data_id ) {
-	$c = (int) $class_id;
-	$d = (int) $data_id;
-	return '<figure class="gallery-item"><img class="attachment-medium wp-image-' . $c . '" data-attachment-id="' . $d . '" src="https://example.com/med' . $c . '.jpg" alt=""></figure>';
+function fixture_two_imgs_disagree_item( $claimed_id, $other_id ) {
+	$c = (int) $claimed_id;
+	$d = (int) $other_id;
+	return '<figure class="gallery-item"><img class="wp-image-' . $c . '" src="https://example.com/med' . $c . '.jpg" alt=""><img class="wp-image-' . $d . '" src="https://example.com/med' . $d . '.jpg" alt=""></figure>';
+}
+
+function fixture_primary_vs_class_disagree_item( $claimed_id, $other_id ) {
+	$c = (int) $claimed_id;
+	$d = (int) $other_id;
+	return '<figure class="gallery-item"><img class="wp-image-' . $d . '" aria-describedby="gallery-1-' . $c . '" src="https://example.com/med' . $c . '.jpg" alt=""><figcaption id="gallery-1-' . $c . '">Shadow</figcaption></figure>';
+}
+
+function fixture_unanimous_item( $claimed_id ) {
+	$c = (int) $claimed_id;
+	return '<figure class="gallery-item"><a href="https://example.com/?attachment_id=' . $c . '"><img class="wp-image-' . $c . '" data-attachment-id="' . $c . '" aria-describedby="gallery-1-' . $c . '" src="https://example.com/med' . $c . '.jpg" alt=""></a><figcaption id="gallery-1-' . $c . '">Shadow</figcaption></figure>';
 }
 
 function fixture_pos( $haystack, $needle, $label ) {
@@ -222,53 +302,104 @@ function fixture_pos( $haystack, $needle, $label ) {
 }
 
 fixture_assert( function_exists( 'pfoa_present_adoption_events' ), 'present function exists' );
+fixture_assert( function_exists( 'pfoa_adopted2026_gallery_image_attributes' ), 'identity filter exists (RED on baseline without the fix)' );
+
+// Filter registration: production filter must be registered on the
+// wp_get_attachment_image_attributes hook (presentation path wiring).
+$filter_registered = false;
+foreach ( $GLOBALS['fixture_filters'] as $registered ) {
+	if ( 'wp_get_attachment_image_attributes' === $registered[0] && 'pfoa_adopted2026_gallery_image_attributes' === $registered[1] ) {
+		$filter_registered = true;
+	}
+}
+fixture_assert( $filter_registered, 'filter: registered on wp_get_attachment_image_attributes (RED on baseline)' );
 
 // ---------------------------------------------------------------------------
-// S4 Senior Shadow baseline.
-// Event uuid-shadow (id 24610, 2026-04-15, image 23270) + older Event
-// uuid-older (id 24609, 2026-03-02, image 23263) + caption-less legacy
-// duplicate of 23270 + unclaimed survivors 100, 102.
+// Filter unit checks: scoping + additive-only + input guards.
 // ---------------------------------------------------------------------------
-$GLOBALS['fixture_event_ids'] = array( 24610, 24609 );
-fixture_set_event( 24610, 'uuid-shadow', '2026-04-15', array( fixture_member( 23270, 'Senior' ) ) );
-fixture_set_event( 24609, 'uuid-older', '2026-03-02', array( fixture_member( 23263, 'Junior' ) ) );
+$filter_attachment     = new WP_Post();
+$filter_attachment->ID = 23330;
 
-$baseline_content = '<div class="gallery galleryid-1 gallery-columns-3">'
+$GLOBALS['fixture_is_page_target'] = false;
+$filter_out_of_scope               = pfoa_adopted2026_gallery_image_attributes( array( 'class' => 'attachment-medium size-medium' ), $filter_attachment, 'medium' );
+fixture_assert( is_array( $filter_out_of_scope ) && ! isset( $filter_out_of_scope['data-attachment-id'] ), 'filter: out-of-scope page returns attributes unchanged' );
+$GLOBALS['fixture_is_page_target'] = true;
+
+$filter_non_array = pfoa_adopted2026_gallery_image_attributes( 'not-an-array', $filter_attachment, 'medium' );
+fixture_assert( 'not-an-array' === $filter_non_array, 'filter: non-array attributes returned unchanged' );
+
+$filter_zero_attachment     = new WP_Post();
+$filter_zero_attachment->ID = 0;
+$filter_zero_result         = pfoa_adopted2026_gallery_image_attributes( array( 'class' => 'x' ), $filter_zero_attachment, 'medium' );
+fixture_assert( ! isset( $filter_zero_result['data-attachment-id'] ), 'filter: zero attachment ID returns attributes unchanged' );
+
+$filter_plain_result = pfoa_adopted2026_gallery_image_attributes( array( 'class' => 'x' ), null, 'medium' );
+fixture_assert( ! isset( $filter_plain_result['data-attachment-id'] ), 'filter: non-WP_Post attachment returns attributes unchanged' );
+
+// ---------------------------------------------------------------------------
+// R1/R2/R3 Senior Shadow real-markup pair via the complete the_content path.
+// Events: 24666 (uuid 9fe76269-, attachment 23330) + 24646 (uuid d5ad93d2-,
+// attachment 23174), both 2026-06-19, stored ascending to prove storage
+// order cannot displace the date-DESC/ID-DESC rule (24666 first).
+// ---------------------------------------------------------------------------
+define( 'FIXTURE_SHADOW_UUID_A', '9fe76269-c9bb-4024-aef0-ad9fc51e5b57' );
+define( 'FIXTURE_SHADOW_UUID_B', 'd5ad93d2-7509-42b0-b965-129947f789fe' );
+
+$GLOBALS['fixture_event_ids'] = array( 24646, 24666 );
+fixture_set_event( 24666, FIXTURE_SHADOW_UUID_A, '2026-06-19', array( fixture_member( 23330, 'Shadow' ) ) );
+fixture_set_event( 24646, FIXTURE_SHADOW_UUID_B, '2026-06-19', array( fixture_member( 23174, 'Shadow (Kitten 4040)' ) ) );
+
+// R1: filter DISABLED — verbatim real captionless output carries no stable
+// identity, so the duplicate MUST survive as unmatched (RED-baseline proof:
+// without the filter there is nothing to dedupe on).
+$disabled_content = '<div class="gallery galleryid-22514 gallery-columns-6">'
 	. fixture_gallery_item( 100 )
-	. fixture_shadow_item( 23270 )
-	. fixture_gallery_item( 23263 )
+	. fixture_real_shadow_item( false )
+	. fixture_gallery_item( 23174 )
 	. fixture_gallery_item( 102 )
 	. '</div>';
-$baseline_out = pfoa_present_adoption_events( $baseline_content );
+$disabled_out = apply_filters( 'the_content', $disabled_content );
 
-// S3 rendered assertions (UUIDs / attachment IDs only).
-$pos_shadow = fixture_pos( $baseline_out, 'data-pfoa-adoption-event="uuid-shadow"', 'baseline: uuid-shadow wrapper rendered' );
-$pos_older  = fixture_pos( $baseline_out, 'data-pfoa-adoption-event="uuid-older"', 'baseline: uuid-older wrapper rendered' );
-fixture_assert( 1 === substr_count( $baseline_out, 'data-pfoa-adoption-event="uuid-shadow"' ), 'exactly-once: uuid-shadow renders exactly once (id 23270)' );
-fixture_assert( 1 === substr_count( $baseline_out, 'data-pfoa-adoption-event="uuid-older"' ), 'exactly-once: uuid-older renders exactly once (id 23263)' );
-fixture_assert( false !== strpos( $baseline_out, 'April 15, 2026' ), 'correct-date: uuid-shadow shows April 15, 2026' );
-fixture_assert( false !== strpos( $baseline_out, 'March 2, 2026' ), 'correct-date: uuid-older shows March 2, 2026' );
-fixture_assert( $pos_shadow < $pos_older, 'order: date-DESC/ID-DESC puts uuid-shadow (2026-04-15) before uuid-older (2026-03-02)' );
-fixture_assert( 2 === substr_count( $baseline_out, 'pfoa-adoption-event-member"' ), 'photo-counts: two single-member events render two member photos' );
-fixture_assert( false === strpos( $baseline_out, 'gallery-1-23270' ), 'zero-duplicate: no captioned legacy node for 23270' );
-fixture_assert( false === strpos( $baseline_out, 'wp-image-23270' ), 'zero-duplicate: caption-less legacy duplicate of 23270 suppressed (missing caption must not leave a duplicate)' );
-fixture_assert( false === strpos( $baseline_out, 'gallery-1-23263' ), 'zero-duplicate: member legacy node 23263 suppressed' );
-fixture_assert( 2 === substr_count( $baseline_out, 'role="group"' ), 'no-duplicated-labels: two event groups, one label context each' );
-fixture_assert( 2 === substr_count( $baseline_out, 'gallery-item' ), 'no-undated-duplicate: exactly two legacy survivors remain (missing caption invents no undated extra)' );
-$pos_s100 = fixture_pos( $baseline_out, 'gallery-1-100', 'survivors-distinguishable: 100 present' );
-$pos_s102 = fixture_pos( $baseline_out, 'gallery-1-102', 'survivors-distinguishable: 102 present' );
-fixture_assert( $pos_older < $pos_s100 && $pos_s100 < $pos_s102, 'quarantine: survivors 100, 102 follow all events in original relative order' );
-fixture_assert( 2 === substr_count( $baseline_out, 'data-pfoa-adoption-event="uuid-' ), 'no-silent-extras: exactly two event wrappers by UUID' );
+fixture_assert( 1 === substr_count( $disabled_out, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'R1: Senior Shadow event renders exactly once without filter identity' );
+fixture_assert( 1 === substr_count( $disabled_out, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_B . '"' ), 'R1: second Shadow event renders exactly once without filter identity' );
+fixture_assert( false !== strpos( $disabled_out, 'ShadowWeb4040' ), 'R1: verbatim captionless duplicate survives as unmatched without filter identity (RED-baseline proof)' );
+fixture_assert( 3 === substr_count( $disabled_out, 'gallery-item' ), 'R1: three legacy survivors remain (real item + 100 + 102; claimed 23174 suppressed)' );
+
+// R2: filter ENABLED — the same real item with production-filter identity is
+// deduplicated; zero duplicate legacy photos remain. Full the_content path.
+$enabled_content = '<div class="gallery galleryid-22514 gallery-columns-6">'
+	. fixture_gallery_item( 100 )
+	. fixture_real_shadow_item( true )
+	. fixture_gallery_item( 23174 )
+	. fixture_gallery_item( 102 )
+	. '</div>';
+$enabled_out = apply_filters( 'the_content', $enabled_content );
+
+$pos_shadow_a = fixture_pos( $enabled_out, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"', 'R2: Senior Shadow wrapper rendered' );
+$pos_shadow_b = fixture_pos( $enabled_out, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_B . '"', 'R2: second Shadow wrapper rendered' );
+fixture_assert( 1 === substr_count( $enabled_out, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'R2: Senior Shadow renders exactly once (attachment 23330)' );
+fixture_assert( 1 === substr_count( $enabled_out, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_B . '"' ), 'R2: second Shadow renders exactly once (attachment 23174)' );
+fixture_assert( 2 === substr_count( $enabled_out, '<p class="pfoa-adoption-event-date">June 19, 2026</p>' ), 'R2: both cards show the stored June 19, 2026 date' );
+fixture_assert( 2 === substr_count( $enabled_out, '<h2 class="pfoa-adoption-event-title">Shadow</h2>' ), 'R2: both same-name events keep independent Shadow titles (no merge)' );
+fixture_assert( $pos_shadow_a < $pos_shadow_b, 'R2: same-date tie breaks by event ID DESC (24666 before 24646) despite ascending storage order' );
+fixture_assert( 2 === substr_count( $enabled_out, 'pfoa-adoption-event-member"' ), 'R2: two single-member events render two member photos' );
+fixture_assert( false === strpos( $enabled_out, 'ShadowWeb4040' ), 'R2: zero duplicate legacy photos after dedup (GREEN; RED on baseline)' );
+fixture_assert( false === strpos( $enabled_out, 'gallery-1-23174' ), 'R2: claimed legacy node 23174 suppressed' );
+fixture_assert( 2 === substr_count( $enabled_out, 'gallery-item' ), 'R2: exactly two legacy survivors remain (100, 102)' );
+$pos_s100 = fixture_pos( $enabled_out, 'gallery-1-100', 'R2: survivor 100 present' );
+$pos_s102 = fixture_pos( $enabled_out, 'gallery-1-102', 'R2: survivor 102 present' );
+fixture_assert( $pos_shadow_b < $pos_s100 && $pos_s100 < $pos_s102, 'R2: survivors 100, 102 quarantined after events in original relative order' );
+fixture_assert( 2 === substr_count( $enabled_out, 'data-pfoa-adoption-event="' ), 'R2: no-silent-extras check (exactly two event wrappers)' );
 
 // ---------------------------------------------------------------------------
-// S2 data-integrity.
+// S2 data-integrity (real production identifiers).
 // ---------------------------------------------------------------------------
-fixture_assert( 'uuid-shadow' !== 'uuid-older', 'uuid-uniqueness: event UUIDs distinct' );
-fixture_assert( 1 === preg_match( '/^[A-Za-z0-9_-]+$/', 'uuid-shadow' ), 'uuid-validity: uuid-shadow well-formed' );
-fixture_assert( false !== strtotime( '2026-04-15' ), 'date-validity: 2026-04-15 parseable' );
-fixture_assert( false !== strtotime( '2026-03-02' ), 'date-validity: 2026-03-02 parseable' );
-fixture_assert( 'April 15, 2026' === pfoa_adoption_event_format_date( '2026-04-15' ), 'date-render: stored date formats without mutation' );
-fixture_assert( 23270 === (int) $GLOBALS['fixture_meta'][24610]['_pfoa_event_members'][0]['image_id'], 'exact-int-claim: snapshot image_id 23270 is an exact int' );
+fixture_assert( FIXTURE_SHADOW_UUID_A !== FIXTURE_SHADOW_UUID_B, 'uuid-uniqueness: Shadow event UUIDs distinct' );
+fixture_assert( 1 === preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', FIXTURE_SHADOW_UUID_A ), 'uuid-validity: Senior Shadow UUID is RFC 4122 form' );
+fixture_assert( 1 === preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', FIXTURE_SHADOW_UUID_B ), 'uuid-validity: second Shadow UUID is RFC 4122 form' );
+fixture_assert( false !== strtotime( '2026-06-19' ), 'date-validity: 2026-06-19 parseable' );
+fixture_assert( 'June 19, 2026' === pfoa_adoption_event_format_date( '2026-06-19' ), 'date-render: stored date formats without mutation' );
+fixture_assert( 23330 === (int) $GLOBALS['fixture_meta'][24666]['_pfoa_event_members'][0]['image_id'], 'exact-int-claim: snapshot image_id 23330 is an exact int' );
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'snapshot-only: no DB writes during presentation' );
 
 $functions_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
@@ -278,87 +409,133 @@ fixture_assert( false !== strpos( $functions_source, '_pfoa_event_date' ), 'snap
 fixture_assert( false !== strpos( $functions_source, 'claimed_ids' ), 'exact-int-claim: member claim map present' );
 fixture_assert( false !== strpos( $functions_source, 'fail-closed' ), 'fail-closed: conflict validation documented' );
 fixture_assert( false !== strpos( $functions_source, 'presentation only' ), 'presentation-only: Step-4 path is presentation-only' );
-// Step-4 stable-identity fallback contract (absent pre-fix).
+// Step-4 stable-identity fallback contract.
 fixture_assert( false !== strpos( $functions_source, 'wp-image-' ), 'fallback-contract: wp-image-<ID> class fallback present' );
 fixture_assert( false !== strpos( $functions_source, 'data-attachment-id' ), 'fallback-contract: data-attachment-id fallback present' );
 fixture_assert( false !== strpos( $functions_source, 'attachment_id=' ), 'fallback-contract: ?attachment_id= href fallback present' );
+fixture_assert( false !== strpos( $functions_source, 'wp_get_attachment_image_attributes' ), 'filter-contract: identity filter hook present' );
+fixture_assert( false !== strpos( $functions_source, 'pfoa_adopted2026_gallery_image_attributes' ), 'filter-contract: identity filter function present' );
 
 // ---------------------------------------------------------------------------
-// S6 mutations (each isolated; stubs only, no storage writes).
+// C1-C6 Sol conflict battery (event 24666 claims 23330; each ambiguous or
+// malformed node must survive; unanimous nodes are suppressed).
+// ---------------------------------------------------------------------------
+$GLOBALS['fixture_event_ids'] = array( 24666 );
+fixture_set_event( 24666, FIXTURE_SHADOW_UUID_A, '2026-06-19', array( fixture_member( 23330, 'Shadow' ) ) );
+
+function fixture_conflict_gallery( $item ) {
+	return '<div class="gallery galleryid-22514 gallery-columns-6">' . fixture_gallery_item( 100 ) . $item . fixture_gallery_item( 102 ) . '</div>';
+}
+
+// C1: data-attachment-id vs data-id disagree on the same img.
+$out_c1 = pfoa_present_adoption_events( fixture_conflict_gallery( fixture_disagreeing_data_attrs_item( 23330, 99999 ) ) );
+fixture_assert( 1 === substr_count( $out_c1, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'C1: event renders once with disagreeing data attributes present' );
+fixture_assert( false !== strpos( $out_c1, 'data-attachment-id="23330"' ) && false !== strpos( $out_c1, 'data-id="99999"' ), 'C1: disagreeing data attributes fail closed — ambiguous node survives (no silent removal)' );
+
+// C2: multiple wp-image tokens disagree on the same img.
+$out_c2 = pfoa_present_adoption_events( fixture_conflict_gallery( fixture_two_class_tokens_item( 23330, 99999 ) ) );
+fixture_assert( 1 === substr_count( $out_c2, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'C2: event renders once with disagreeing class tokens present' );
+fixture_assert( false !== strpos( $out_c2, 'wp-image-23330' ), 'C2: disagreeing class tokens fail closed — ambiguous node survives (no silent removal)' );
+
+// C3: two imgs disagree inside one gallery item.
+$out_c3 = pfoa_present_adoption_events( fixture_conflict_gallery( fixture_two_imgs_disagree_item( 23330, 99999 ) ) );
+fixture_assert( 1 === substr_count( $out_c3, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'C3: event renders once with disagreeing images present' );
+fixture_assert( false !== strpos( $out_c3, 'wp-image-99999' ), 'C3: disagreeing images fail closed — ambiguous node survives (no silent removal)' );
+
+// C4: primary caption/aria vs fallback class disagree.
+$out_c4 = pfoa_present_adoption_events( fixture_conflict_gallery( fixture_primary_vs_class_disagree_item( 23330, 99999 ) ) );
+fixture_assert( 1 === substr_count( $out_c4, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'C4: event renders once with primary-vs-fallback conflict present' );
+fixture_assert( false !== strpos( $out_c4, 'gallery-1-23330' ), 'C4: primary-vs-fallback conflict fails closed — ambiguous node survives (no silent removal)' );
+
+// C5: unanimous multi-signal agreement still suppresses (positive control).
+$out_c5 = pfoa_present_adoption_events( fixture_conflict_gallery( fixture_unanimous_item( 23330 ) ) );
+fixture_assert( 1 === substr_count( $out_c5, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'C5: event renders once with unanimous duplicate present' );
+fixture_assert( false === strpos( $out_c5, 'gallery-1-23330' ) && false === strpos( $out_c5, 'wp-image-23330' ) && false === strpos( $out_c5, 'data-attachment-id="23330"' ) && false === strpos( $out_c5, 'attachment_id=23330' ), 'C5: unanimous duplicate suppressed across all signals' );
+
+// C6: lone data-attribute duplicate still suppresses (supplementary unit).
+$out_c6 = pfoa_present_adoption_events(
+	'<div class="gallery galleryid-22514 gallery-columns-6">' . fixture_gallery_item( 100 ) . '<figure class="gallery-item"><img data-attachment-id="23330" src="https://example.com/med23330.jpg" alt=""></figure>' . fixture_gallery_item( 102 ) . '</div>'
+);
+fixture_assert( 1 === substr_count( $out_c6, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'C6: event renders once with data-attr duplicate present' );
+fixture_assert( false === strpos( $out_c6, 'data-attachment-id="23330"' ), 'C6: data-attribute duplicate of 23330 suppressed' );
+
+// ---------------------------------------------------------------------------
+// F1-F4 malformed/fractional IDs never match (event 24666 claims 23330).
 // ---------------------------------------------------------------------------
 
-// M1a: duplicate legacy photo via data-attachment-id fallback.
-$GLOBALS['fixture_event_ids'] = array( 24610 );
-fixture_set_event( 24610, 'uuid-shadow', '2026-04-15', array( fixture_member( 23270, 'Senior' ) ) );
-$out_m1a = pfoa_present_adoption_events(
-	'<div class="gallery galleryid-1 gallery-columns-3">' . fixture_gallery_item( 100 ) . fixture_shadow_data_attr_item( 23270 ) . fixture_gallery_item( 102 ) . '</div>'
+// F1: fractional data-id must not truncate to the claimed ID.
+$out_f1 = pfoa_present_adoption_events(
+	fixture_conflict_gallery( '<figure class="gallery-item"><img data-id="23330.9" src="https://example.com/medF1.jpg" alt=""></figure>' )
 );
-fixture_assert( 1 === substr_count( $out_m1a, 'data-pfoa-adoption-event="uuid-shadow"' ), 'M1a: event renders once with data-attr duplicate present' );
-fixture_assert( false === strpos( $out_m1a, 'data-attachment-id="23270"' ), 'M1a: data-attribute duplicate of 23270 suppressed (detectable pre-fix as survivor)' );
+fixture_assert( false !== strpos( $out_f1, 'data-id="23330.9"' ), 'F1: fractional data-id never matches — node survives (no truncation to 23330)' );
 
-// M1b: duplicate legacy photo via ?attachment_id= href fallback.
-$out_m1b = pfoa_present_adoption_events(
-	'<div class="gallery galleryid-1 gallery-columns-3">' . fixture_gallery_item( 100 ) . fixture_shadow_href_item( 23270 ) . fixture_gallery_item( 102 ) . '</div>'
+// F2: fractional class token must not truncate to the claimed ID.
+$out_f2 = pfoa_present_adoption_events(
+	fixture_conflict_gallery( '<figure class="gallery-item"><img class="attachment-medium wp-image-23330.9" src="https://example.com/medF2.jpg" alt=""></figure>' )
 );
-fixture_assert( 1 === substr_count( $out_m1b, 'data-pfoa-adoption-event="uuid-shadow"' ), 'M1b: event renders once with href duplicate present' );
-fixture_assert( false === strpos( $out_m1b, 'attachment_id=23270' ), 'M1b: href duplicate of 23270 suppressed (detectable pre-fix as survivor)' );
+fixture_assert( false !== strpos( $out_f2, 'wp-image-23330.9' ), 'F2: fractional class token never matches — node survives (no truncation to 23330)' );
 
-// M1c: disagreeing fallbacks stay fail-closed (node survives).
-$out_m1c = pfoa_present_adoption_events(
-	'<div class="gallery galleryid-1 gallery-columns-3">' . fixture_gallery_item( 100 ) . fixture_shadow_disagreeing_item( 23270, 99999 ) . fixture_gallery_item( 102 ) . '</div>'
+// F3: fractional href token must not truncate to the claimed ID.
+$out_f3 = pfoa_present_adoption_events(
+	fixture_conflict_gallery( '<figure class="gallery-item"><a href="https://example.com/?attachment_id=23330.9"><img src="https://example.com/medF3.jpg" alt=""></a></figure>' )
 );
-fixture_assert( 1 === substr_count( $out_m1c, 'data-pfoa-adoption-event="uuid-shadow"' ), 'M1c: event renders once with disagreeing node present' );
-fixture_assert( false !== strpos( $out_m1c, 'wp-image-23270' ), 'M1c: disagreeing fallbacks fail closed — ambiguous node survives (no silent removal)' );
+fixture_assert( false !== strpos( $out_f3, 'attachment_id=23330.9' ), 'F3: fractional href token never matches — node survives (no truncation to 23330)' );
+
+// F4: malformed battery — "0", "023330", "-5", "", "abc", "23330 " all
+// rejected; every node survives.
+$malformed_gallery = '<div class="gallery galleryid-22514 gallery-columns-6">'
+	. '<figure class="gallery-item"><img data-id="0" src="https://example.com/medF4a.jpg" alt=""></figure>'
+	. '<figure class="gallery-item"><img data-id="023330" src="https://example.com/medF4b.jpg" alt=""></figure>'
+	. '<figure class="gallery-item"><img data-id="-5" src="https://example.com/medF4c.jpg" alt=""></figure>'
+	. '<figure class="gallery-item"><img data-id="" src="https://example.com/medF4d.jpg" alt=""></figure>'
+	. '<figure class="gallery-item"><img data-id="abc" src="https://example.com/medF4e.jpg" alt=""></figure>'
+	. '<figure class="gallery-item"><img data-id="23330 " src="https://example.com/medF4f.jpg" alt=""></figure>'
+	. '</div>';
+$out_f4 = pfoa_present_adoption_events( $malformed_gallery );
+foreach ( array( 'medF4a', 'medF4b', 'medF4c', 'medF4d', 'medF4e', 'medF4f' ) as $malformed_marker ) {
+	fixture_assert( false !== strpos( $out_f4, $malformed_marker ), 'F4: malformed ID node survives (' . $malformed_marker . ')' );
+}
+
+// ---------------------------------------------------------------------------
+// M2/M3/M5/M6 supplementary mutations (isolated; stubs only, no writes).
+// ---------------------------------------------------------------------------
 
 // M2: missing date — event still renders once, fail-closed (no drop, no throw).
-$GLOBALS['fixture_event_ids'] = array( 24610 );
-fixture_set_event( 24610, 'uuid-shadow', '', array( fixture_member( 23270, 'Senior' ) ) );
+fixture_set_event( 24666, FIXTURE_SHADOW_UUID_A, '', array( fixture_member( 23330, 'Shadow' ) ) );
 $out_m2 = pfoa_present_adoption_events(
-	'<div class="gallery galleryid-1 gallery-columns-3">' . fixture_gallery_item( 100 ) . fixture_gallery_item( 102 ) . '</div>'
+	'<div class="gallery galleryid-22514 gallery-columns-6">' . fixture_gallery_item( 100 ) . fixture_gallery_item( 102 ) . '</div>'
 );
-fixture_assert( 1 === substr_count( $out_m2, 'data-pfoa-adoption-event="uuid-shadow"' ), 'M2: missing-date event still renders exactly once' );
+fixture_assert( 1 === substr_count( $out_m2, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'M2: missing-date event still renders exactly once' );
 fixture_assert( false !== strpos( $out_m2, 'gallery-1-100' ), 'M2: survivors intact when date missing' );
 
 // M3: wrong date is detectable — rendered text follows the stored date.
-fixture_set_event( 24610, 'uuid-shadow', '2026-01-01', array( fixture_member( 23270, 'Senior' ) ) );
+fixture_set_event( 24666, FIXTURE_SHADOW_UUID_A, '2026-01-01', array( fixture_member( 23330, 'Shadow' ) ) );
 $out_m3 = pfoa_present_adoption_events(
-	'<div class="gallery galleryid-1 gallery-columns-3">' . fixture_gallery_item( 100 ) . fixture_gallery_item( 102 ) . '</div>'
+	'<div class="gallery galleryid-22514 gallery-columns-6">' . fixture_gallery_item( 100 ) . fixture_gallery_item( 102 ) . '</div>'
 );
 fixture_assert( false !== strpos( $out_m3, 'January 1, 2026' ), 'M3: wrong stored date renders visibly (wrongness detectable)' );
-fixture_assert( false === strpos( $out_m3, 'April 15, 2026' ), 'M3: correct date absent when stored date is wrong (detector fires)' );
-
-// M4: storage order cannot displace chronology — IDs ascending, dates descending.
-$GLOBALS['fixture_event_ids'] = array( 24609, 24610 );
-fixture_set_event( 24610, 'uuid-shadow', '2026-04-15', array( fixture_member( 23270, 'Senior' ) ) );
-fixture_set_event( 24609, 'uuid-older', '2026-03-02', array( fixture_member( 23263, 'Junior' ) ) );
-$out_m4 = pfoa_present_adoption_events(
-	'<div class="gallery galleryid-1 gallery-columns-3">' . fixture_gallery_item( 100 ) . fixture_gallery_item( 23270 ) . fixture_gallery_item( 23263 ) . fixture_gallery_item( 102 ) . '</div>'
-);
-$pos_m4_shadow = fixture_pos( $out_m4, 'data-pfoa-adoption-event="uuid-shadow"', 'M4: uuid-shadow placed' );
-$pos_m4_older  = fixture_pos( $out_m4, 'data-pfoa-adoption-event="uuid-older"', 'M4: uuid-older placed' );
-fixture_assert( $pos_m4_shadow < $pos_m4_older, 'M4: date-DESC order holds despite ascending storage order (wrong ordering detectable)' );
+fixture_assert( false === strpos( $out_m3, 'June 19, 2026' ), 'M3: correct date absent when stored date is wrong (detector fires)' );
 
 // M5: missing image_id=0 — wrapper renders, nothing claimed, survivors intact.
-$GLOBALS['fixture_event_ids'] = array( 24610 );
-fixture_set_event( 24610, 'uuid-shadow', '2026-04-15', array( fixture_member( 0, 'Senior' ) ) );
+fixture_set_event( 24666, FIXTURE_SHADOW_UUID_A, '2026-06-19', array( fixture_member( 0, 'Shadow' ) ) );
 $out_m5 = pfoa_present_adoption_events(
-	'<div class="gallery galleryid-1 gallery-columns-3">' . fixture_gallery_item( 100 ) . fixture_gallery_item( 102 ) . '</div>'
+	'<div class="gallery galleryid-22514 gallery-columns-6">' . fixture_gallery_item( 100 ) . fixture_gallery_item( 102 ) . '</div>'
 );
-fixture_assert( 1 === substr_count( $out_m5, 'data-pfoa-adoption-event="uuid-shadow"' ), 'M5: image_id=0 event still renders exactly once' );
+fixture_assert( 1 === substr_count( $out_m5, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'M5: image_id=0 event still renders exactly once' );
 fixture_assert( false !== strpos( $out_m5, 'Photo unavailable' ), 'M5: missing photo renders placeholder (detectable, not silent)' );
 fixture_assert( false !== strpos( $out_m5, 'gallery-1-100' ) && false !== strpos( $out_m5, 'gallery-1-102' ), 'M5: survivors intact when image_id missing' );
 
 // M6: duplicated name with distinct IDs — no name-based merge/dedupe.
 $GLOBALS['fixture_event_ids'] = array( 24611 );
-fixture_set_event( 24611, 'uuid-dupe', '2026-05-01', array( fixture_member( 23270, 'Senior' ), fixture_member( 23271, 'Senior' ) ) );
+fixture_set_event( 24611, '11111111-2222-4333-8444-555555555555', '2026-05-01', array( fixture_member( 24001, 'Shadow' ), fixture_member( 24002, 'Shadow' ) ) );
 $out_m6 = pfoa_present_adoption_events(
-	'<div class="gallery galleryid-1 gallery-columns-3">' . fixture_gallery_item( 100 ) . fixture_gallery_item( 23270 ) . fixture_gallery_item( 23271 ) . fixture_gallery_item( 102 ) . '</div>'
+	'<div class="gallery galleryid-22514 gallery-columns-6">' . fixture_gallery_item( 100 ) . fixture_gallery_item( 24001 ) . fixture_gallery_item( 24002 ) . fixture_gallery_item( 102 ) . '</div>'
 );
-fixture_assert( 1 === substr_count( $out_m6, 'data-pfoa-adoption-event="uuid-dupe"' ), 'M6: same-name event renders exactly once (no merge by name)' );
+fixture_assert( 1 === substr_count( $out_m6, 'data-pfoa-adoption-event="11111111-2222-4333-8444-555555555555"' ), 'M6: same-name event renders exactly once (no merge by name)' );
 fixture_assert( 2 === substr_count( $out_m6, 'pfoa-adoption-event-member"' ), 'M6: both distinct-ID photos render (no dedupe by name)' );
-fixture_assert( false === strpos( $out_m6, 'gallery-1-23270' ) && false === strpos( $out_m6, 'gallery-1-23271' ), 'M6: both distinct IDs suppressed by exact ID, not by name' );
+fixture_assert( false === strpos( $out_m6, 'gallery-1-24001' ) && false === strpos( $out_m6, 'gallery-1-24002' ), 'M6: both distinct IDs suppressed by exact ID, not by name' );
 
 // No writes across all mutations.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during presentation' );
 
-fwrite( STDOUT, "PASS: theme adoption event senior shadow fixture (caption-less duplicate suppressed, exactly-once, date-DESC, quarantine, fail-closed mutations, no writes)\n" );
+fwrite( STDOUT, "PASS: theme adoption event senior shadow fixture (real captionless shape + filter identity via the_content, unanimity conflicts, fractional rejection, independence, no writes)\n" );

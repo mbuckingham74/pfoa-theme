@@ -3857,8 +3857,28 @@ function pfoa_present_adoption_events( $content ) {
 					continue;
 				}
 
-				$from_caption = 0;
-				$from_img     = 0;
+				// PFOA Senior Shadow hardening — presentation only: collect
+				// EVERY identity signal on this legacy item into one set and
+				// require unanimity (fail-closed). Stable identity only, from
+				// caption/aria (figcaption|dd[id^=gallery-N-ID] and
+				// img[aria-describedby]), EVERY img[class~=wp-image-<ID>]
+				// token, EVERY img/figure[data-attachment-id|data-id] plus
+				// the item node itself, and EVERY <a href> ?attachment_id=
+				// query token. Strict positive-integer syntax only
+				// (/^[1-9][0-9]*$/ on the exact token, no casts): "", "0",
+				// "023", "-5", "23270.9", "23270 ", and "abc" are all
+				// ignored, so a fractional href token is never truncated to
+				// a claimed ID. 0 distinct IDs => no identity (the item
+				// survives as unmatched); 1 distinct ID => that is
+				// $attachment_id (gated below via
+				// isset($discovery_ids[...]) exactly as before); >1 distinct
+				// IDs => preserve the item via continue (fail-closed),
+				// including primary caption/aria vs fallback disagreement
+				// and disagreement within a single source. Gate removal
+				// identically; no name/caption/src-basename fuzzy match.
+				// Covers the wp-image-, data-attachment-id, and
+				// attachment_id= fallbacks inside the unanimous set.
+				$identity_ids = array();
 
 				$caption_list = $xpath->query( './/*[self::figcaption or self::dd][@id]', $item_node );
 
@@ -3871,150 +3891,128 @@ function pfoa_present_adoption_events( $content ) {
 						$caption_id = trim( (string) $caption_node->getAttribute( 'id' ) );
 
 						if ( 1 === preg_match( '/^gallery-\d+-(\d+)$/', $caption_id, $caption_matches ) ) {
-							$from_caption = (int) $caption_matches[1];
-							break;
+							$caption_token = (string) $caption_matches[1];
+
+							if ( 1 === preg_match( '/^[1-9][0-9]*$/', $caption_token ) ) {
+								$identity_ids[ (int) $caption_token ] = true;
+							}
 						}
 					}
 				}
 
-				$img_list = $xpath->query( './/img[@aria-describedby]', $item_node );
+				$aria_list = $xpath->query( './/img[@aria-describedby]', $item_node );
 
-				if ( $img_list instanceof DOMNodeList && 0 < $img_list->length ) {
-					foreach ( $img_list as $img_node ) {
-						if ( ! $img_node instanceof DOMElement ) {
+				if ( $aria_list instanceof DOMNodeList && 0 < $aria_list->length ) {
+					foreach ( $aria_list as $aria_node ) {
+						if ( ! $aria_node instanceof DOMElement ) {
 							continue;
 						}
 
-						$describedby = trim( (string) $img_node->getAttribute( 'aria-describedby' ) );
+						$describedby = trim( (string) $aria_node->getAttribute( 'aria-describedby' ) );
 
-						if ( 1 === preg_match( '/^gallery-\d+-(\d+)$/', $describedby, $img_matches ) ) {
-							$from_img = (int) $img_matches[1];
-							break;
+						if ( 1 === preg_match( '/^gallery-\d+-(\d+)$/', $describedby, $aria_matches ) ) {
+							$aria_token = (string) $aria_matches[1];
+
+							if ( 1 === preg_match( '/^[1-9][0-9]*$/', $aria_token ) ) {
+								$identity_ids[ (int) $aria_token ] = true;
+							}
 						}
 					}
 				}
 
-				if ( 0 < $from_caption && 0 < $from_img && $from_caption !== $from_img ) {
-					continue;
-				}
+				$fallback_img_list = $xpath->query( './/img', $item_node );
 
-				$attachment_id = 0 < $from_caption ? $from_caption : $from_img;
-
-				// PFOA Senior Shadow hardening — presentation only: when the
-				// primary caption-ID path yields nothing (attachment_id === 0,
-				// e.g. a legacy item whose attachment has an empty
-				// post_excerpt so WP emits no figcaption[id] /
-				// img[aria-describedby]), scan the same $item_node for stable
-				// identity only, in order: img[class~=wp-image-<ID>], then
-				// img/figure[data-attachment-id|data-id], then <a href>
-				// ?attachment_id= query. First numeric >0 wins per source;
-				// disagreeing sources stay fail-closed (continue). Gate
-				// removal identically via isset($discovery_ids[...]). No
-				// name/caption/src-basename fuzzy match.
-				if ( 0 === $attachment_id ) {
-					$fallback_class = 0;
-					$fallback_data  = 0;
-					$fallback_href  = 0;
-
-					$fallback_img_list = $xpath->query( './/img', $item_node );
-
-					if ( $fallback_img_list instanceof DOMNodeList && 0 < $fallback_img_list->length ) {
-						foreach ( $fallback_img_list as $fallback_img ) {
-							if ( ! $fallback_img instanceof DOMElement ) {
-								continue;
-							}
-
-							$fallback_class_attr = ' ' . (string) preg_replace( '/\s+/', ' ', (string) $fallback_img->getAttribute( 'class' ) ) . ' ';
-
-							if ( 1 === preg_match( '/\swp-image-(\d+)\s/', $fallback_class_attr, $fallback_class_matches ) && 0 < (int) $fallback_class_matches[1] ) {
-								$fallback_class = (int) $fallback_class_matches[1];
-								break;
-							}
+				if ( $fallback_img_list instanceof DOMNodeList && 0 < $fallback_img_list->length ) {
+					foreach ( $fallback_img_list as $fallback_img ) {
+						if ( ! $fallback_img instanceof DOMElement ) {
+							continue;
 						}
 
-						foreach ( $fallback_img_list as $fallback_img ) {
-							if ( ! $fallback_img instanceof DOMElement ) {
-								continue;
-							}
+						$class_raw = trim( (string) $fallback_img->getAttribute( 'class' ) );
 
-							foreach ( array( 'data-attachment-id', 'data-id' ) as $fallback_data_attr ) {
-								$fallback_data_raw = trim( (string) $fallback_img->getAttribute( $fallback_data_attr ) );
+						if ( '' !== $class_raw ) {
+							$class_tokens = preg_split( '/\s+/', $class_raw );
 
-								if ( '' !== $fallback_data_raw && is_numeric( $fallback_data_raw ) && 0 < (int) $fallback_data_raw ) {
-									$fallback_data = (int) $fallback_data_raw;
-									break 2;
-								}
-							}
-						}
-					}
+							if ( is_array( $class_tokens ) ) {
+								foreach ( $class_tokens as $class_token ) {
+									if ( 0 !== strpos( (string) $class_token, 'wp-image-' ) ) {
+										continue;
+									}
 
-					if ( 0 === $fallback_data ) {
-						$fallback_figure_list = $xpath->query( './/figure[@data-attachment-id or @data-id]', $item_node );
+									$class_suffix = (string) substr( (string) $class_token, 9 );
 
-						if ( $fallback_figure_list instanceof DOMNodeList && 0 < $fallback_figure_list->length ) {
-							foreach ( $fallback_figure_list as $fallback_figure ) {
-								if ( ! $fallback_figure instanceof DOMElement ) {
-									continue;
-								}
-
-								foreach ( array( 'data-attachment-id', 'data-id' ) as $fallback_data_attr ) {
-									$fallback_data_raw = trim( (string) $fallback_figure->getAttribute( $fallback_data_attr ) );
-
-									if ( '' !== $fallback_data_raw && is_numeric( $fallback_data_raw ) && 0 < (int) $fallback_data_raw ) {
-										$fallback_data = (int) $fallback_data_raw;
-										break 2;
+									if ( 1 === preg_match( '/^[1-9][0-9]*$/', $class_suffix ) ) {
+										$identity_ids[ (int) $class_suffix ] = true;
 									}
 								}
 							}
 						}
 
-						if ( 0 === $fallback_data ) {
-							foreach ( array( 'data-attachment-id', 'data-id' ) as $fallback_data_attr ) {
-								$fallback_data_raw = trim( (string) $item_node->getAttribute( $fallback_data_attr ) );
+						foreach ( array( 'data-attachment-id', 'data-id' ) as $fallback_data_attr ) {
+							$data_token = (string) $fallback_img->getAttribute( $fallback_data_attr );
 
-								if ( '' !== $fallback_data_raw && is_numeric( $fallback_data_raw ) && 0 < (int) $fallback_data_raw ) {
-									$fallback_data = (int) $fallback_data_raw;
-									break;
+							if ( 1 === preg_match( '/^[1-9][0-9]*$/', $data_token ) ) {
+								$identity_ids[ (int) $data_token ] = true;
+							}
+						}
+					}
+				}
+
+				$fallback_figure_list = $xpath->query( './/figure', $item_node );
+
+				if ( $fallback_figure_list instanceof DOMNodeList && 0 < $fallback_figure_list->length ) {
+					foreach ( $fallback_figure_list as $fallback_figure ) {
+						if ( ! $fallback_figure instanceof DOMElement ) {
+							continue;
+						}
+
+						foreach ( array( 'data-attachment-id', 'data-id' ) as $fallback_data_attr ) {
+							$figure_token = (string) $fallback_figure->getAttribute( $fallback_data_attr );
+
+							if ( 1 === preg_match( '/^[1-9][0-9]*$/', $figure_token ) ) {
+								$identity_ids[ (int) $figure_token ] = true;
+							}
+						}
+					}
+				}
+
+				foreach ( array( 'data-attachment-id', 'data-id' ) as $fallback_data_attr ) {
+					$item_token = (string) $item_node->getAttribute( $fallback_data_attr );
+
+					if ( 1 === preg_match( '/^[1-9][0-9]*$/', $item_token ) ) {
+						$identity_ids[ (int) $item_token ] = true;
+					}
+				}
+
+				$fallback_anchor_list = $xpath->query( './/a[@href]', $item_node );
+
+				if ( $fallback_anchor_list instanceof DOMNodeList && 0 < $fallback_anchor_list->length ) {
+					foreach ( $fallback_anchor_list as $fallback_anchor ) {
+						if ( ! $fallback_anchor instanceof DOMElement ) {
+							continue;
+						}
+
+						$fallback_href = (string) $fallback_anchor->getAttribute( 'href' );
+
+						if ( 1 === preg_match_all( '/[?&]attachment_id=([^&#"\'\s<>]+)/', $fallback_href, $fallback_href_matches ) && isset( $fallback_href_matches[1] ) && is_array( $fallback_href_matches[1] ) ) {
+							foreach ( $fallback_href_matches[1] as $href_token_raw ) {
+								$href_token = (string) $href_token_raw;
+
+								if ( 1 === preg_match( '/^[1-9][0-9]*$/', $href_token ) ) {
+									$identity_ids[ (int) $href_token ] = true;
 								}
 							}
 						}
 					}
-
-					$fallback_anchor_list = $xpath->query( './/a[@href]', $item_node );
-
-					if ( $fallback_anchor_list instanceof DOMNodeList && 0 < $fallback_anchor_list->length ) {
-						foreach ( $fallback_anchor_list as $fallback_anchor ) {
-							if ( ! $fallback_anchor instanceof DOMElement ) {
-								continue;
-							}
-
-							$fallback_href = trim( (string) $fallback_anchor->getAttribute( 'href' ) );
-
-							if ( 1 === preg_match( '/[?&]attachment_id=(\d+)/', $fallback_href, $fallback_href_matches ) && 0 < (int) $fallback_href_matches[1] ) {
-								$fallback_href = (int) $fallback_href_matches[1];
-								break;
-							}
-
-							$fallback_href = 0;
-						}
-					}
-
-					$fallback_found = array();
-
-					foreach ( array( $fallback_class, $fallback_data, $fallback_href ) as $fallback_candidate ) {
-						if ( 0 < (int) $fallback_candidate ) {
-							$fallback_found[] = (int) $fallback_candidate;
-						}
-					}
-
-					$fallback_found = array_values( array_unique( $fallback_found ) );
-
-					if ( 1 === count( $fallback_found ) ) {
-						$attachment_id = $fallback_found[0];
-					} elseif ( 1 < count( $fallback_found ) ) {
-						continue;
-					}
 				}
+
+				$identity_distinct = array_keys( $identity_ids );
+
+				if ( 1 !== count( $identity_distinct ) ) {
+					continue;
+				}
+
+				$attachment_id = (int) $identity_distinct[0];
 
 				// PFOA 0.1.120 — presentation only: discovery/removal covers
 				// member claims plus validated explicit anchors (same
@@ -4252,6 +4250,63 @@ function pfoa_present_adoption_events( $content ) {
 }
 
 add_filter( 'the_content', 'pfoa_present_adoption_events', 950 );
+
+/**
+ * Adopted 2026 gallery identity — presentation only.
+ *
+ * Page-scoped wp_get_attachment_image_attributes filter that adds the
+ * authoritative attachment identity (data-attachment-id) from the supplied
+ * attachment WP_Post->ID before gallery HTML reaches the presenter, so the
+ * caption-less legacy fallback can see the real captionless item without
+ * guessing from filenames or captions. Additive attribute only: src, class,
+ * alt, href, and lightbox behavior are untouched. Out of scope, non-array,
+ * or non-positive-ID inputs return $attr unchanged. No storage writes.
+ */
+if ( ! function_exists( 'pfoa_adopted2026_gallery_image_attributes' ) ) {
+	function pfoa_adopted2026_gallery_image_attributes( $attr, $attachment, $size = '' ) {
+		if ( ! is_array( $attr ) ) {
+			return $attr;
+		}
+
+		$attachment_id = 0;
+
+		if ( $attachment instanceof WP_Post ) {
+			$attachment_id = (int) $attachment->ID;
+		}
+
+		if ( 0 >= $attachment_id ) {
+			return $attr;
+		}
+
+		$is_target_page = false;
+
+		if ( function_exists( 'is_page' ) && ( is_page( 22514 ) || is_page( 'adopted2026' ) ) ) {
+			$is_target_page = true;
+		} elseif ( function_exists( 'get_post' ) ) {
+			$post = get_post();
+
+			if ( $post instanceof WP_Post ) {
+				if ( 22514 === (int) $post->ID ) {
+					$is_target_page = true;
+				} elseif ( isset( $post->post_name ) && 'adopted2026' === $post->post_name ) {
+					$is_target_page = true;
+				}
+			}
+		}
+
+		if ( ! $is_target_page ) {
+			return $attr;
+		}
+
+		$attr['data-attachment-id'] = (string) $attachment_id;
+
+		return $attr;
+	}
+}
+
+if ( function_exists( 'add_filter' ) ) {
+	add_filter( 'wp_get_attachment_image_attributes', 'pfoa_adopted2026_gallery_image_attributes', 10, 3 );
+}
 
 /**
  * Recently adopted strip (page 20323): newest adoption events, cross-year.
