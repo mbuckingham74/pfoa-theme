@@ -330,12 +330,15 @@ foreach ( array( '24653', '24654', '24655', '24559' ) as $live_id ) {
 	fixture_assert( false === strpos( $functions_source, "'_pfoa_event_date', " . $live_id ), 'source: no hardcoded event ID ' . $live_id );
 }
 $css = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' );
-fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.133/', $css ), 'css: theme version 0.1.133' );
+fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.134/', $css ), 'css: theme version 0.1.134' );
 $block_pos = strpos( $css, 'body.page-id-20323 .pfoa-recently-adopted' );
 fixture_assert( false !== $block_pos, 'css: page-id-20323 scoped recently-adopted block' );
 $css_block = substr( $css, (int) $block_pos, 15000 );
 fixture_assert( false !== strpos( $css_block, 'pfoa-adoption-event-together-badge' ), 'css: green together badge styled in scope' );
 fixture_assert( false === strpos( $css_block, 'bonded-badge' ), 'css: no bonded-badge in the new block' );
+fixture_assert( 1 === preg_match( '/pfoa-adoption-event--bonded,\s*body\.page-id-20323 \.pfoa-recently-adopted > \.pfoa-adoption-event--together\s*\{\s*position:\s*relative\s*;/', $css_block ), 'css: bonded+together cards establish badge containing block' );
+fixture_assert( false !== strpos( $css_block, 'position: absolute' ), 'css: badge stays absolute (zero flow)' );
+fixture_assert( false !== strpos( $css_block, 'translate(-50%, 50%)' ), 'css: badge stays centered-straddle' );
 fixture_assert( false !== strpos( $css_block, '@media' ), 'css: responsive rules in scope' );
 
 // No writes, no throws, read-only meta access.
