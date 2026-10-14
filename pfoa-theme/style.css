@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.132
+ Version: 0.1.133
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -5328,14 +5328,16 @@ body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-together-badge {
 		grid-template-columns: repeat(2, var(--pfoa-adopted-photo));
 	}
 }
-/* PFOA Recently Adopted intro (page 20323 only, theme 0.1.132) — compact
+/* PFOA Recently Adopted intro (page 20323 only, theme 0.1.133) — compact
  * centered heading + CTA directly above [pfoa_recently_adopted] output.
  * Reuses plain h2 type (Georgia 700) and .pfoa-button tokens; neutralizes
  * page-context h2/p margins inside the wrapper so wpautop spacing does not
  * stack above the grid. No new button design, no navy.
+ * 0.1.133: +48px desktop / +32px mobile top separation from the final
+ * Adoptable Cats card row (margin-top calc below; all other gaps untouched).
  */
 body.page-id-20323 .pfoa-recently-adopted-intro {
-	margin: var(--pfoa-space-5) auto var(--pfoa-space-4);
+	margin: calc(var(--pfoa-space-5) + 48px) auto var(--pfoa-space-4);
 	padding: 0 var(--pfoa-space-3);
 	text-align: center;
 }
@@ -5359,6 +5361,6 @@ body.page-id-20323 .pfoa-recently-adopted-intro + p .pfoa-recently-adopted {
 }
 @media (max-width: 480px) {
 	body.page-id-20323 .pfoa-recently-adopted-intro {
-		margin: var(--pfoa-space-4) auto var(--pfoa-space-3);
+		margin: calc(var(--pfoa-space-4) + 32px) auto var(--pfoa-space-3);
 	}
 }
