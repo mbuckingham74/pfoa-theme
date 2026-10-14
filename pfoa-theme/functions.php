@@ -4103,6 +4103,377 @@ function pfoa_present_adoption_events( $content ) {
 add_filter( 'the_content', 'pfoa_present_adoption_events', 950 );
 
 /**
+ * Recently adopted strip (page 20323): newest adoption events, cross-year.
+ *
+ * Presentation only, read-only wrt adoption events and cat profiles.
+ * Queries published pfoa_adoption_event posts with NO year filter and NO
+ * filter on current Adoptable/Adopted state, keeps only events with a valid
+ * historical YYYY-MM-DD adoption date, orders by adoption date DESC +
+ * event post ID DESC (same deterministic rule as
+ * pfoa_present_adoption_events()), and returns the first $limit (fewer when
+ * fewer qualify). No hardcoded IDs.
+ *
+ * Membership, bonding, photos, and dates are NOT reinterpreted here: member
+ * snapshots use the canonical pfoa_adoption_event_get_* readers (with the
+ * same _pfoa_event_* fallbacks), the stored member order
+ * (image_id/caption/cat_name_at_event/cat_post_id) is preserved, and
+ * rendering reuses pfoa_adoption_event_member_media() and
+ * pfoa_adoption_event_format_date(). Bonded-pair classification is
+ * preserved in each event's 'bonded_pair' data via the same strict
+ * reciprocal helpers, but the public badge is always the green "Adopted
+ * Together" on multi-cat events; singletons stay badge-free.
+ *
+ * @param int $limit Max events to return (default 4).
+ * @return array Sorted (date DESC, ID DESC) event arrays, at most $limit.
+ */
+function pfoa_get_recently_adopted_events( $limit = 4 ) {
+	$limit = (int) $limit;
+
+	if ( 1 > $limit ) {
+		$limit = 4;
+	}
+
+	if ( ! function_exists( 'get_posts' ) || ! function_exists( 'get_post_meta' ) ) {
+		return array();
+	}
+
+	// Same query shape as pfoa_present_adoption_events() but with NO year
+	// meta filter: cross-year coverage, final ordering applied in PHP below.
+	$event_ids = get_posts(
+		array(
+			'post_type'      => 'pfoa_adoption_event',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+			'orderby'        => 'ID',
+			'order'          => 'DESC',
+		)
+	);
+
+	if ( ! is_array( $event_ids ) || empty( $event_ids ) ) {
+		return array();
+	}
+
+	$today  = function_exists( 'current_time' ) ? (string) current_time( 'Y-m-d' ) : gmdate( 'Y-m-d' );
+	$events = array();
+
+	foreach ( $event_ids as $event_id_raw ) {
+		$event_id = (int) $event_id_raw;
+
+		if ( 0 >= $event_id ) {
+			continue;
+		}
+
+		if ( function_exists( 'get_post' ) ) {
+			$event_post = get_post( $event_id );
+
+			if ( ! $event_post instanceof WP_Post || 'pfoa_adoption_event' !== $event_post->post_type ) {
+				continue;
+			}
+		}
+
+		// Canonical date reader preferred; raw meta fallback (mirrors
+		// pfoa_present_adoption_events()). Only strict YYYY-MM-DD
+		// historical dates qualify.
+		if ( function_exists( 'pfoa_adoption_event_get_date' ) ) {
+			$event_date = (string) pfoa_adoption_event_get_date( $event_id );
+		} else {
+			$event_date = (string) get_post_meta( $event_id, '_pfoa_event_date', true );
+		}
+
+		$event_date = trim( $event_date );
+
+		if ( 1 !== preg_match( '/^\d{4}-\d{2}-\d{2}$/', $event_date ) ) {
+			continue;
+		}
+
+		$event_timestamp = strtotime( $event_date );
+
+		if ( false === $event_timestamp ) {
+			continue;
+		}
+
+		// Reject impossible calendar dates (e.g. 2026-02-30, which
+		// strtotime() would roll over) and future-dated events.
+		if ( gmdate( 'Y-m-d', $event_timestamp ) !== $event_date ) {
+			continue;
+		}
+
+		if ( $event_date > $today ) {
+			continue;
+		}
+
+		if ( function_exists( 'pfoa_adoption_event_get_uuid' ) ) {
+			$event_uuid = (string) pfoa_adoption_event_get_uuid( $event_id );
+		} else {
+			$event_uuid = (string) get_post_meta( $event_id, '_pfoa_event_uuid', true );
+		}
+
+		$event_uuid = trim( $event_uuid );
+
+		if ( '' === $event_uuid ) {
+			continue;
+		}
+
+		if ( function_exists( 'pfoa_adoption_event_get_members' ) ) {
+			$members_raw = pfoa_adoption_event_get_members( $event_id );
+		} else {
+			$members_raw = get_post_meta( $event_id, '_pfoa_event_members', true );
+		}
+
+		if ( ! is_array( $members_raw ) || empty( $members_raw ) ) {
+			continue;
+		}
+
+		// Member snapshot shape mirrors pfoa_present_adoption_events():
+		// stored order, image_id, caption (fallback cat_name_at_event),
+		// name, cat_post_id. No profile reads, no writes.
+		$members = array();
+
+		foreach ( array_values( $members_raw ) as $member_raw ) {
+			if ( ! is_array( $member_raw ) ) {
+				continue;
+			}
+
+			$member_image = isset( $member_raw['image_id'] ) ? (int) $member_raw['image_id'] : 0;
+			$member_name  = isset( $member_raw['cat_name_at_event'] ) ? trim( (string) $member_raw['cat_name_at_event'] ) : '';
+			$member_cap   = isset( $member_raw['caption'] ) ? trim( (string) $member_raw['caption'] ) : '';
+			$member_cat   = isset( $member_raw['cat_post_id'] ) ? (int) $member_raw['cat_post_id'] : 0;
+
+			if ( '' === $member_cap ) {
+				$member_cap = $member_name;
+			}
+
+			$members[] = array(
+				'image_id'    => 0 < $member_image ? $member_image : 0,
+				'caption'     => $member_cap,
+				'name'        => $member_name,
+				'cat_post_id' => 0 < $member_cat ? $member_cat : 0,
+			);
+		}
+
+		if ( empty( $members ) ) {
+			continue;
+		}
+
+		// Bonded-pair classification preserved in data exactly as in
+		// pfoa_present_adoption_events(): strict reciprocal validation via
+		// the Cat Profiles helpers, fail-closed; 3+ member events never
+		// bonded. The public badge below is nevertheless always green
+		// "Adopted Together" for count > 1.
+		$member_count   = count( $members );
+		$is_bonded_pair = false;
+
+		if ( 2 === $member_count && function_exists( 'pfoa_cat_is_bonded' ) && function_exists( 'pfoa_cat_get_bonded_pair' ) ) {
+			$bond_ids = array();
+
+			foreach ( $members as $bond_member ) {
+				$bond_ids[] = ( is_array( $bond_member ) && isset( $bond_member['cat_post_id'] ) ) ? (int) $bond_member['cat_post_id'] : 0;
+			}
+
+			if ( 0 < $bond_ids[0] && 0 < $bond_ids[1] && $bond_ids[0] !== $bond_ids[1] ) {
+				if ( pfoa_cat_is_bonded( $bond_ids[0] ) && pfoa_cat_is_bonded( $bond_ids[1] ) ) {
+					$bond_pair = pfoa_cat_get_bonded_pair( $bond_ids[0] );
+
+					if ( is_array( $bond_pair ) ) {
+						$bond_pair   = array_map( 'intval', array_values( $bond_pair ) );
+						$bond_sorted = $bond_ids;
+
+						sort( $bond_pair, SORT_NUMERIC );
+						sort( $bond_sorted, SORT_NUMERIC );
+
+						if ( $bond_pair === $bond_sorted ) {
+							$is_bonded_pair = true;
+						}
+					}
+				}
+			}
+		}
+
+		$events[] = array(
+			'id'          => $event_id,
+			'date'        => $event_date,
+			'uuid'        => $event_uuid,
+			'members'     => $members,
+			'bonded_pair' => $is_bonded_pair,
+		);
+	}
+
+	if ( empty( $events ) ) {
+		return array();
+	}
+
+	// Same deterministic rule as pfoa_present_adoption_events(): adoption
+	// date DESC, event post ID DESC tie-break.
+	usort(
+		$events,
+		function ( $a, $b ) {
+			$date_cmp = strcmp( (string) $b['date'], (string) $a['date'] );
+
+			if ( 0 !== $date_cmp ) {
+				return $date_cmp;
+			}
+
+			if ( (int) $b['id'] === (int) $a['id'] ) {
+				return 0;
+			}
+
+			return (int) $b['id'] > (int) $a['id'] ? 1 : -1;
+		}
+	);
+
+	return array_slice( $events, 0, $limit );
+}
+
+/**
+ * Render one recently-adopted event card.
+ *
+ * Presentation only: card markup mirrors pfoa_present_adoption_events()
+ * (same div.pfoa-adoption-event[.multi][data-pfoa-adoption-event] wrapper,
+ * combined ' & ' title, green "Adopted Together" badge on multi-cat events
+ * only, historical date line, member grid via
+ * pfoa_adoption_event_member_media()). role="group" + aria-label are set
+ * inline here because the shortcode path has no DOM-insertion pass.
+ *
+ * @param array $event Event array from pfoa_get_recently_adopted_events().
+ * @return string Card markup (escaped) or '' when unusable.
+ */
+function pfoa_render_recently_adopted_event_card( $event ) {
+	if ( ! is_array( $event ) || empty( $event['members'] ) || ! is_array( $event['members'] ) ) {
+		return '';
+	}
+
+	if ( ! isset( $event['uuid'] ) || '' === trim( (string) $event['uuid'] ) ) {
+		return '';
+	}
+
+	$member_count   = count( $event['members'] );
+	$count_class    = 3 < $member_count ? 'n' : (string) $member_count;
+	$is_bonded_pair = ! empty( $event['bonded_pair'] );
+
+	$names = array();
+
+	foreach ( $event['members'] as $event_member ) {
+		if ( is_array( $event_member ) && isset( $event_member['name'] ) && '' !== $event_member['name'] ) {
+			$names[] = $event_member['name'];
+		}
+	}
+
+	$multi_class    = 1 < $member_count ? ' pfoa-adoption-event-multi pfoa-adoption-event-count-' . $count_class : ' pfoa-adoption-event-count-1';
+	$bonded_class   = $is_bonded_pair ? ' pfoa-adoption-event--bonded' : '';
+	$together_class = ( 2 <= $member_count && ! $is_bonded_pair ) ? ' pfoa-adoption-event--together' : '';
+
+	$label_date = pfoa_adoption_event_format_date( isset( $event['date'] ) ? $event['date'] : '' );
+	$label_text = empty( $names ) ? 'Adopted cats' : 'Adopted cats: ' . implode( ' & ', $names );
+
+	if ( '' !== $label_date ) {
+		$label_text .= ' — ' . $label_date;
+	}
+
+	$card_html = '<div class="pfoa-adoption-event' . $multi_class . $bonded_class . $together_class . '" data-pfoa-adoption-event="' . esc_attr( $event['uuid'] ) . '" role="group" aria-label="' . esc_attr( $label_text ) . '">';
+
+	$combined_title = '';
+
+	if ( ! empty( $names ) ) {
+		$combined_title = '<h2 class="pfoa-adoption-event-title">' . implode( ' &amp; ', array_map( 'esc_html', $names ) );
+
+		if ( 1 < $member_count ) {
+			$combined_title .= ' <span class="pfoa-adoption-event-together-badge">' . esc_html__( 'Adopted Together', 'pfoa-theme' ) . '<span class="screen-reader-text"> ' . esc_html__( 'in the same adoption event', 'pfoa-theme' ) . '</span></span>';
+		}
+
+		$combined_title .= '</h2>';
+	}
+
+	$event_date_text = pfoa_adoption_event_format_date( isset( $event['date'] ) ? $event['date'] : '' );
+	$event_date_html = '';
+
+	if ( '' !== $event_date_text ) {
+		$event_date_html = '<p class="pfoa-adoption-event-date">' . esc_html( $event_date_text ) . '</p>';
+	}
+
+	$single_name = '';
+
+	if ( 1 === $member_count && ! empty( $names ) ) {
+		$single_name = (string) $names[0];
+	}
+
+	$card_html .= '<div class="pfoa-adoption-event-members pfoa-adoption-event-members-' . $count_class . '">';
+
+	foreach ( $event['members'] as $event_member ) {
+		if ( ! is_array( $event_member ) ) {
+			continue;
+		}
+
+		$member_image   = isset( $event_member['image_id'] ) ? (int) $event_member['image_id'] : 0;
+		$member_caption = isset( $event_member['caption'] ) ? (string) $event_member['caption'] : '';
+
+		$card_html .= '<figure class="pfoa-adoption-event-member">';
+		$card_html .= '<div class="pfoa-adoption-event-thumb">' . pfoa_adoption_event_member_media( $member_image, $member_caption ) . '</div>';
+
+		if ( '' !== $member_caption && 1 >= $member_count ) {
+			$caption_class = 'pfoa-adoption-event-caption';
+
+			if ( '' !== $single_name && 0 === strcasecmp( trim( $member_caption ), trim( $single_name ) ) ) {
+				$caption_class .= ' screen-reader-text';
+			}
+
+			$card_html .= '<figcaption class="' . $caption_class . '">' . esc_html( $member_caption ) . '</figcaption>';
+		}
+
+		$card_html .= '</figure>';
+	}
+
+	$card_html .= '</div>';
+
+	if ( '' !== $combined_title ) {
+		$card_html .= $combined_title . $event_date_html;
+	}
+
+	$card_html .= '</div>';
+
+	return $card_html;
+}
+
+/**
+ * Shortcode [pfoa_recently_adopted]: newest adoption events strip.
+ *
+ * Presentation only. Attributes: limit (default 4). Returns '' when no
+ * qualifying events exist. Usable anywhere shortcodes render; intended for
+ * page 20323 replacing the hardcoded recent-adoptions table.
+ *
+ * @param array|string $atts Shortcode attributes.
+ * @return string Section markup (escaped) or ''.
+ */
+function pfoa_recently_adopted_events( $atts ) {
+	$atts = shortcode_atts(
+		array(
+			'limit' => 4,
+		),
+		$atts,
+		'pfoa_recently_adopted'
+	);
+
+	$events = pfoa_get_recently_adopted_events( isset( $atts['limit'] ) ? (int) $atts['limit'] : 4 );
+
+	if ( empty( $events ) ) {
+		return '';
+	}
+
+	$section_html = '<section class="pfoa-adoption-events pfoa-recently-adopted" aria-label="' . esc_attr__( 'Recently adopted cats', 'pfoa-theme' ) . '">';
+
+	foreach ( $events as $event ) {
+		$section_html .= pfoa_render_recently_adopted_event_card( $event );
+	}
+
+	$section_html .= '</section>';
+
+	return $section_html;
+}
+
+add_shortcode( 'pfoa_recently_adopted', 'pfoa_recently_adopted_events' );
+
+/**
  * Adopted 2026 gallery: group workflow-managed bonded pairs.
  *
  * Page-specific (page 22514 / adopted2026) companion to

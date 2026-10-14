@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.130
+ Version: 0.1.131
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -5035,4 +5035,296 @@ body.page-id-4264 .pfoa-board-member-role {
 	line-height: 1.45;
 	text-align: center;
 	text-decoration: none;
+}
+
+/* PFOA Recently Adopted (page 20323 only) — reuses Adopted 2026 geometry.
+ * Strict scope: every selector below starts with
+ * body.page-id-20323 .pfoa-recently-adopted, so Adopted 2026 (page 22514),
+ * the paw filler, and all global rules are untouched. No new card/badge
+ * system: same square photos, blue centered names, card shell, green pill,
+ * and responsive tracks as the accepted Adopted language. Cards use the
+ * functions.php event markup (div.pfoa-adoption-event, members grid,
+ * captions, badge, date; lightbox via wp_get_attachment_link, no .gallery
+ * classes) rendered inside .pfoa-recently-adopted as a standalone grid.
+ */
+body.page-id-20323 .pfoa-recently-adopted {
+	container-type: inline-size;
+	--pfoa-adopted-photo: 123px;
+	--pfoa-adopted-gap: var(--pfoa-space-2);
+	--pfoa-adopted-card-shell: calc(var(--pfoa-space-2) * 2 + 3px);
+	display: grid;
+	grid-template-columns: repeat(6, minmax(0, 1fr));
+	gap: 28px var(--pfoa-space-2);
+	align-items: stretch;
+	max-width: 100%;
+	margin: 0;
+	padding: 0;
+}
+
+@supports (width: 1cqw) {
+	body.page-id-20323 .pfoa-recently-adopted {
+		--pfoa-adopted-photo: calc((100cqw - 5 * var(--pfoa-space-2)) / 6 - (var(--pfoa-space-2) * 2 + 3px));
+	}
+}
+
+/* If events arrive inside an intermediate section wrapper, let them join
+ * the single outer grid instead of forming a second nested grid. */
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-events {
+	display: contents;
+}
+
+/* Independent Event cards: each Event carries its own border/shell, so
+ * neighbouring Events stay visually separate horizontally and vertically. */
+body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event {
+	justify-self: start;
+	align-self: stretch;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+	min-width: 0;
+	max-width: 100%;
+	margin: 0;
+	padding: var(--pfoa-space-2);
+	background: var(--pfoa-surface-page);
+	border: 1.5px solid #aeb4cd;
+	border-radius: var(--pfoa-radius);
+	box-sizing: border-box;
+	overflow-wrap: break-word;
+}
+
+body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-1 {
+	grid-column: span 1;
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 1);
+}
+
+body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-2 {
+	grid-column: span 2;
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 2 + var(--pfoa-adopted-gap));
+}
+
+body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-3 {
+	grid-column: span 3;
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 3 + var(--pfoa-adopted-gap) * 2);
+}
+
+body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-n {
+	grid-column: span 4;
+	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 4 + var(--pfoa-adopted-gap) * 3);
+}
+
+/* Multi-cat participants sit inside one shared card; inner members are
+ * borderless so the single outer border reads as the Event boundary. */
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-members {
+	display: grid;
+	gap: var(--pfoa-adopted-gap);
+	justify-content: center;
+	align-items: start;
+	flex: 0 0 auto;
+	width: 100%;
+	max-width: 100%;
+	margin: 0;
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-members-1 {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-members-2 {
+	grid-template-columns: repeat(2, var(--pfoa-adopted-photo));
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-members-3 {
+	grid-template-columns: repeat(3, var(--pfoa-adopted-photo));
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-members-n {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-members-n > .pfoa-adoption-event-member {
+	flex: 0 0 var(--pfoa-adopted-photo);
+	width: var(--pfoa-adopted-photo);
+	box-sizing: border-box;
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-member {
+	min-width: 0;
+	max-width: 100%;
+	margin: 0;
+	padding: 0;
+	background: transparent;
+	border: 0;
+	text-align: center;
+	box-sizing: border-box;
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-thumb {
+	display: block;
+	margin-bottom: 0;
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-thumb a {
+	display: flex;
+	justify-content: center;
+	max-width: 100%;
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-thumb img {
+	display: block;
+	width: var(--pfoa-adopted-photo);
+	height: var(--pfoa-adopted-photo);
+	aspect-ratio: 1 / 1;
+	object-fit: cover;
+	object-position: center;
+	border-radius: calc(var(--pfoa-radius) - 1px);
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-thumb-missing {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--pfoa-adopted-photo);
+	height: var(--pfoa-adopted-photo);
+	margin-inline: auto;
+	aspect-ratio: 1 / 1;
+	border: 1px dashed var(--pfoa-color-border);
+	border-radius: calc(var(--pfoa-radius) - 1px);
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-missing-text {
+	color: var(--pfoa-text-muted);
+	font-size: 0.8rem;
+	line-height: 1.4;
+}
+
+/* Names sit below the correct photos in the shared blue centered style. */
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-title {
+	flex: 0 0 auto;
+	margin: 10px 0 0;
+	color: var(--pfoa-action-primary);
+	font-weight: 700;
+	font-size: 1.05rem;
+	line-height: 1.3;
+	text-align: center;
+	overflow-wrap: break-word;
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-date {
+	flex: 0 0 auto;
+	min-height: 2.9em;
+	margin: 8px 0 0;
+	color: var(--pfoa-text-muted);
+	font-size: 0.85rem;
+	line-height: 1.45;
+	text-align: center;
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-caption:not(.screen-reader-text) {
+	margin: var(--pfoa-space-2) 0 0;
+	color: var(--pfoa-text-muted);
+	font-size: 0.8rem;
+	line-height: 1.4;
+	text-align: center;
+}
+
+/* Badge straddles the bottom border in the row gap (absolute = zero flow),
+ * so card height and title position are unchanged. */
+body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event--together {
+	position: relative;
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-together-badge {
+	position: absolute;
+	bottom: 0;
+	top: auto;
+	left: 50%;
+	z-index: 2;
+	display: inline-block;
+	max-width: calc(100% - 1rem);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	transform: translate(-50%, 50%);
+	padding: 0.15rem 0.65rem;
+	color: #ffffff;
+	border: 1px solid #ffffff;
+	border-radius: 999px;
+	box-shadow: 0 1px 3px rgba(33, 30, 29, 0.35);
+	font-size: 0.72rem;
+	font-weight: 800;
+	line-height: 1.4;
+	letter-spacing: 0.02em;
+	text-align: center;
+}
+
+body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-together-badge {
+	background: var(--pfoa-cta-primary);
+}
+
+@media (max-width: 1319px) {
+	body.page-id-20323 .pfoa-recently-adopted {
+		--pfoa-adopted-photo: 204px;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+
+	@supports (width: 1cqw) {
+		body.page-id-20323 .pfoa-recently-adopted {
+			--pfoa-adopted-photo: calc((100cqw - 3 * var(--pfoa-space-2)) / 4 - (var(--pfoa-space-2) * 2 + 3px));
+		}
+	}
+}
+
+@media (max-width: 720px) {
+	body.page-id-20323 .pfoa-recently-adopted {
+		--pfoa-adopted-photo: 191px;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	@supports (width: 1cqw) {
+		body.page-id-20323 .pfoa-recently-adopted {
+			--pfoa-adopted-photo: calc((100cqw - 2 * var(--pfoa-space-2)) / 3 - (var(--pfoa-space-2) * 2 + 3px));
+		}
+	}
+
+	body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-3,
+	body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-n {
+		grid-column: 1 / -1;
+		width: 100%;
+	}
+
+	body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-members-3 {
+		grid-template-columns: repeat(2, var(--pfoa-adopted-photo));
+	}
+
+	body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-members-n {
+		width: 100%;
+		max-width: calc(var(--pfoa-adopted-photo) * 2 + var(--pfoa-adopted-gap));
+		margin-inline: auto;
+	}
+}
+
+@media (max-width: 480px) {
+	body.page-id-20323 .pfoa-recently-adopted {
+		--pfoa-adopted-photo: 142px;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	@supports (width: 1cqw) {
+		body.page-id-20323 .pfoa-recently-adopted {
+			--pfoa-adopted-photo: calc((100cqw - 1 * var(--pfoa-space-2)) / 2 - (var(--pfoa-space-2) * 2 + 3px));
+		}
+	}
+
+	body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-2,
+	body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-3,
+	body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-n {
+		grid-column: 1 / -1;
+		width: 100%;
+	}
+
+	body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-members-2 {
+		grid-template-columns: repeat(2, var(--pfoa-adopted-photo));
+	}
 }
