@@ -3315,43 +3315,303 @@ function pfoa_adoption_event_display_name( $name_raw ) {
 }
 
 /**
- * Adopted 2026 gallery identity — strict claimed-ID validator (0.1.142).
+ * Adopted 2026 gallery identity — strict claimed-ID validator (0.1.143).
  *
- * Presentation only. Returns the positive attachment ID as int, or 0 when
- * the raw token is not an exact canonical positive integer. Full-string
+ * Presentation only. Returns the positive attachment ID as int, or null when
+ * the raw token is not an exact canonical positive integer (no numeric
+ * sentinel: invalid is null, never 0, so invalid can never match discovery). Full-string
  * match via /\A[1-9][0-9]*\z/ (absolute end, NOT $: a terminal newline such
  * as "23330\n" is invalid). The token is NEVER trimmed before validation,
  * so whitespace-tainted tokens ("23330 ", " 23330") are invalid. No partial
  * or fractional acceptance ("23330.9", "023330", "-5", "+5", "2.333e4" are
- * invalid). Overflow-safe: tokens longer than 10 digits are rejected and
- * the (int) cast is round-trip checked, so the cast below can never wrap.
+ * invalid). Overflow-safe with no arbitrary digit limit: tokens longer than
+ * the decimal form of PHP_INT_MAX are rejected, equal-length tokens above
+ * it are rejected lexicographically, and the (int) cast is round-trip
+ * checked, so the cast below can never wrap and values outside the int
+ * domain are invalid (fail closed in the caller: preserve the legacy item).
  * Malformed input must fail closed in the caller (preserve the legacy item).
  *
  * @param mixed $raw Raw candidate token (attribute value, query value, …).
- * @return int Positive attachment ID, or 0 when invalid.
+ * @return int|null Positive attachment ID, or null when invalid (no numeric sentinel).
  */
 function pfoa_valid_claimed_attachment_id( $raw ) {
 	$token = (string) $raw;
 
 	if ( 1 !== preg_match( '/\A[1-9][0-9]*\z/', $token ) ) {
-		return 0;
+		return null;
 	}
 
-	if ( 10 < strlen( $token ) ) {
-		return 0;
+	$max_token = (string) PHP_INT_MAX;
+
+	if ( strlen( $token ) > strlen( $max_token ) ) {
+		return null;
+	}
+
+	if ( strlen( $token ) === strlen( $max_token ) && 0 < strcmp( $token, $max_token ) ) {
+		return null;
 	}
 
 	$claimed = (int) $token;
 
 	if ( (string) $claimed !== $token ) {
-		return 0;
+		return null;
 	}
 
 	if ( 0 >= $claimed ) {
-		return 0;
+		return null;
 	}
 
 	return $claimed;
+}
+
+/**
+ * Adopted 2026 gallery identity — single auditable per-item result (0.1.143).
+ *
+ * Presentation only. Collects EVERY recognized identity occurrence on one
+ * legacy .gallery-item into a single auditable result distinguishing three
+ * states: valid IDs (exact canonical positive integers eligible for
+ * discovery matching), recognized-but-invalid occurrences (fail-closed
+ * evidence that always preserves the item), and absent/unrelated signals
+ * (ignored: missing attributes, unrelated classes/ARIA tokens, unrelated
+ * query keys, URL fragments). No numeric sentinels anywhere: invalid input
+ * is counted, never encoded as an ID, so a malformed token can never match
+ * discovery and malformed evidence never silently vanishes.
+ *
+ * Recognized sources (each occurrence counted):
+ * - img/figure/item data-attachment-id + data-id when PRESENT
+ *   (hasAttribute/hasAttributeNS separates absent→ignore from
+ *   present-empty/malformed→invalid; the raw value is never trimmed, so
+ *   "23330 ", "23330\n", "", "0", and "23330.9" are invalid).
+ * - img class wp-image-<suffix> tokens (unrelated classes ignored; a
+ *   recognized prefix with an invalid suffix→invalid; multiple tokens in
+ *   one class attribute are each counted, so conflicts break unanimity).
+ * - img aria-describedby IDREF lists split on whitespace (unrelated tokens
+ *   ignored; gallery-<n>-<suffix> recognized, invalid suffix including
+ *   malformed ARIA→invalid).
+ * - figcaption/dd[id] captions (gallery-<n>-<suffix> recognized; malformed
+ *   caption→invalid).
+ * - EVERY ?attachment_id query parameter of EVERY a[href] (query component
+ *   only via parse_url PHP_URL_QUERY, so fragments never count; exploded
+ *   on & with names urldecoded so encoded names count; EVERY repeated
+ *   occurrence processed; bare keys without "=" or value, empty values,
+ *   and malformed values→invalid; unrelated keys ignored; values are never
+ *   trimmed before validation).
+ *
+ * @param DOMElement $item_node Legacy .gallery-item node.
+ * @param DOMXPath   $xpath     XPath bound to the owner document.
+ * @return array Validated identity result with keys valid_ids
+ *               (array<int, true>), invalid (int count of
+ *               recognized-but-invalid occurrences), recognized (int count
+ *               of all recognized occurrences).
+ */
+function pfoa_collect_gallery_item_identity( $item_node, $xpath ) {
+	$result = array(
+		'valid_ids'  => array(),
+		'invalid'    => 0,
+		'recognized' => 0,
+	);
+
+	if ( ! $item_node instanceof DOMElement || ! $xpath instanceof DOMXPath ) {
+		return $result;
+	}
+
+	$record_token = function( $raw ) use ( &$result ) {
+		$result['recognized']++;
+
+		$claimed = pfoa_valid_claimed_attachment_id( $raw );
+
+		if ( null === $claimed ) {
+			$result['invalid']++;
+			return;
+		}
+
+		$result['valid_ids'][ $claimed ] = true;
+	};
+
+	$node_has_attribute = function( $node, $name ) {
+		if ( ! $node instanceof DOMElement ) {
+			return false;
+		}
+
+		if ( $node->hasAttribute( $name ) ) {
+			return true;
+		}
+
+		if ( method_exists( $node, 'hasAttributeNS' ) ) {
+			foreach ( array( null, '', '*' ) as $namespace ) {
+				$present = false;
+
+				if ( null === $namespace ) {
+					$present = $node->hasAttributeNS( null, $name );
+				} elseif ( '' === $namespace ) {
+					$present = $node->hasAttributeNS( '', $name );
+				} else {
+					$present = $node->hasAttributeNS( '*', $name );
+				}
+
+				if ( $present ) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	};
+
+	$record_data_attributes = function( $node ) use ( $node_has_attribute, $record_token ) {
+		if ( ! $node instanceof DOMElement ) {
+			return;
+		}
+
+		foreach ( array( 'data-attachment-id', 'data-id' ) as $data_attr ) {
+			if ( ! $node_has_attribute( $node, $data_attr ) ) {
+				continue;
+			}
+
+			$record_token( (string) $node->getAttribute( $data_attr ) );
+		}
+	};
+
+	$caption_list = $xpath->query( './/*[self::figcaption or self::dd][@id]', $item_node );
+
+	if ( $caption_list instanceof DOMNodeList && 0 < $caption_list->length ) {
+		foreach ( $caption_list as $caption_node ) {
+			if ( ! $caption_node instanceof DOMElement ) {
+				continue;
+			}
+
+			$caption_id = (string) $caption_node->getAttribute( 'id' );
+
+			if ( 1 !== preg_match( '/\Agallery-[0-9]+-(.*)\z/s', $caption_id, $caption_matches ) ) {
+				continue;
+			}
+
+			$record_token( (string) $caption_matches[1] );
+		}
+	}
+
+	$aria_list = $xpath->query( './/img[@aria-describedby]', $item_node );
+
+	if ( $aria_list instanceof DOMNodeList && 0 < $aria_list->length ) {
+		foreach ( $aria_list as $aria_node ) {
+			if ( ! $aria_node instanceof DOMElement ) {
+				continue;
+			}
+
+			$aria_tokens = preg_split( '/\s+/', trim( (string) $aria_node->getAttribute( 'aria-describedby' ) ) );
+
+			if ( ! is_array( $aria_tokens ) ) {
+				continue;
+			}
+
+			foreach ( $aria_tokens as $aria_token ) {
+				if ( '' === (string) $aria_token ) {
+					continue;
+				}
+
+				if ( 1 !== preg_match( '/\Agallery-[0-9]+-(.*)\z/s', (string) $aria_token, $aria_matches ) ) {
+					continue;
+				}
+
+				$record_token( (string) $aria_matches[1] );
+			}
+		}
+	}
+
+	$fallback_img_list = $xpath->query( './/img', $item_node );
+
+	if ( $fallback_img_list instanceof DOMNodeList && 0 < $fallback_img_list->length ) {
+		foreach ( $fallback_img_list as $fallback_img ) {
+			if ( ! $fallback_img instanceof DOMElement ) {
+				continue;
+			}
+
+			$class_raw = trim( (string) $fallback_img->getAttribute( 'class' ) );
+
+			if ( '' !== $class_raw ) {
+				$class_tokens = preg_split( '/\s+/', $class_raw );
+
+				if ( is_array( $class_tokens ) ) {
+					foreach ( $class_tokens as $class_token ) {
+						if ( 0 !== strpos( (string) $class_token, 'wp-image-' ) ) {
+							continue;
+						}
+
+						$record_token( (string) substr( (string) $class_token, 9 ) );
+					}
+				}
+			}
+
+			$record_data_attributes( $fallback_img );
+		}
+	}
+
+	$fallback_figure_list = $xpath->query( './/figure', $item_node );
+
+	if ( $fallback_figure_list instanceof DOMNodeList && 0 < $fallback_figure_list->length ) {
+		foreach ( $fallback_figure_list as $fallback_figure ) {
+			$record_data_attributes( $fallback_figure );
+		}
+	}
+
+	$record_data_attributes( $item_node );
+
+	$fallback_anchor_list = $xpath->query( './/a[@href]', $item_node );
+
+	if ( $fallback_anchor_list instanceof DOMNodeList && 0 < $fallback_anchor_list->length ) {
+		foreach ( $fallback_anchor_list as $fallback_anchor ) {
+			if ( ! $fallback_anchor instanceof DOMElement ) {
+				continue;
+			}
+
+			$fallback_href = (string) $fallback_anchor->getAttribute( 'href' );
+
+			// Query component only: a fragment such as
+			// /#section?attachment_id=23330 carries NO query and yields
+			// zero recognized occurrences (parse_url returns null/false/'').
+			$href_query = parse_url( $fallback_href, PHP_URL_QUERY );
+
+			if ( ! is_string( $href_query ) || '' === $href_query ) {
+				continue;
+			}
+
+			// EVERY repeated attachment_id= occurrence is processed (no
+			// 1=== gate): identical repeats stay unanimous, conflicting
+			// repeats break unanimity via distinct valid IDs.
+			$href_pairs = explode( '&', $href_query );
+
+			foreach ( $href_pairs as $href_pair ) {
+				$href_eq = strpos( (string) $href_pair, '=' );
+
+				if ( false === $href_eq ) {
+					$href_name = urldecode( (string) $href_pair );
+
+					if ( 'attachment_id' !== $href_name ) {
+						continue;
+					}
+
+					// Bare key without "=" or value: recognized-invalid.
+					$result['recognized']++;
+					$result['invalid']++;
+					continue;
+				}
+
+				$href_name = urldecode( (string) substr( (string) $href_pair, 0, (int) $href_eq ) );
+
+				if ( 'attachment_id' !== $href_name ) {
+					continue;
+				}
+
+				$href_value = urldecode( (string) substr( (string) $href_pair, (int) $href_eq + 1 ) );
+
+				// Never trim-then-accept: the raw value goes to the strict
+				// validator, so "23330 " is malformed, not 23330.
+				$record_token( $href_value );
+			}
+		}
+	}
+
+	return $result;
 }
 
 function pfoa_present_adoption_events( $content ) {
@@ -3897,231 +4157,38 @@ function pfoa_present_adoption_events( $content ) {
 					continue;
 				}
 
-			// PFOA Senior Shadow hardening — presentation only: collect
-			// EVERY identity signal on this legacy item into one set and
-			// require unanimity (fail-closed). Stable identity only, from
-			// EVERY caption id (figcaption|dd[id]), EVERY gallery token in
-			// EVERY img[aria-describedby] IDREF list, EVERY
-			// img[class~=wp-image-<ID>] token, EVERY img/figure[data-…]
-			// token plus the item node itself, and EVERY ?attachment_id=
-			// query parameter of EVERY <a href> (query component only via
-			// parse_url: fragments such as /#section?attachment_id= are NOT
-			// query identity and are skipped). Strict positive-integer
-			// syntax only via pfoa_valid_claimed_attachment_id() on the
-			// exact raw token (\A[1-9][0-9]*\z, never trimmed, never cast
-			// before validating): "", "0", "023", "-5", "+5", "23270.9",
-			// "2.333e4", "23270 ", and "abc" are all invalid. 0 distinct
-			// IDs => no identity (the item survives as unmatched);
-			// 1 distinct ID => that is $attachment_id (gated below via
-			// isset($discovery_ids[...]) exactly as before); >1 distinct
-			// IDs => preserve the item via continue (fail-closed),
-			// including primary caption/aria vs fallback disagreement and
-			// disagreement within a single source. Any RECOGNIZED but
-			// malformed identifier occurrence (e.g. a whitespace-tainted or
-			// fractional attachment_id= value, an empty value) injects a
-			// unique sentinel ID so the unanimity guard below sees >1 and
-			// preserves: malformed evidence never silently vanishes, and a
-			// malformed token can never suppress via a sibling valid token.
-			// Gate removal identically; no name/caption/src-basename fuzzy
-			// match. Covers the wp-image-, data-attachment-id, and
-			// attachment_id= fallbacks inside the unanimous set.
-			$identity_ids = array();
+			// PFOA Senior Shadow hardening (0.1.143) — presentation only: single
+			// auditable identity result per legacy item, fail-closed.
+			// pfoa_collect_gallery_item_identity() gathers EVERY recognized
+			// occurrence (caption ids, ARIA IDREF lists, wp-image- class
+			// tokens, img/figure/item data attributes, EVERY ?attachment_id
+			// query parameter) into one result distinguishing valid IDs from
+			// recognized-but-invalid occurrences; absent/unrelated signals
+			// are ignored and never counted. No numeric sentinels anywhere:
+			// recognized-but-invalid evidence is counted, never encoded as
+			// an ID, so malformed input can never match discovery and never
+			// silently vanishes. Suppress only when every recognized
+			// occurrence is valid, all valid IDs agree (exactly 1 distinct),
+			// and that ID is Event-claimed in $discovery_ids below. Any
+			// invalid occurrence or conflict preserves the item via continue
+			// (fail-closed), including primary caption/aria vs fallback
+			// disagreement and disagreement within a single source. Gate
+			// removal identically; no name/caption/src-basename fuzzy match.
+			// Covers the wp-image-, data-attachment-id, and attachment_id=
+			// fallbacks inside the unanimous set.
+			$identity = pfoa_collect_gallery_item_identity( $item_node, $xpath );
 
-			// Per-item sentinel sequence: each malformed recognized
-			// occurrence consumes PHP_INT_MAX - $identity_ambiguous_seq,
-			// unique within this item, so ambiguity always breaks unanimity.
-			$identity_ambiguous_seq = 0;
-
-			$caption_list = $xpath->query( './/*[self::figcaption or self::dd][@id]', $item_node );
-
-			if ( $caption_list instanceof DOMNodeList && 0 < $caption_list->length ) {
-				foreach ( $caption_list as $caption_node ) {
-					if ( ! $caption_node instanceof DOMElement ) {
-						continue;
-					}
-
-					$caption_id = (string) $caption_node->getAttribute( 'id' );
-
-					if ( 1 === preg_match( '/\Agallery-\d+-(\d+)\z/', $caption_id, $caption_matches ) ) {
-						$caption_claimed = pfoa_valid_claimed_attachment_id( (string) $caption_matches[1] );
-
-						if ( 0 < $caption_claimed ) {
-							$identity_ids[ $caption_claimed ] = true;
-						}
-					}
-				}
+			if ( 0 < $identity['invalid'] ) {
+				continue;
 			}
 
-			$aria_list = $xpath->query( './/img[@aria-describedby]', $item_node );
+			$identity_distinct = array_keys( $identity['valid_ids'] );
 
-			if ( $aria_list instanceof DOMNodeList && 0 < $aria_list->length ) {
-				foreach ( $aria_list as $aria_node ) {
-					if ( ! $aria_node instanceof DOMElement ) {
-						continue;
-					}
-
-					$describedby = trim( (string) $aria_node->getAttribute( 'aria-describedby' ) );
-
-					if ( '' === $describedby ) {
-						continue;
-					}
-
-					$aria_tokens = preg_split( '/\s+/', $describedby );
-
-					if ( ! is_array( $aria_tokens ) ) {
-						continue;
-					}
-
-					foreach ( $aria_tokens as $aria_token ) {
-						if ( 1 !== preg_match( '/\Agallery-\d+-(\d+)\z/', (string) $aria_token, $aria_matches ) ) {
-							continue;
-						}
-
-						$aria_claimed = pfoa_valid_claimed_attachment_id( (string) $aria_matches[1] );
-
-						if ( 0 < $aria_claimed ) {
-							$identity_ids[ $aria_claimed ] = true;
-						}
-					}
-				}
+			if ( 1 !== count( $identity_distinct ) ) {
+				continue;
 			}
 
-				$fallback_img_list = $xpath->query( './/img', $item_node );
-
-				if ( $fallback_img_list instanceof DOMNodeList && 0 < $fallback_img_list->length ) {
-					foreach ( $fallback_img_list as $fallback_img ) {
-						if ( ! $fallback_img instanceof DOMElement ) {
-							continue;
-						}
-
-						$class_raw = trim( (string) $fallback_img->getAttribute( 'class' ) );
-
-						if ( '' !== $class_raw ) {
-							$class_tokens = preg_split( '/\s+/', $class_raw );
-
-							if ( is_array( $class_tokens ) ) {
-								foreach ( $class_tokens as $class_token ) {
-									if ( 0 !== strpos( (string) $class_token, 'wp-image-' ) ) {
-										continue;
-									}
-
-								$class_suffix = (string) substr( (string) $class_token, 9 );
-
-								$class_claimed = pfoa_valid_claimed_attachment_id( $class_suffix );
-
-								if ( 0 < $class_claimed ) {
-									$identity_ids[ $class_claimed ] = true;
-								}
-								}
-							}
-						}
-
-					foreach ( array( 'data-attachment-id', 'data-id' ) as $fallback_data_attr ) {
-						$data_token = (string) $fallback_img->getAttribute( $fallback_data_attr );
-
-						$data_claimed = pfoa_valid_claimed_attachment_id( $data_token );
-
-						if ( 0 < $data_claimed ) {
-							$identity_ids[ $data_claimed ] = true;
-						}
-					}
-					}
-				}
-
-				$fallback_figure_list = $xpath->query( './/figure', $item_node );
-
-				if ( $fallback_figure_list instanceof DOMNodeList && 0 < $fallback_figure_list->length ) {
-					foreach ( $fallback_figure_list as $fallback_figure ) {
-						if ( ! $fallback_figure instanceof DOMElement ) {
-							continue;
-						}
-
-					foreach ( array( 'data-attachment-id', 'data-id' ) as $fallback_data_attr ) {
-						$figure_token = (string) $fallback_figure->getAttribute( $fallback_data_attr );
-
-						$figure_claimed = pfoa_valid_claimed_attachment_id( $figure_token );
-
-						if ( 0 < $figure_claimed ) {
-							$identity_ids[ $figure_claimed ] = true;
-						}
-					}
-					}
-				}
-
-			foreach ( array( 'data-attachment-id', 'data-id' ) as $fallback_data_attr ) {
-				$item_token = (string) $item_node->getAttribute( $fallback_data_attr );
-
-				$item_claimed = pfoa_valid_claimed_attachment_id( $item_token );
-
-				if ( 0 < $item_claimed ) {
-					$identity_ids[ $item_claimed ] = true;
-				}
-			}
-
-			$fallback_anchor_list = $xpath->query( './/a[@href]', $item_node );
-
-			if ( $fallback_anchor_list instanceof DOMNodeList && 0 < $fallback_anchor_list->length ) {
-				foreach ( $fallback_anchor_list as $fallback_anchor ) {
-					if ( ! $fallback_anchor instanceof DOMElement ) {
-						continue;
-					}
-
-					$fallback_href = (string) $fallback_anchor->getAttribute( 'href' );
-
-					// Query component only: a fragment such as
-					// /#section?attachment_id=23330 carries NO query and
-					// yields zero IDs (parse_url returns null/false/'').
-					$href_query = parse_url( $fallback_href, PHP_URL_QUERY );
-
-					if ( ! is_string( $href_query ) || '' === $href_query ) {
-						continue;
-					}
-
-					// EVERY repeated attachment_id= occurrence is
-					// processed (no 1=== gate): identical repeats stay
-					// unanimous, conflicting repeats break unanimity.
-					$href_pairs = explode( '&', $href_query );
-
-					foreach ( $href_pairs as $href_pair ) {
-						$href_eq = strpos( (string) $href_pair, '=' );
-
-						if ( false === $href_eq ) {
-							continue;
-						}
-
-						$href_name = urldecode( (string) substr( (string) $href_pair, 0, (int) $href_eq ) );
-
-						if ( 'attachment_id' !== $href_name ) {
-							continue;
-						}
-
-						$href_value = urldecode( (string) substr( (string) $href_pair, (int) $href_eq + 1 ) );
-
-						// Never truncate at whitespace: the raw value
-						// goes to the strict validator, so "23330 " is
-						// malformed, not 23330.
-						$href_claimed = pfoa_valid_claimed_attachment_id( $href_value );
-
-						if ( 0 < $href_claimed ) {
-							$identity_ids[ $href_claimed ] = true;
-						} else {
-							// Recognized but malformed occurrence:
-							// inject a unique sentinel so the unanimity
-							// guard below preserves this item.
-							$identity_ids[ PHP_INT_MAX - $identity_ambiguous_seq ] = true;
-							$identity_ambiguous_seq++;
-						}
-					}
-				}
-			}
-
-				$identity_distinct = array_keys( $identity_ids );
-
-				if ( 1 !== count( $identity_distinct ) ) {
-					continue;
-				}
-
-				$attachment_id = (int) $identity_distinct[0];
+			$attachment_id = (int) $identity_distinct[0];
 
 				// PFOA 0.1.120 — presentation only: discovery/removal covers
 				// member claims plus validated explicit anchors (same
