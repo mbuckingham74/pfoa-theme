@@ -46,6 +46,16 @@
  *   F1-F4 malformed/fractional IDs never match: "23330.9" via data-id,
  *     class token, and href query; plus "0", "023330", "-5", "", "abc",
  *     "23330 " battery (no truncation, no cast).
+ *   D1-D5 Sol re-QA strict battery (0.1.142; each FAILS on 0.1.141):
+ *     repeated href conflict vs unanimous repeats, ARIA IDREF-list
+ *     conflict + ARIA-only positive, terminal-newline token,
+ *     whitespace-tainted href, fragment-vs-query; plus href-only
+ *     positive. Conflict cases assert preserve-count 1 (not disappear).
+ *   Dispatch fidelity (UNIT): emitter wp_get_attachment_image_attributes
+ *     prio 10 + 3 args, presenter the_content prio 950 (1-arg hook fails).
+ *   INTEGRATION: end-to-end apply_filters('the_content') suppression +
+ *     preservation; real gallery_shortcode()/the_content proven by the Sol
+ *     real-WP harness (cited inline) — explicit skip here, no DB/network.
  *   U1 legitimate unmatched photos (100, 102) remain visible, quarantined
  *     after events in relative order.
  *   M2/M3/M5 legacy supplementary: missing date, wrong date detectable,
@@ -94,7 +104,7 @@ function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
 }
 function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
 	$GLOBALS['fixture_hook_registered'] = true;
-	$GLOBALS['fixture_filters'][]        = array( $hook, $callback );
+	$GLOBALS['fixture_filters'][]        = array( $hook, $callback, $priority, $accepted_args );
 }
 function apply_filters( $hook, $value ) {
 	if ( 'the_content' === $hook && function_exists( 'pfoa_present_adoption_events' ) ) {
@@ -306,13 +316,29 @@ fixture_assert( function_exists( 'pfoa_adopted2026_gallery_image_attributes' ), 
 
 // Filter registration: production filter must be registered on the
 // wp_get_attachment_image_attributes hook (presentation path wiring).
+// UNIT: hook dispatch fidelity — priority 10 with 3 accepted args, so the
+// real callback receives ($attr, $attachment, $size); a 1-arg registration
+// must FAIL this fixture (dispatch fidelity gap closed).
 $filter_registered = false;
 foreach ( $GLOBALS['fixture_filters'] as $registered ) {
 	if ( 'wp_get_attachment_image_attributes' === $registered[0] && 'pfoa_adopted2026_gallery_image_attributes' === $registered[1] ) {
 		$filter_registered = true;
+		fixture_assert( 10 === (int) $registered[2], 'filter: emitter registered at priority 10 (dispatch fidelity)' );
+		fixture_assert( 3 === (int) $registered[3], 'filter: emitter registered with 3 accepted args (dispatch fidelity; 1-arg registration fails)' );
 	}
 }
 fixture_assert( $filter_registered, 'filter: registered on wp_get_attachment_image_attributes (RED on baseline)' );
+
+// UNIT: presenter dispatch fidelity — pfoa_present_adoption_events must be
+// registered on the_content at priority 950.
+$presenter_registered = false;
+foreach ( $GLOBALS['fixture_filters'] as $registered ) {
+	if ( 'the_content' === $registered[0] && 'pfoa_present_adoption_events' === $registered[1] ) {
+		$presenter_registered = true;
+		fixture_assert( 950 === (int) $registered[2], 'presenter: registered on the_content at priority 950 (dispatch fidelity)' );
+	}
+}
+fixture_assert( $presenter_registered, 'presenter: registered on the_content (RED on baseline)' );
 
 // ---------------------------------------------------------------------------
 // Filter unit checks: scoping + additive-only + input guards.
@@ -534,6 +560,107 @@ $out_m6 = pfoa_present_adoption_events(
 fixture_assert( 1 === substr_count( $out_m6, 'data-pfoa-adoption-event="11111111-2222-4333-8444-555555555555"' ), 'M6: same-name event renders exactly once (no merge by name)' );
 fixture_assert( 2 === substr_count( $out_m6, 'pfoa-adoption-event-member"' ), 'M6: both distinct-ID photos render (no dedupe by name)' );
 fixture_assert( false === strpos( $out_m6, 'gallery-1-24001' ) && false === strpos( $out_m6, 'gallery-1-24002' ), 'M6: both distinct IDs suppressed by exact ID, not by name' );
+
+// ---------------------------------------------------------------------------
+// D1-D5 Sol re-QA strict-identifier battery, 0.1.142 (event 24666 claims
+// 23330). Each case FAILS on 0.1.141 and PASSES after the fix. UNIT: each
+// exercises the production presenter directly on synthetic item markup.
+// ---------------------------------------------------------------------------
+$GLOBALS['fixture_event_ids'] = array( 24666 );
+fixture_set_event( 24666, FIXTURE_SHADOW_UUID_A, '2026-06-19', array( fixture_member( 23330, 'Shadow' ) ) );
+
+// D1 repeated query conflict: two DIFFERENT attachment_id params plus a
+// valid data-id must preserve (conflict, not silent removal) — and the
+// survivor count must be 1 (preserved), not 0 (disappeared).
+$out_d1 = pfoa_present_adoption_events(
+	'<div class="gallery galleryid-22514 gallery-columns-6"><figure class="gallery-item"><a href="/?attachment_id=23330&attachment_id=99999"><img data-id="23330" src="https://example.com/medD1.jpg" alt=""></a></figure></div>'
+);
+fixture_assert( 1 === substr_count( $out_d1, 'gallery-item' ), 'D1: conflicting repeated href params preserve the item (1 survivor, not 0/disappeared)' );
+fixture_assert( false !== strpos( $out_d1, 'medD1' ), 'D1: conflicting repeated href params leave the legitimate legacy image in place' );
+
+// D1b unanimous repeats: two IDENTICAL 23330 params with no other signal
+// are unanimous and suppress (inverse of D1; Sol href_unanimous_multiple).
+$out_d1b = pfoa_present_adoption_events(
+	'<div class="gallery galleryid-22514 gallery-columns-6"><figure class="gallery-item"><a href="/?attachment_id=23330&attachment_id=23330"><img src="https://example.com/medD1b.jpg" alt=""></a></figure></div>'
+);
+fixture_assert( 1 === substr_count( $out_d1b, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'D1b: event renders once with unanimous repeated href params present' );
+fixture_assert( false === strpos( $out_d1b, 'medD1b' ), 'D1b: unanimous repeated href params (23330+23330, no other signal) suppress' );
+
+// D2 ARIA IDREF-list conflict: data-id 23330 plus TWO gallery references
+// in one aria-describedby must preserve (second identity is not ignored).
+$out_d2 = pfoa_present_adoption_events(
+	fixture_conflict_gallery( '<figure class="gallery-item"><img data-id="23330" aria-describedby="gallery-1-23330 gallery-1-99999" src="https://example.com/medD2.jpg" alt=""></figure>' )
+);
+fixture_assert( 1 === substr_count( $out_d2, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'D2: event renders once with ARIA IDREF conflict present' );
+fixture_assert( false !== strpos( $out_d2, 'medD2' ), 'D2: conflicting ARIA IDREF list fails closed — ambiguous node survives' );
+
+// D2b ARIA-only positive: a lone aria-describedby="gallery-1-23330" with no
+// data/class/href signal, matching the claim, suppresses (so disabling the
+// ARIA collector fails this fixture).
+$out_d2b = pfoa_present_adoption_events(
+	'<div class="gallery galleryid-22514 gallery-columns-6">' . fixture_gallery_item( 100 ) . '<figure class="gallery-item"><img aria-describedby="gallery-1-23330" src="https://example.com/medD2b.jpg" alt=""></figure>' . fixture_gallery_item( 102 ) . '</div>'
+);
+fixture_assert( 1 === substr_count( $out_d2b, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'D2b: event renders once with ARIA-only duplicate present' );
+fixture_assert( false === strpos( $out_d2b, 'medD2b' ), 'D2b: ARIA-only duplicate of 23330 suppressed (ARIA collector indispensable)' );
+
+// D3 terminal newline: data-id "23330\n" (actual 0x0A) is malformed and
+// must preserve ($-anchor would accept it; \z rejects it).
+$out_d3 = pfoa_present_adoption_events(
+	fixture_conflict_gallery( '<figure class="gallery-item"><img data-id="23330' . "\n" . '" src="https://example.com/medD3.jpg" alt=""></figure>' )
+);
+fixture_assert( false !== strpos( $out_d3, 'medD3' ), 'D3: terminal-newline data-id never matches — node survives (exact-token boundary)' );
+
+// D4 whitespace-tainted href: attachment_id "23330 " (trailing space) is
+// malformed — never truncated to 23330 — and must preserve (sentinel,
+// not silent removal and not suppression via a sibling token).
+$out_d4 = pfoa_present_adoption_events(
+	'<div class="gallery galleryid-22514 gallery-columns-6"><figure class="gallery-item"><a href="/?attachment_id=23330 "><img src="https://example.com/medD4.jpg" alt=""></a></figure></div>'
+);
+fixture_assert( 1 === substr_count( $out_d4, 'gallery-item' ), 'D4: whitespace-tainted href preserves the item (1 survivor, not suppressed)' );
+fixture_assert( false !== strpos( $out_d4, 'medD4' ), 'D4: whitespace-tainted href value never truncates to the claimed ID' );
+
+// D5 fragment: ?attachment_id= inside a URL FRAGMENT (#section?...) is not
+// a query identifier and must yield zero IDs — the item preserves.
+$out_d5 = pfoa_present_adoption_events(
+	'<div class="gallery galleryid-22514 gallery-columns-6"><figure class="gallery-item"><a href="https://example.com/#section?attachment_id=23330"><img src="https://example.com/medD5.jpg" alt=""></a></figure></div>'
+);
+fixture_assert( 1 === substr_count( $out_d5, 'gallery-item' ), 'D5: fragment ?attachment_id= is not query identity — item survives (1 survivor)' );
+fixture_assert( false !== strpos( $out_d5, 'medD5' ), 'D5: fragment identifier never matches the claim' );
+
+// Href-only positive: a lone ?attachment_id=23330 with no other signal,
+// matching the claim, suppresses (so disabling the href collector fails).
+$out_href_pos = pfoa_present_adoption_events(
+	'<div class="gallery galleryid-22514 gallery-columns-6">' . fixture_gallery_item( 100 ) . '<figure class="gallery-item"><a href="/?attachment_id=23330"><img src="https://example.com/medHrefPos.jpg" alt=""></a></figure>' . fixture_gallery_item( 102 ) . '</div>'
+);
+fixture_assert( 1 === substr_count( $out_href_pos, 'data-pfoa-adoption-event="' . FIXTURE_SHADOW_UUID_A . '"' ), 'HREF-POS: event renders once with href-only duplicate present' );
+fixture_assert( false === strpos( $out_href_pos, 'medHrefPos' ), 'HREF-POS: href-only duplicate of 23330 suppressed (href collector indispensable)' );
+
+// ---------------------------------------------------------------------------
+// INTEGRATION: full the_content pipeline vs UNIT presenter coverage.
+// (a) Real-WP gallery_shortcode() is NOT available in this stub harness
+// (no WP loaded, no DB/network): direct-shortcode execution is an explicit
+// SKIP here — real gallery_shortcode() + full the_content execution was
+// verified by the Sol harness in real WordPress 7.1.3 (see REPORT §1:
+// RED 1/1/1 → GREEN 1/1/0, direct shortcode + presenter and full
+// the_content, plus emitter-disabled 1/1/1 control).
+// (b) INTEGRATION via the stubbed the_content pipeline: the COMPLETE
+// apply_filters('the_content') path (not a direct presenter call) must
+// suppress the unanimous filter-enabled real item and preserve the
+// conflicting item end to end, with the dispatch registrations above
+// (the_content prio 950; emitter prio 10 + 3 args) proving the wiring the
+// pipeline depends on.
+// ---------------------------------------------------------------------------
+fixture_assert( ! function_exists( 'gallery_shortcode' ), 'INTEGRATION: documents harness limit — no real gallery_shortcode() here (Sol real-WP evidence cited above)' );
+$integration_suppress = apply_filters(
+	'the_content',
+	'<div class="gallery galleryid-22514 gallery-columns-6">' . fixture_gallery_item( 100 ) . fixture_real_shadow_item( true ) . fixture_gallery_item( 102 ) . '</div>'
+);
+fixture_assert( false === strpos( $integration_suppress, 'ShadowWeb4040' ), 'INTEGRATION: full the_content pipeline suppresses the filter-enabled unanimous real item' );
+$integration_preserve = apply_filters(
+	'the_content',
+	'<div class="gallery galleryid-22514 gallery-columns-6"><figure class="gallery-item"><a href="/?attachment_id=23330&attachment_id=99999"><img data-id="23330" src="https://example.com/medInt.jpg" alt=""></a></figure></div>'
+);
+fixture_assert( false !== strpos( $integration_preserve, 'medInt' ), 'INTEGRATION: full the_content pipeline preserves the conflicting item end to end' );
 
 // No writes across all mutations.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during presentation' );
