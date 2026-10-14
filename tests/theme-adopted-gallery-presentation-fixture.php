@@ -54,6 +54,9 @@ function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
 function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
 	$GLOBALS['fixture_hook_registered'] = true;
 }
+function add_shortcode( $tag, $callback ) {
+	$GLOBALS['fixture_hook_registered'] = true;
+}
 function update_option( $option, $value = null ) {
 	$GLOBALS['fixture_db_touched'] = true;
 	return false;

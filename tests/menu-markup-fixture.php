@@ -154,6 +154,8 @@ if ( ! class_exists( 'Walker_Nav_Menu' ) ) {
 }
 
 function add_action() {}
+function add_filter() {}
+function add_shortcode() {}
 function add_editor_style() {}
 function add_theme_support() {}
 function apply_filters( $tag, $value ) { return $value; }
