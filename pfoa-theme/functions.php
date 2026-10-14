@@ -3900,6 +3900,122 @@ function pfoa_present_adoption_events( $content ) {
 
 				$attachment_id = 0 < $from_caption ? $from_caption : $from_img;
 
+				// PFOA Senior Shadow hardening — presentation only: when the
+				// primary caption-ID path yields nothing (attachment_id === 0,
+				// e.g. a legacy item whose attachment has an empty
+				// post_excerpt so WP emits no figcaption[id] /
+				// img[aria-describedby]), scan the same $item_node for stable
+				// identity only, in order: img[class~=wp-image-<ID>], then
+				// img/figure[data-attachment-id|data-id], then <a href>
+				// ?attachment_id= query. First numeric >0 wins per source;
+				// disagreeing sources stay fail-closed (continue). Gate
+				// removal identically via isset($discovery_ids[...]). No
+				// name/caption/src-basename fuzzy match.
+				if ( 0 === $attachment_id ) {
+					$fallback_class = 0;
+					$fallback_data  = 0;
+					$fallback_href  = 0;
+
+					$fallback_img_list = $xpath->query( './/img', $item_node );
+
+					if ( $fallback_img_list instanceof DOMNodeList && 0 < $fallback_img_list->length ) {
+						foreach ( $fallback_img_list as $fallback_img ) {
+							if ( ! $fallback_img instanceof DOMElement ) {
+								continue;
+							}
+
+							$fallback_class_attr = ' ' . (string) preg_replace( '/\s+/', ' ', (string) $fallback_img->getAttribute( 'class' ) ) . ' ';
+
+							if ( 1 === preg_match( '/\swp-image-(\d+)\s/', $fallback_class_attr, $fallback_class_matches ) && 0 < (int) $fallback_class_matches[1] ) {
+								$fallback_class = (int) $fallback_class_matches[1];
+								break;
+							}
+						}
+
+						foreach ( $fallback_img_list as $fallback_img ) {
+							if ( ! $fallback_img instanceof DOMElement ) {
+								continue;
+							}
+
+							foreach ( array( 'data-attachment-id', 'data-id' ) as $fallback_data_attr ) {
+								$fallback_data_raw = trim( (string) $fallback_img->getAttribute( $fallback_data_attr ) );
+
+								if ( '' !== $fallback_data_raw && is_numeric( $fallback_data_raw ) && 0 < (int) $fallback_data_raw ) {
+									$fallback_data = (int) $fallback_data_raw;
+									break 2;
+								}
+							}
+						}
+					}
+
+					if ( 0 === $fallback_data ) {
+						$fallback_figure_list = $xpath->query( './/figure[@data-attachment-id or @data-id]', $item_node );
+
+						if ( $fallback_figure_list instanceof DOMNodeList && 0 < $fallback_figure_list->length ) {
+							foreach ( $fallback_figure_list as $fallback_figure ) {
+								if ( ! $fallback_figure instanceof DOMElement ) {
+									continue;
+								}
+
+								foreach ( array( 'data-attachment-id', 'data-id' ) as $fallback_data_attr ) {
+									$fallback_data_raw = trim( (string) $fallback_figure->getAttribute( $fallback_data_attr ) );
+
+									if ( '' !== $fallback_data_raw && is_numeric( $fallback_data_raw ) && 0 < (int) $fallback_data_raw ) {
+										$fallback_data = (int) $fallback_data_raw;
+										break 2;
+									}
+								}
+							}
+						}
+
+						if ( 0 === $fallback_data ) {
+							foreach ( array( 'data-attachment-id', 'data-id' ) as $fallback_data_attr ) {
+								$fallback_data_raw = trim( (string) $item_node->getAttribute( $fallback_data_attr ) );
+
+								if ( '' !== $fallback_data_raw && is_numeric( $fallback_data_raw ) && 0 < (int) $fallback_data_raw ) {
+									$fallback_data = (int) $fallback_data_raw;
+									break;
+								}
+							}
+						}
+					}
+
+					$fallback_anchor_list = $xpath->query( './/a[@href]', $item_node );
+
+					if ( $fallback_anchor_list instanceof DOMNodeList && 0 < $fallback_anchor_list->length ) {
+						foreach ( $fallback_anchor_list as $fallback_anchor ) {
+							if ( ! $fallback_anchor instanceof DOMElement ) {
+								continue;
+							}
+
+							$fallback_href = trim( (string) $fallback_anchor->getAttribute( 'href' ) );
+
+							if ( 1 === preg_match( '/[?&]attachment_id=(\d+)/', $fallback_href, $fallback_href_matches ) && 0 < (int) $fallback_href_matches[1] ) {
+								$fallback_href = (int) $fallback_href_matches[1];
+								break;
+							}
+
+							$fallback_href = 0;
+						}
+					}
+
+					$fallback_found = array();
+
+					foreach ( array( $fallback_class, $fallback_data, $fallback_href ) as $fallback_candidate ) {
+						if ( 0 < (int) $fallback_candidate ) {
+							$fallback_found[] = (int) $fallback_candidate;
+						}
+					}
+
+					$fallback_found = array_values( array_unique( $fallback_found ) );
+
+					if ( 1 === count( $fallback_found ) ) {
+						$attachment_id = $fallback_found[0];
+					} elseif ( 1 < count( $fallback_found ) ) {
+						continue;
+					}
+				}
+
 				// PFOA 0.1.120 — presentation only: discovery/removal covers
 				// member claims plus validated explicit anchors (same
 				// attachment-ID rules; anchors never collide with member IDs
