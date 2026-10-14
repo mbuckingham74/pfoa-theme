@@ -3284,6 +3284,36 @@ function pfoa_adoption_event_format_date( $date_raw ) {
 	return date( 'F j, Y', $timestamp );
 }
 
+/**
+ * Presentation only: strip a trailing administrative qualifier from an
+ * event snapshot name (e.g. "Shadow (Kitten 4040)" -> "Shadow").
+ *
+ * Stored `_pfoa_event_members[].cat_name_at_event` snapshots are never
+ * rewritten; `cat_post_id`, `cat_id_at_event`, UUID, date, and photo are
+ * untouched. Only the in-memory display copy is cleaned so the public
+ * card shows the cat name once without the admin Cat ID.
+ *
+ * @param string $name_raw Stored snapshot name.
+ * @return string Display name (unescaped).
+ */
+function pfoa_adoption_event_display_name( $name_raw ) {
+	$name_raw = trim( (string) $name_raw );
+
+	if ( '' === $name_raw ) {
+		return '';
+	}
+
+	$stripped = (string) preg_replace( '/\s*\([^()]*\b(?:Kitten|Cat(?:\s+ID)?|ID)\b[^()]*\d[^()]*\)\s*$/i', '', $name_raw );
+
+	$stripped = trim( $stripped );
+
+	if ( '' !== $stripped ) {
+		return $stripped;
+	}
+
+	return $name_raw;
+}
+
 function pfoa_present_adoption_events( $content ) {
 	if ( function_exists( 'is_admin' ) && is_admin() ) {
 		return $content;
@@ -3424,8 +3454,13 @@ function pfoa_present_adoption_events( $content ) {
 				continue;
 			}
 
+			// PFOA Shadow kitten display correction — presentation only:
+			// strip a trailing administrative qualifier (e.g. " (Kitten
+			// 4040)") from the in-memory display name so the public card
+			// shows "Shadow" once. Stored snapshot, cat_post_id,
+			// cat_id_at_event, UUID, date, and photo are untouched.
 			$member_image = isset( $member_raw['image_id'] ) ? (int) $member_raw['image_id'] : 0;
-			$member_name  = isset( $member_raw['cat_name_at_event'] ) ? trim( (string) $member_raw['cat_name_at_event'] ) : '';
+			$member_name  = isset( $member_raw['cat_name_at_event'] ) ? pfoa_adoption_event_display_name( $member_raw['cat_name_at_event'] ) : '';
 			$member_cap   = isset( $member_raw['caption'] ) ? trim( (string) $member_raw['caption'] ) : '';
 			$member_cat   = isset( $member_raw['cat_post_id'] ) ? (int) $member_raw['cat_post_id'] : 0;
 
