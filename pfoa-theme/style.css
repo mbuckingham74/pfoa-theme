@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.126
+ Version: 0.1.127
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -763,7 +763,7 @@ body.page-id-22514 .entry-content .gallery {
 	max-width: 100%;
 	grid-template-columns: repeat(6, minmax(0, 1fr));
 	gap: var(--pfoa-space-2);
-	align-items: start;
+	align-items: stretch;
 }
 
 body.page-id-22514 .entry-content .gallery-item {
@@ -4827,6 +4827,50 @@ body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-date {
 
 body.page-id-22514 .pfoa-adoption-event-count-1 .pfoa-adoption-event-caption:not(.screen-reader-text) {
 	margin: var(--pfoa-space-2) 0 0;
+}
+
+/* PFOA 0.1.127 — Adopted Gallery equal-height row shells (card-height
+ * regression correction): the gallery grid stretches every direct card to
+ * its row height, so same-row shells share tops AND bottoms. Narrow
+ * single-cat cards wrap long dates (e.g. "September 15, 2026") to two
+ * lines while wider pair cards keep one line; without this the singles
+ * grew ~19px taller than their row neighbours. The date keeps its full
+ * text on two lines via a two-line min-height reserve (0.85rem x 1.45 x 2
+ * = 2.9em), so wrapped dates never grow a card and one-line dates hold
+ * the same space. Cards are flex columns with the photo grid fixed at the
+ * top, so any residual stretch whitespace settles below the date inside
+ * the border. Badges stay absolute (zero flow), photos stay uniform via
+ * --pfoa-adopted-photo, N-slot widths/spans/gaps/breakpoints untouched.
+ */
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event,
+body.page-id-22514 .entry-content .gallery > .gallery-item {
+	align-self: stretch;
+}
+
+body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event {
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+}
+
+body.page-id-22514 .entry-content .gallery > .gallery-item {
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+	box-sizing: border-box;
+}
+
+body.page-id-22514 .pfoa-adoption-event-members {
+	flex: 0 0 auto;
+}
+
+body.page-id-22514 .pfoa-adoption-event-title {
+	flex: 0 0 auto;
+}
+
+body.page-id-22514 .pfoa-adoption-event-date {
+	min-height: 2.9em;
+	flex: 0 0 auto;
 }
 
 /* Decorative filler panel (AG-09): exactly one per incomplete row, placed

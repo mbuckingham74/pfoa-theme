@@ -551,6 +551,24 @@ $pos_rep_old = fixture_pos( $out_scale_repeat, 'data-pfoa-adoption-event="uuid-r
 fixture_assert( $pos_rep_new < $pos_rep_old, 'scale-repeat: newer occurrence leads chronologically' );
 fixture_assert( 2 === substr_count( $out_scale_repeat, 'med6601.jpg' ), 'scale-repeat: reused photo visible in both occurrences' );
 
+// (PFOA 0.1.127 card-height regression) Same-row shells share tops AND
+// bottoms: the gallery grid stretches every direct card to its row height
+// (never start-aligned content sizing), so a narrow single whose long date
+// wraps to two lines (e.g. "September 15, 2026" in a 150px N=1 card) can
+// never stand taller than its wider one-line pair neighbours (e.g. Frost &
+// Lightning / Niko & Simon). The date reserves a full two-line height so
+// wrapping never grows a card and one-line dates hold the same space, with
+// the full date text always visible (no truncation, no ellipsis).
+fixture_assert( 1 === preg_match( '/body\.page-id-22514 \.entry-content \.gallery[\s\S]*?align-items:\s*stretch/', $css ), 'css: gallery stretches row shells (tops+bottoms aligned)' );
+fixture_assert( false === (bool) preg_match( '/body\.page-id-22514 \.entry-content \.gallery\s*\{[^}]*align-items:\s*start/', $css ), 'css: no start-aligned gallery grid (card-height regression)' );
+fixture_assert( 1 === preg_match( '/\.entry-content \.gallery > \.pfoa-adoption-event[\s\S]*?align-self:\s*stretch/', $css ), 'css: event cards stretch to row height' );
+fixture_assert( 1 === preg_match( '/\.entry-content \.gallery > \.gallery-item[\s\S]*?align-self:\s*stretch/', $css ), 'css: legacy singles stretch to row height' );
+fixture_assert( 1 === preg_match( '/\.entry-content \.gallery > \.pfoa-adoption-event[\s\S]*?display:\s*flex/', $css ), 'css: event cards stack photo grid above title/date (flex column)' );
+fixture_assert( 1 === preg_match( '/\.entry-content \.gallery > \.pfoa-adoption-event[\s\S]*?flex-direction:\s*column/', $css ), 'css: event card flex column keeps photos uniform, whitespace below date' );
+fixture_assert( 1 === preg_match( '/\.pfoa-adoption-event-date[\s\S]*?min-height:\s*2\.9em/', $css ), 'css: date reserves two-line height (wrapped dates never grow singles)' );
+fixture_assert( false !== strpos( $css, 'justify-self: start' ), 'css: cards stay left-aligned in their spans (widths untouched)' );
+fixture_assert( 1 === preg_match( '/\.pfoa-adoption-event-bonded-badge,\s*\n?body\.page-id-22514 \.pfoa-adoption-event-together-badge[\s\S]*?position:\s*absolute/', $css ), 'css: badges stay zero-flow absolute (row height untouched)' );
+
 // No writes, no throws, read-only meta access.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during presentation' );
 
