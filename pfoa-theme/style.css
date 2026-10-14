@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.135
+ Version: 0.1.136
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -1317,8 +1317,10 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
  * Highlighted top-level tabs float: 6px vertical + 4px horizontal inset
  * via margins on the highlighted <a> (margins live inside the stretch-
  * aligned flex item, so nav height / min-height are unchanged), with
- * 12px rounding. Background + text colors come from the base highlight
- * rule above and are intentionally untouched. Dropdown anchoring is
+ * 12px rounding on all four corners. Background + text colors come from
+ * the base highlight rule above and are intentionally untouched.
+ * Desktop hides .submenu-toggle (display:none), so the <a> is the whole
+ * visible tab: no inner-edge squaring is applied. Dropdown anchoring is
  * preserved: .sub-menu is positioned against the <li> (top:100%), not
  * the <a>, so <a> margins do not move it. Mobile (<=1319px) untouched.
  */
@@ -1333,32 +1335,6 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 		margin-block: 6px;
 		margin-inline: 4px;
 		border-radius: 12px;
-	}
-
-	/* Joined pill for tabs with a submenu toggle: remove the inner gap
-	 * and square the inner corners so <a> + toggle read as one tab. */
-	.primary-menu > .menu-item:has(> .submenu-toggle) > a:hover,
-	.primary-menu > .menu-item:has(> .submenu-toggle) > a:focus-visible,
-	.primary-menu > .menu-item.current-menu-item:has(> .submenu-toggle) > a,
-	.primary-menu > .menu-item.current-menu-ancestor:has(> .submenu-toggle) > a,
-	.primary-menu > .menu-item:has(> .submenu-toggle):hover > a,
-	.primary-menu > .menu-item:has(> .submenu-toggle):focus-within > a,
-	.primary-menu > .menu-item:has(> .submenu-toggle).is-open > a {
-		margin-inline-end: 0;
-		border-start-end-radius: 0;
-		border-end-end-radius: 0;
-	}
-
-	.primary-menu > .menu-item > .submenu-toggle:hover,
-	.primary-menu > .menu-item > .submenu-toggle:focus-visible,
-	.primary-menu > .menu-item:hover > .submenu-toggle,
-	.primary-menu > .menu-item:focus-within > .submenu-toggle,
-	.primary-menu > .menu-item.is-open > .submenu-toggle {
-		margin-block: 6px;
-		margin-inline-start: 0;
-		margin-inline-end: 4px;
-		border-start-end-radius: 12px;
-		border-end-end-radius: 12px;
 	}
 }
 
