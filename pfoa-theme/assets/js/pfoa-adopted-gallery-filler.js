@@ -63,23 +63,37 @@
 		return template.trim().split(/\s+/).length;
 	}
 
-	function itemSpan(item) {
+	function itemSpan(item, total) {
 		if (typeof window === 'undefined' || !window.getComputedStyle) {
 			return 1;
 		}
 
-		var start = window.getComputedStyle(item).gridColumnStart || '';
+		var computed = window.getComputedStyle(item);
+		var start = (computed && computed.gridColumnStart) || '';
 		var match = /span\s+(\d+)/i.exec(start);
 
 		if (match) {
 			return Math.max(1, parseInt(match[1], 10) || 1);
 		}
 
-		var end = window.getComputedStyle(item).gridColumnEnd || '';
+		var end = (computed && computed.gridColumnEnd) || '';
 		match = /span\s+(\d+)/i.exec(end);
 
 		if (match) {
 			return Math.max(1, parseInt(match[1], 10) || 1);
+		}
+
+		// Full-width cards (grid-column: 1 / -1) occupy the entire row.
+		// getComputedStyle resolves these as start "1" with a negative end
+		// line (or the explicit line total + 1), not as a span count.
+		// (Compared numerically so the filler itself still never spans to
+		// a negative line — buildFiller always uses span N / auto.)
+		var startLine = String(start).trim();
+		var endLine = String(end).trim();
+		var tracks = Math.max(1, parseInt(total, 10) || 1);
+
+		if (startLine === '1' && (parseInt(endLine, 10) === -1 || endLine === String(tracks + 1))) {
+			return tracks;
 		}
 
 		return 1;
@@ -199,7 +213,7 @@
 			var used = 0;
 
 			for (var s = 0; s < rows[k].items.length; s++) {
-				used += itemSpan(rows[k].items[s]);
+				used += itemSpan(rows[k].items[s], total);
 			}
 
 			if (used >= total) {
