@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.145
+ Version: 0.1.146
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -416,6 +416,12 @@ pre {
 body.page .content-shell {
 	--pfoa-content-width: 960px;
 	padding-top: var(--pfoa-space-5);
+}
+
+/* PFOA 0.1.146 — single-pfoa_cat centered container */
+body.single-pfoa_cat main.pfoa-cat-single {
+	width: min(calc(100% - (2 * var(--pfoa-gutter, 20px))), 960px);
+	margin-inline: auto;
 }
 
 body.page .page-content .entry-header,
