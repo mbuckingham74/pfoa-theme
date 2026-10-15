@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.147
+ Version: 0.1.148
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -456,6 +456,47 @@ body.page .entry-content > h6,
 body.page .entry-content > hr {
 	max-width: var(--pfoa-prose-width);
 	margin-inline: auto;
+}
+
+/* PFOA 0.1.148 — Volunteering mixed-media exception: unwrap sibling prose
+ * beside floated figures. Any prose (p, ul, ol, dl, blockquote, h1-h6, hr)
+ * that FOLLOWS a figure.alignright/alignleft sibling (general-sibling ~)
+ * returns to max-width:100%; margin-inline:0 so it can wrap the full shell
+ * lane beside the float. Specificity (0,4,3) beats the 0.1.147 (0,2,2)
+ * centered rule by order + weight. Min-width:721px guard lets the
+ * max-width:720px float-stack rule (float:none; max-width:100%) win on
+ * small viewports. Intro paragraphs BEFORE any float, float-free pages
+ * (e.g. Contact Us), and pages with no align* figure (e.g. Adopted 2026
+ * gallery) keep the 720px centered measure pixel-identical.
+ */
+@media (min-width: 721px) {
+	body.page .page-content .entry-content > figure.alignright ~ p,
+	body.page .page-content .entry-content > figure.alignleft ~ p,
+	body.page .page-content .entry-content > figure.alignright ~ ul,
+	body.page .page-content .entry-content > figure.alignleft ~ ul,
+	body.page .page-content .entry-content > figure.alignright ~ ol,
+	body.page .page-content .entry-content > figure.alignleft ~ ol,
+	body.page .page-content .entry-content > figure.alignright ~ dl,
+	body.page .page-content .entry-content > figure.alignleft ~ dl,
+	body.page .page-content .entry-content > figure.alignright ~ blockquote,
+	body.page .page-content .entry-content > figure.alignleft ~ blockquote,
+	body.page .page-content .entry-content > figure.alignright ~ h1,
+	body.page .page-content .entry-content > figure.alignleft ~ h1,
+	body.page .page-content .entry-content > figure.alignright ~ h2,
+	body.page .page-content .entry-content > figure.alignleft ~ h2,
+	body.page .page-content .entry-content > figure.alignright ~ h3,
+	body.page .page-content .entry-content > figure.alignleft ~ h3,
+	body.page .page-content .entry-content > figure.alignright ~ h4,
+	body.page .page-content .entry-content > figure.alignleft ~ h4,
+	body.page .page-content .entry-content > figure.alignright ~ h5,
+	body.page .page-content .entry-content > figure.alignleft ~ h5,
+	body.page .page-content .entry-content > figure.alignright ~ h6,
+	body.page .page-content .entry-content > figure.alignleft ~ h6,
+	body.page .page-content .entry-content > figure.alignright ~ hr,
+	body.page .page-content .entry-content > figure.alignleft ~ hr {
+		max-width: 100%;
+		margin-inline: 0;
+	}
 }
 
 /* Buttons, action links, and form controls. */
