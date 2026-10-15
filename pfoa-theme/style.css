@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.144
+ Version: 0.1.145
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -452,7 +452,7 @@ input[type="submit"] {
 	padding: 0.65rem 1.1rem;
 	background: var(--pfoa-cta-primary);
 	color: var(--pfoa-text-on-action);
-	font-family: Georgia, "Times New Roman", serif;
+	font-family: var(--pfoa-font-display);
 	font-weight: 700;
 	line-height: 1.2;
 	text-align: center;
@@ -494,6 +494,8 @@ input[type="submit"]:active {
 	border-color: var(--pfoa-action-primary);
 	background: transparent;
 	color: var(--pfoa-action-primary);
+	font-family: var(--pfoa-font-display);
+	font-weight: 700;
 }
 
 .pfoa-button--secondary:hover,
@@ -627,9 +629,10 @@ input[type="file"] {
 .entry-content .gallery-caption {
 	margin-top: var(--pfoa-space-1);
 	color: var(--pfoa-text-muted);
+	font-family: var(--pfoa-font-body);
 	font-size: 0.875rem;
 	font-style: italic;
-	line-height: 1.45;
+	line-height: 1.5;
 	text-align: left;
 }
 
@@ -808,8 +811,9 @@ body.page-id-22514 .entry-content .gallery-icon img {
 
 body.page-id-22514 .entry-content .gallery-caption {
 	text-align: center;
-	font-size: 0.8rem;
-	line-height: 1.4;
+	font-family: var(--pfoa-font-body);
+	font-size: 0.875rem;
+	line-height: 1.5;
 	color: var(--pfoa-text-muted);
 }
 
@@ -820,6 +824,7 @@ body.page-id-22514 .entry-content .gallery-caption {
 body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	margin: var(--pfoa-space-3) 0 0;
 	color: var(--pfoa-action-primary);
+	font-family: var(--pfoa-font-display);
 	font-style: normal;
 	font-weight: 700;
 	font-size: 1.05rem;
@@ -1261,7 +1266,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	grid-column: 2;
 	min-width: 0;
 	justify-self: end;
-	font-family: Georgia, "Times New Roman", serif;
+	font-family: var(--pfoa-font-display);
 }
 
 .primary-menu,
@@ -1299,6 +1304,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	min-height: 3rem;
 	padding: 0.65rem 0.6rem;
 	color: var(--pfoa-text-on-structural);
+	font-family: var(--pfoa-font-display);
 	font-size: 0.76rem;
 	font-weight: 700;
 	letter-spacing: 0.025em;
@@ -1456,6 +1462,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	width: 100%;
 	min-height: 2.8rem;
 	padding: 0.65rem 1rem;
+	font-family: var(--pfoa-font-display);
 	font-size: 0.82rem;
 	white-space: normal;
 }
@@ -1500,7 +1507,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	padding: 0.65rem 0.95rem;
 	background: var(--pfoa-cta-primary);
 	color: var(--pfoa-text-on-action);
-	font-family: Georgia, "Times New Roman", serif;
+	font-family: var(--pfoa-font-display);
 	font-weight: 700;
 	line-height: 1.1;
 	text-decoration: none;
@@ -1554,7 +1561,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	display: inline-block;
 	padding: 0.25rem 0;
 	color: var(--pfoa-action-primary);
-	font-family: Georgia, "Times New Roman", serif;
+	font-family: var(--pfoa-font-display);
 	font-size: 0.68rem;
 	font-weight: 600;
 	letter-spacing: 0.04em;
@@ -1598,7 +1605,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 
 .utility-group__label {
 	color: var(--pfoa-text-muted);
-	font-family: Georgia, "Times New Roman", serif;
+	font-family: var(--pfoa-font-display);
 	font-size: 0.68rem;
 	font-weight: 400;
 	letter-spacing: 0.01em;
@@ -1634,7 +1641,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	display: inline-block;
 	padding: 0.25rem 0;
 	color: var(--pfoa-action-primary);
-	font-family: Georgia, "Times New Roman", serif;
+	font-family: var(--pfoa-font-display);
 	font-size: 0.74rem;
 	font-weight: 600;
 	letter-spacing: 0.01em;
@@ -1762,6 +1769,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	border-bottom: 2px solid var(--pfoa-color-gold);
 	padding-bottom: var(--pfoa-space-2);
 	color: var(--pfoa-text-on-structural);
+	font-family: var(--pfoa-font-body);
 	font-size: 1.05rem;
 	letter-spacing: 0.035em;
 	text-transform: uppercase;
@@ -1787,7 +1795,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 .site-footer__title {
 	display: inline-block;
 	color: var(--pfoa-text-on-structural);
-	font-family: Georgia, "Times New Roman", serif;
+	font-family: var(--pfoa-font-display);
 	font-size: clamp(1.45rem, 2.5vw, 2rem);
 	font-weight: 700;
 	line-height: 1.1;
@@ -1803,6 +1811,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 .site-footer__description,
 .site-footer__support-copy {
 	color: var(--pfoa-text-on-structural);
+	font-family: var(--pfoa-font-body);
 }
 
 .site-footer__description {
@@ -1828,6 +1837,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 .site-footer .footer-menu a {
 	display: inline;
 	color: var(--pfoa-text-on-structural);
+	font-family: var(--pfoa-font-body);
 	line-height: 1.45;
 	text-decoration-thickness: 1px;
 	text-underline-offset: 0.16em;
@@ -1841,6 +1851,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 
 .site-footer__contact {
 	margin: 0;
+	font-family: var(--pfoa-font-body);
 }
 
 .site-footer__contact p {
@@ -1913,6 +1924,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	border-radius: 999px;
 	padding: 0.55rem 0.85rem;
 	color: var(--pfoa-text-on-structural);
+	font-family: var(--pfoa-font-body);
 	font-weight: 700;
 	line-height: 1.1;
 	text-decoration: none;
@@ -1937,6 +1949,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 
 .site-footer .site-info {
 	min-width: 0;
+	font-family: var(--pfoa-font-body);
 	font-size: 0.875rem;
 }
 
@@ -2046,6 +2059,8 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 		display: block;
 		min-height: 2.75rem;
 		padding: 0.7rem 1rem;
+		font-size: 0.875rem;
+		line-height: 1.4;
 	}
 
 	.primary-menu {
@@ -2068,6 +2083,8 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	.primary-menu a {
 		min-height: 3.25rem;
 		padding: 0.8rem 1rem;
+		font-size: 0.875rem;
+		line-height: 1.3;
 		white-space: normal;
 	}
 
@@ -2124,7 +2141,8 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 		min-height: 3rem;
 		padding-block: 0.7rem;
 		padding-inline-start: 2rem;
-		font-size: 0.84rem;
+		font-size: 0.875rem;
+		line-height: 1.3;
 	}
 
 	.primary-menu .sub-menu .submenu-toggle {
@@ -2363,34 +2381,36 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	max-width: 11ch;
 	margin: 0;
 	color: #ffffff;
-	font-size: clamp(2.75rem, 7vw, 6rem);
+	font-family: var(--pfoa-font-display);
+	font-weight: 700;
+	font-size: clamp(2.75rem, 7vw, 5rem);
 	letter-spacing: -0.025em;
-	line-height: 0.98;
+	line-height: 1.02;
 	text-shadow: 0 0.1em 0.8em rgb(33 30 29 / 22%);
 }
 
 .front-page-content .homepage-hero__title.scale-70 {
-	font-size: clamp(1.925rem, 4.9vw, 4.2rem);
+	font-size: clamp(1.925rem, 4.9vw, 3.5rem);
 }
 
 .front-page-content .homepage-hero__title.scale-80 {
-	font-size: clamp(2.2rem, 5.6vw, 4.8rem);
+	font-size: clamp(2.2rem, 5.6vw, 4rem);
 }
 
 .front-page-content .homepage-hero__title.scale-90 {
-	font-size: clamp(2.475rem, 6.3vw, 5.4rem);
+	font-size: clamp(2.475rem, 6.3vw, 4.5rem);
 }
 
 .front-page-content .homepage-hero__title.scale-100 {
-	font-size: clamp(2.75rem, 7vw, 6rem);
+	font-size: clamp(2.75rem, 7vw, 5rem);
 }
 
 .front-page-content .homepage-hero__title.scale-110 {
-	font-size: clamp(3.025rem, 7.7vw, 6.6rem);
+	font-size: clamp(3.025rem, 7.7vw, 5rem);
 }
 
 .front-page-content .homepage-hero__title.scale-120 {
-	font-size: clamp(3.3rem, 8.4vw, 7.2rem);
+	font-size: clamp(3.3rem, 8.4vw, 5rem);
 }
 
 /* PFOA 0.1.95 — Widen desktop hero headline measure (~3x ch, raised content cap; mobile/tablet-small untouched). */
@@ -2441,6 +2461,8 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	border-color: rgb(255 255 255 / 78%);
 	background: rgb(33 30 29 / 20%);
 	color: #ffffff;
+	font-family: var(--pfoa-font-display);
+	font-weight: 700;
 }
 
 .front-page-content .homepage-hero__secondary:hover,
@@ -2629,7 +2651,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	padding: 0.65rem 1rem;
 	background: var(--pfoa-cta-primary);
 	color: var(--pfoa-text-on-action);
-	font-family: Georgia, "Times New Roman", serif;
+	font-family: var(--pfoa-font-display);
 	font-weight: 700;
 	line-height: 1.2;
 }
@@ -3326,31 +3348,31 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	}
 
 	.front-page-content .homepage-hero__title {
-		font-size: clamp(2.25rem, 12vw, 3.75rem);
+		font-size: clamp(2rem, 10vw, 3rem);
 	}
 
 	.front-page-content .homepage-hero__title.scale-70 {
-		font-size: clamp(1.575rem, 8.4vw, 2.625rem);
+		font-size: clamp(1.4rem, 7vw, 2.1rem);
 	}
 
 	.front-page-content .homepage-hero__title.scale-80 {
-		font-size: clamp(1.8rem, 9.6vw, 3rem);
+		font-size: clamp(1.6rem, 8vw, 2.4rem);
 	}
 
 	.front-page-content .homepage-hero__title.scale-90 {
-		font-size: clamp(2.025rem, 10.8vw, 3.375rem);
+		font-size: clamp(1.8rem, 9vw, 2.7rem);
 	}
 
 	.front-page-content .homepage-hero__title.scale-100 {
-		font-size: clamp(2.25rem, 12vw, 3.75rem);
+		font-size: clamp(2rem, 10vw, 3rem);
 	}
 
 	.front-page-content .homepage-hero__title.scale-110 {
-		font-size: clamp(2.475rem, 13.2vw, 4.125rem);
+		font-size: clamp(2.2rem, 11vw, 3rem);
 	}
 
 	.front-page-content .homepage-hero__title.scale-120 {
-		font-size: clamp(2.7rem, 14.4vw, 4.5rem);
+		font-size: clamp(2.4rem, 12vw, 3rem);
 	}
 
 	.front-page-content .homepage-pathways__grid,
@@ -3497,7 +3519,7 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 }
 
 .site-footer--compact .site-footer__map-note {
-	color: rgb(255 255 255 / 82%);
+	color: var(--pfoa-text-on-structural);
 }
 
 .site-footer--compact .site-footer__legal-row {
@@ -3622,7 +3644,8 @@ div.pfoa-cat-cards h3.pfoa-cat-card-title {
 div.pfoa-cat-cards p.pfoa-cat-card-status,
 div.pfoa-cat-cards p.pfoa-cat-card-note {
 	margin: 0.25rem 0 0;
-	color: var(--pfoa-color-muted);
+	color: var(--pfoa-text-muted);
+	font-family: var(--pfoa-font-body);
 	font-size: 0.875rem;
 	line-height: 1.5;
 	overflow-wrap: break-word;
@@ -3752,7 +3775,7 @@ div.pfoa-cat-cards .pfoa-cat-bonded-footer h3 a {
 div.pfoa-cat-cards h3.pfoa-cat-card-title,
 div.pfoa-cat-cards h3.pfoa-cat-bonded-title,
 div.pfoa-cat-cards .pfoa-cat-bonded-footer h3 {
-	font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-family: var(--pfoa-font-display);
 	font-style: normal;
 	font-weight: 700;
 	font-size: 1.05rem;
@@ -3771,7 +3794,8 @@ div.pfoa-cat-cards .pfoa-cat-bonded-footer h3 a:not(:focus-visible) {
 div.pfoa-cat-cards p.pfoa-cat-bonded-relationship,
 div.pfoa-cat-cards .pfoa-cat-bonded-footer p {
 	margin: 0.25rem 0 0;
-	color: var(--pfoa-color-muted);
+	color: var(--pfoa-text-muted);
+	font-family: var(--pfoa-font-body);
 	font-style: normal;
 	font-size: 0.875rem;
 	line-height: 1.5;
@@ -3825,6 +3849,7 @@ div.pfoa-cat-cards .pfoa-cat-bonded-badge {
 	border: 1px solid #ffffff;
 	border-radius: 999px;
 	box-shadow: 0 1px 3px rgba(33, 30, 29, 0.35);
+	font-family: var(--pfoa-font-body);
 	font-size: 0.72rem;
 	font-weight: 800;
 	line-height: 1.4;
@@ -3954,8 +3979,9 @@ body.page-id-22514 .pfoa-adopted-bonded-group .gallery-item .gallery-caption {
 	margin-left: 0;
 	margin-right: 0;
 	color: var(--pfoa-text-muted);
-	font-size: 0.8rem;
-	line-height: 1.4;
+	font-family: var(--pfoa-font-body);
+	font-size: 0.875rem;
+	line-height: 1.5;
 	text-align: center;
 }
 
@@ -3987,6 +4013,7 @@ body.page-id-22514 .pfoa-adopted-bonded-footer {
 body.page-id-22514 .pfoa-adopted-bonded-title {
 	margin: 0.25rem 0 0;
 	color: var(--pfoa-action-primary);
+	font-family: var(--pfoa-font-display);
 	font-weight: 700;
 	font-size: 1.05rem;
 	line-height: 1.3;
@@ -3996,6 +4023,7 @@ body.page-id-22514 .pfoa-adopted-bonded-title {
 body.page-id-22514 .pfoa-adopted-bonded-relationship {
 	margin: 0.25rem 0 0;
 	color: var(--pfoa-text-muted);
+	font-family: var(--pfoa-font-body);
 	font-size: 0.875rem;
 	line-height: 1.5;
 	text-align: center;
@@ -4104,98 +4132,10 @@ body.page-id-22514 .pfoa-adopted-bonded-relationship {
 	}
 }
 
-/* PFOA 0.1.71 — Desktop primary-nav Palatino serif experiment (CSS-only, >=1320px).
- * Switch ONLY desktop primary nav + dropdowns from system sans to a
- * Palatino-first serif stack at 700 weight; Title Case preserved.
- * Two steps (1320-1439px: 1.15rem/1.05rem; >=1440px: 1.20rem/1.10rem);
- * no 1600px increase. Sizes, line heights, letter spacing, row heights,
- * link padding, and breakpoints unchanged from 0.1.70. Utility grouping
- * (Georgia 0.875rem/500 + 0.95rem/600), logo overlap, grid, dividers,
- * sticky, Donate, and mobile/tablet (<=1319px) untouched.
+/* PFOA 0.1.145 Stage B — Desktop nav uses base rules above
+ * (var(--pfoa-font-display), uppercase, 0.025em, 0.76rem/0.82rem).
+ * Retired 0.1.71 Palatino stack + 1.15/1.05/1.20/1.10rem enlargements.
  */
-@media (min-width: 1320px) {
-	.site-header__inner {
-		min-height: 5.5rem;
-	}
-
-	.utility-groups {
-		padding: 0.55rem 0 0.40rem;
-	}
-
-	.utility-group__label {
-		color: var(--pfoa-text-on-structural);
-		font-size: 0.875rem;
-		font-weight: 500;
-		letter-spacing: 0.01em;
-		line-height: 1.4;
-		text-transform: none;
-	}
-
-	.utility-group__list a {
-		font-size: 0.95rem;
-		font-weight: 600;
-		letter-spacing: 0.01em;
-		line-height: 1.4;
-		text-transform: none;
-	}
-
-	.main-navigation {
-		font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
-		font-synthesis: none;
-	}
-
-	.primary-menu a {
-		font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
-		font-weight: 700;
-		font-synthesis: none;
-		letter-spacing: 0.01em;
-		line-height: 1.35;
-		text-transform: none;
-	}
-
-	.primary-menu > .menu-item > a {
-		min-height: 3.25rem;
-		padding: 0.75rem 0.5rem;
-		line-height: 1.35;
-	}
-
-	.primary-menu .sub-menu a {
-		min-height: 3rem;
-		padding: 0.75rem 1rem;
-		font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
-		font-weight: 700;
-		font-synthesis: none;
-		letter-spacing: 0.01em;
-		line-height: 1.4;
-		text-transform: none;
-	}
-}
-
-@media (min-width: 1320px) and (max-width: 1439px) {
-	.primary-menu > .menu-item > a {
-		font-size: 1.15rem;
-	}
-
-	.primary-menu .sub-menu a {
-		font-size: 1.05rem;
-	}
-}
-
-@media (min-width: 1440px) {
-	.site-header__inner {
-		min-height: 5.75rem;
-	}
-
-	.primary-menu > .menu-item > a {
-		min-height: 3.5rem;
-		padding: 0.75rem 0.6rem;
-		font-size: 1.20rem;
-	}
-
-	.primary-menu .sub-menu a {
-		font-size: 1.10rem;
-	}
-}
 
 /* PFOA 0.1.72 — Transitional adoption-event rendering (presentation only).
  * Scoped strictly to body.page-id-22514. Renders immutable
@@ -4226,6 +4166,7 @@ body.page-id-22514 .pfoa-adoption-events {
 body.page-id-22514 .pfoa-adoption-event-title {
 	margin: 0 0 var(--pfoa-space-2);
 	color: var(--pfoa-action-primary);
+	font-family: var(--pfoa-font-display);
 	font-weight: 700;
 	font-size: 1.05rem;
 	line-height: 1.3;
@@ -4292,8 +4233,9 @@ body.page-id-22514 .pfoa-adoption-event-thumb img {
 body.page-id-22514 .pfoa-adoption-event-caption {
 	margin: 0;
 	color: var(--pfoa-text-muted);
-	font-size: 0.8rem;
-	line-height: 1.4;
+	font-family: var(--pfoa-font-body);
+	font-size: 0.875rem;
+	line-height: 1.5;
 	text-align: center;
 }
 
@@ -4308,8 +4250,9 @@ body.page-id-22514 .pfoa-adoption-event-thumb-missing {
 
 body.page-id-22514 .pfoa-adoption-event-missing-text {
 	color: var(--pfoa-text-muted);
-	font-size: 0.8rem;
-	line-height: 1.4;
+	font-family: var(--pfoa-font-body);
+	font-size: 0.875rem;
+	line-height: 1.5;
 }
 
 @media (max-width: 1319px) {
@@ -4531,6 +4474,7 @@ body.page-id-22514 .pfoa-adoption-event-together-badge {
 	border: 1px solid #ffffff;
 	border-radius: 999px;
 	box-shadow: 0 1px 3px rgba(33, 30, 29, 0.35);
+	font-family: var(--pfoa-font-body);
 	font-size: 0.72rem;
 	font-weight: 800;
 	line-height: 1.4;
@@ -4842,8 +4786,9 @@ body.page-id-22514 .entry-content .gallery > .pfoa-adoption-event-count-n {
 body.page-id-22514 .pfoa-adoption-event-date {
 	margin: 8px 0 0;
 	color: var(--pfoa-text-muted);
-	font-size: 0.85rem;
-	line-height: 1.45;
+	font-family: var(--pfoa-font-body);
+	font-size: 0.875rem;
+	line-height: 1.5;
 	text-align: center;
 }
 
@@ -5253,8 +5198,9 @@ body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-thumb-missing {
 
 body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-missing-text {
 	color: var(--pfoa-text-muted);
-	font-size: 0.8rem;
-	line-height: 1.4;
+	font-family: var(--pfoa-font-body);
+	font-size: 0.875rem;
+	line-height: 1.5;
 }
 
 /* Names sit below the correct photos in the shared blue centered style. */
@@ -5262,6 +5208,7 @@ body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-title {
 	flex: 0 0 auto;
 	margin: 10px 0 0;
 	color: var(--pfoa-action-primary);
+	font-family: var(--pfoa-font-display);
 	font-weight: 700;
 	font-size: 1.05rem;
 	line-height: 1.3;
@@ -5274,16 +5221,18 @@ body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-date {
 	min-height: 2.9em;
 	margin: 8px 0 0;
 	color: var(--pfoa-text-muted);
-	font-size: 0.85rem;
-	line-height: 1.45;
+	font-family: var(--pfoa-font-body);
+	font-size: 0.875rem;
+	line-height: 1.5;
 	text-align: center;
 }
 
 body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-caption:not(.screen-reader-text) {
 	margin: var(--pfoa-space-2) 0 0;
 	color: var(--pfoa-text-muted);
-	font-size: 0.8rem;
-	line-height: 1.4;
+	font-family: var(--pfoa-font-body);
+	font-size: 0.875rem;
+	line-height: 1.5;
 	text-align: center;
 }
 
@@ -5311,6 +5260,7 @@ body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-together-badge {
 	border: 1px solid #ffffff;
 	border-radius: 999px;
 	box-shadow: 0 1px 3px rgba(33, 30, 29, 0.35);
+	font-family: var(--pfoa-font-body);
 	font-size: 0.72rem;
 	font-weight: 800;
 	line-height: 1.4;
