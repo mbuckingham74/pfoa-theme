@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.146
+ Version: 0.1.147
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -424,6 +424,23 @@ body.single-pfoa_cat main.pfoa-cat-single {
 	margin-inline: auto;
 }
 
+/* PFOA 0.1.147 — centered reading column for ordinary interior Pages.
+ * Outer shell (.content-shell, 960px, margin-inline:auto) is untouched.
+ * This only centers the narrow prose measure inside it: max-width stays
+ * 720px (var(--pfoa-prose-width)), text stays left-aligned, H1-H6
+ * hierarchy/spacing/gutters unchanged. Scoped strictly to
+ * body.page .entry-content direct prose children + entry-header; never
+ * main, .content-shell width, blanket .entry-content, figures/galleries,
+ * compat gca-columns, front-page hero, cat rule, nav/footer/dialogs.
+ * NOTE (Volunteering mixed-media exception): pages with floated media
+ * (.alignright/.alignleft, e.g. Volunteering) keep their float rules
+ * untouched. A centered 720px measure next to a right-floated figure
+ * narrows the wrap lane (e.g. DIRECT ANIMAL CONTACT h2 may wrap to two
+ * lines at 1440px) — that is the deliberate, preserved float-wrap
+ * presentation, not a defect. No float, figure, gallery, or compat
+ * rules are changed here. Small viewports: 720px measure yields to the
+ * 100%-minus-gutters shell so prose becomes full available width.
+ */
 body.page .page-content .entry-header,
 body.page .entry-content > p,
 body.page .entry-content > ul,
@@ -438,6 +455,7 @@ body.page .entry-content > h5,
 body.page .entry-content > h6,
 body.page .entry-content > hr {
 	max-width: var(--pfoa-prose-width);
+	margin-inline: auto;
 }
 
 /* Buttons, action links, and form controls. */
@@ -777,8 +795,13 @@ body.page-id-22514 .entry-content > h1:first-child {
 
 body.page-id-22514 .entry-content > p {
 	max-width: 65ch;
+	margin-inline: auto;
 	margin-top: 0;
 	margin-bottom: var(--pfoa-space-3);
+	/* PFOA 0.1.147 — later-order 65ch intro keeps the centered reading
+	 * column (ties body.page group at 0,2,2, wins by order): 65ch measure
+	 * with auto inline margins centers at ~392-1047 on 1440px. Text stays
+	 * left-aligned; gallery/compat/float rules untouched. */
 }
 
 /* PFOA 0.1.129 — Adopted 2026 vertical rhythm (page 22514 scope only):
