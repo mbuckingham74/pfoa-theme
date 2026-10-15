@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.149
+ Version: 0.1.150
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -478,6 +478,21 @@ body.page .entry-content > hr {
 	body.page-id-4589 .page-content .entry-content > figure.alignright + h2 + ul {
 		max-width: 100%;
 		margin-inline: 0;
+	}
+}
+
+/* PFOA 0.1.150 — Volunteering float clearance (page-id-4589 only,
+ * browser-tested): place RECORD KEEPING AND GENERAL OFFICE WORK below
+ * Volunteering's second right-floated photograph while preserving its
+ * centered 720px reading measure. The target h2 is the direct sibling
+ * chain figure.alignright:nth-of-type(2) + h2(FUNDRAISING) +
+ * ul + h2(RECORD KEEPING). Clearance only — no width, typography,
+ * margin, float, or figure geometry change. Min-width:721px guard
+ * preserves mobile float-stack behavior.
+ */
+@media (min-width: 721px) {
+	body.page-id-4589 .entry-content > figure.alignright:nth-of-type(2) + h2 + ul + h2 {
+		clear: right;
 	}
 }
 
