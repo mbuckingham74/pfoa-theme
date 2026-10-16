@@ -330,7 +330,7 @@ foreach ( array( '24653', '24654', '24655', '24559' ) as $live_id ) {
 	fixture_assert( false === strpos( $functions_source, "'_pfoa_event_date', " . $live_id ), 'source: no hardcoded event ID ' . $live_id );
 }
 $css = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' );
-fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.143/', $css ), 'css: theme version 0.1.143' );
+fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.151/', $css ), 'css: theme version 0.1.151' );
 $block_pos = strpos( $css, 'body.page-id-20323 .pfoa-recently-adopted' );
 fixture_assert( false !== $block_pos, 'css: page-id-20323 scoped recently-adopted block' );
 $css_block = substr( $css, (int) $block_pos, 15000 );
@@ -340,6 +340,34 @@ fixture_assert( 1 === preg_match( '/pfoa-adoption-event--bonded,\s*body\.page-id
 fixture_assert( false !== strpos( $css_block, 'position: absolute' ), 'css: badge stays absolute (zero flow)' );
 fixture_assert( false !== strpos( $css_block, 'translate(-50%, 50%)' ), 'css: badge stays centered-straddle' );
 fixture_assert( false !== strpos( $css_block, '@media' ), 'css: responsive rules in scope' );
+
+// (RA-10) Plugin-down fail-open: real cat_post_ids with no helper doubles
+// and no stored flags are retained (null, never false) and reported
+// snapshot-unavailable; nothing is dropped.
+$GLOBALS['fixture_event_ids'] = array( 101, 102 );
+fixture_set_event( 101, 'uuid-plugin-down-single', '2026-10-13', array( fixture_member( 141, 'Solo', 7701 ) ) );
+fixture_set_event(
+	102,
+	'uuid-plugin-down-pair',
+	'2026-10-12',
+	array(
+		fixture_member( 142, 'Duo1', 7702 ),
+		fixture_member( 143, 'Duo2', 7703 ),
+	)
+);
+$top_down = pfoa_get_recently_adopted_events( 2 );
+fixture_assert( array( 101, 102 ) === fixture_ids( $top_down ), 'plugin-down: unresolvable members retained fail-open' );
+$down_report = isset( $GLOBALS['pfoa_recently_adopted_unresolvable_report'] ) ? $GLOBALS['pfoa_recently_adopted_unresolvable_report'] : null;
+fixture_assert( is_array( $down_report ), 'plugin-down: report exposed via $GLOBALS fallback (no apply_filters double)' );
+$down_codes = array();
+foreach ( (array) $down_report as $down_row ) {
+	$down_codes[] = (string) $down_row['code'];
+}
+fixture_assert( in_array( 'snapshot-unavailable', $down_codes, true ), 'plugin-down: snapshot-unavailable reported' );
+fixture_assert( ! in_array( 'returned', $down_codes, true ), 'plugin-down: absence of flags never proves return' );
+foreach ( (array) $down_report as $down_row ) {
+	fixture_assert( isset( $down_row['code'], $down_row['event_id'], $down_row['cat_post_id'], $down_row['detail'] ), 'plugin-down: report rows carry code/event_id/cat_post_id/detail' );
+}
 
 // No writes, no throws, read-only meta access.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during selection/presentation' );

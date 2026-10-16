@@ -4485,6 +4485,163 @@ if ( function_exists( 'add_filter' ) ) {
 }
 
 /**
+ * Currency + liveness resolver for one Recently Adopted member snapshot.
+ *
+ * Read-only: never writes postmeta/options. Returns true (keep), false
+ * (exclude), or null (keep fail-open + reported). Results are cached per
+ * cat_id + candidate event ID in $filter_state['cache']; unresolvable or
+ * excluded members append {code,event_id,cat_post_id,detail} to
+ * $filter_state['report'].
+ *
+ * Currency first: when pfoa_cat_get_current_adoption_event_id() exists and
+ * returns > 0, the cat appears ONLY under that event ID (mismatch =
+ * superseded/false). Otherwise forward-scan fallback over the selector's
+ * currency map (newest valid event containing the cat, date DESC ID DESC).
+ *
+ * Liveness second: pfoa_cat_is_adopted() when available is definitive;
+ * otherwise a stored '_pfoa_cat_adopted' === '1' proves adopted; otherwise
+ * pfoa_cat_get_profile_data() lifecycle.eligible_for_adoptable === true
+ * proves returned. Absence of proof is NOT proof of return: fail-open null
+ * + 'snapshot-unavailable'. cat_post_id 0 snapshots are retained + reported
+ * 'unresolvable-anonymous'. effectively_pending/record_status are never
+ * used as filters.
+ *
+ * @param int   $cat_id             Member cat_post_id (0 = anonymous snapshot).
+ * @param int   $candidate_event_id Valid event ID holding this snapshot.
+ * @param array $filter_state       In/out: currency_map, cache, report.
+ * @return bool|null True keep, false exclude, null keep fail-open.
+ */
+function pfoa_recently_adopted_is_currently_adopted( $cat_id, $candidate_event_id, &$filter_state ) {
+	$cat_id             = (int) $cat_id;
+	$candidate_event_id = (int) $candidate_event_id;
+
+	if ( ! is_array( $filter_state ) ) {
+		$filter_state = array();
+	}
+
+	if ( ! isset( $filter_state['currency_map'] ) || ! is_array( $filter_state['currency_map'] ) ) {
+		$filter_state['currency_map'] = array();
+	}
+
+	if ( ! isset( $filter_state['cache'] ) || ! is_array( $filter_state['cache'] ) ) {
+		$filter_state['cache'] = array();
+	}
+
+	if ( ! isset( $filter_state['report'] ) || ! is_array( $filter_state['report'] ) ) {
+		$filter_state['report'] = array();
+	}
+
+	if ( 0 >= $cat_id ) {
+		$filter_state['report'][] = array(
+			'code'        => 'unresolvable-anonymous',
+			'event_id'    => $candidate_event_id,
+			'cat_post_id' => 0,
+			'detail'      => 'Member snapshot carries no cat_post_id; retained fail-open.',
+		);
+
+		return null;
+	}
+
+	$cache_key = $cat_id . ':' . $candidate_event_id;
+
+	if ( array_key_exists( $cache_key, $filter_state['cache'] ) ) {
+		return $filter_state['cache'][ $cache_key ];
+	}
+
+	// Currency: authoritative current-event link first, forward-scan map
+	// (newest valid event containing the cat) otherwise.
+	$current_event_id = 0;
+	$currency_source  = 'forward-scan';
+
+	if ( function_exists( 'pfoa_cat_get_current_adoption_event_id' ) ) {
+		$current_event_id = (int) pfoa_cat_get_current_adoption_event_id( $cat_id );
+		$currency_source  = 'current-event-link';
+	}
+
+	if ( 0 >= $current_event_id && isset( $filter_state['currency_map'][ $cat_id ] ) ) {
+		$current_event_id = (int) $filter_state['currency_map'][ $cat_id ];
+		$currency_source  = 'forward-scan';
+	}
+
+	if ( 0 < $current_event_id && $current_event_id !== $candidate_event_id ) {
+		$filter_state['report'][] = array(
+			'code'        => 'superseded',
+			'event_id'    => $candidate_event_id,
+			'cat_post_id' => $cat_id,
+			'detail'      => 'Current adoption event is ' . $current_event_id . ' (' . $currency_source . '); candidate ' . $candidate_event_id . ' superseded.',
+		);
+
+		$filter_state['cache'][ $cache_key ] = false;
+
+		return false;
+	}
+
+	// Liveness (return detection): plugin helper is definitive when present.
+	if ( function_exists( 'pfoa_cat_is_adopted' ) ) {
+		$adopted = (bool) pfoa_cat_is_adopted( $cat_id );
+
+		if ( ! $adopted ) {
+			$filter_state['report'][] = array(
+				'code'        => 'returned',
+				'event_id'    => $candidate_event_id,
+				'cat_post_id' => $cat_id,
+				'detail'      => 'pfoa_cat_is_adopted() is false; treated as returned.',
+			);
+		}
+
+		$filter_state['cache'][ $cache_key ] = $adopted;
+
+		return $adopted;
+	}
+
+	// Without the helper, a stored flag still proves adopted, but its
+	// absence proves nothing (legacy/backfill snapshots may lack flags).
+	if ( function_exists( 'get_post_meta' ) ) {
+		$adopted_raw = get_post_meta( $cat_id, '_pfoa_cat_adopted', true );
+
+		if ( '1' === (string) $adopted_raw ) {
+			$filter_state['cache'][ $cache_key ] = true;
+
+			return true;
+		}
+	}
+
+	if ( function_exists( 'pfoa_cat_get_profile_data' ) ) {
+		$profile_data = pfoa_cat_get_profile_data( $cat_id );
+
+		if ( is_array( $profile_data ) && isset( $profile_data['lifecycle'] ) && is_array( $profile_data['lifecycle'] ) && array_key_exists( 'eligible_for_adoptable', $profile_data['lifecycle'] ) ) {
+			if ( true === $profile_data['lifecycle']['eligible_for_adoptable'] ) {
+				$filter_state['report'][] = array(
+					'code'        => 'returned',
+					'event_id'    => $candidate_event_id,
+					'cat_post_id' => $cat_id,
+					'detail'      => 'Profile lifecycle.eligible_for_adoptable is true; treated as returned.',
+				);
+
+				$filter_state['cache'][ $cache_key ] = false;
+
+				return false;
+			}
+
+			$filter_state['cache'][ $cache_key ] = true;
+
+			return true;
+		}
+	}
+
+	$filter_state['report'][] = array(
+		'code'        => 'snapshot-unavailable',
+		'event_id'    => $candidate_event_id,
+		'cat_post_id' => $cat_id,
+		'detail'      => 'No liveness signal resolvable; retained fail-open.',
+	);
+
+	$filter_state['cache'][ $cache_key ] = null;
+
+	return null;
+}
+
+/**
  * Recently adopted strip (page 20323): newest adoption events, cross-year.
  *
  * Presentation only, read-only wrt adoption events and cat profiles.
@@ -4492,8 +4649,12 @@ if ( function_exists( 'add_filter' ) ) {
  * filter on current Adoptable/Adopted state, keeps only events with a valid
  * historical YYYY-MM-DD adoption date, orders by adoption date DESC +
  * event post ID DESC (same deterministic rule as
- * pfoa_present_adoption_events()), and returns the first $limit (fewer when
- * fewer qualify). No hardcoded IDs.
+ * pfoa_present_adoption_events()), then applies return/re-adoption
+ * filtering per event type via pfoa_recently_adopted_is_currently_adopted()
+ * (singletons and bonded pairs drop whole on any false member;
+ * Adopted-Together multi events drop only false members), and fills
+ * forward past excluded events until $limit survivors are collected
+ * (fewer when fewer qualify). Never slice-then-filter. No hardcoded IDs.
  *
  * Membership, bonding, photos, and dates are NOT reinterpreted here: member
  * snapshots use the canonical pfoa_adoption_event_get_* readers (with the
@@ -4537,8 +4698,8 @@ function pfoa_get_recently_adopted_events( $limit = 4 ) {
 		return array();
 	}
 
-	$today  = function_exists( 'current_time' ) ? (string) current_time( 'Y-m-d' ) : gmdate( 'Y-m-d' );
-	$events = array();
+	$today      = function_exists( 'current_time' ) ? (string) current_time( 'Y-m-d' ) : gmdate( 'Y-m-d' );
+	$candidates = array();
 
 	foreach ( $event_ids as $event_id_raw ) {
 		$event_id = (int) $event_id_raw;
@@ -4673,7 +4834,7 @@ function pfoa_get_recently_adopted_events( $limit = 4 ) {
 			}
 		}
 
-		$events[] = array(
+		$candidates[] = array(
 			'id'          => $event_id,
 			'date'        => $event_date,
 			'uuid'        => $event_uuid,
@@ -4682,14 +4843,14 @@ function pfoa_get_recently_adopted_events( $limit = 4 ) {
 		);
 	}
 
-	if ( empty( $events ) ) {
+	if ( empty( $candidates ) ) {
 		return array();
 	}
 
 	// Same deterministic rule as pfoa_present_adoption_events(): adoption
 	// date DESC, event post ID DESC tie-break.
 	usort(
-		$events,
+		$candidates,
 		function ( $a, $b ) {
 			$date_cmp = strcmp( (string) $b['date'], (string) $a['date'] );
 
@@ -4705,7 +4866,108 @@ function pfoa_get_recently_adopted_events( $limit = 4 ) {
 		}
 	);
 
-	return array_slice( $events, 0, $limit );
+	// Currency map over ALL valid events (newest first wins): cat_post_id
+	// => newest valid event ID containing it. Feeds the forward-scan
+	// fallback inside pfoa_recently_adopted_is_currently_adopted().
+	$filter_state = array(
+		'currency_map' => array(),
+		'cache'        => array(),
+		'report'       => array(),
+	);
+
+	foreach ( $candidates as $candidate_event ) {
+		if ( ! is_array( $candidate_event ) || ! isset( $candidate_event['members'] ) || ! is_array( $candidate_event['members'] ) ) {
+			continue;
+		}
+
+		foreach ( $candidate_event['members'] as $map_member ) {
+			$map_cat = ( is_array( $map_member ) && isset( $map_member['cat_post_id'] ) ) ? (int) $map_member['cat_post_id'] : 0;
+
+			if ( 0 < $map_cat && ! isset( $filter_state['currency_map'][ $map_cat ] ) ) {
+				$filter_state['currency_map'][ $map_cat ] = (int) $candidate_event['id'];
+			}
+		}
+	}
+
+	// Per-type filtering in sorted order, collecting survivors until the
+	// limit (fill past exclusions; never slice-then-filter).
+	$survivors = array();
+
+	foreach ( $candidates as $candidate_event ) {
+		if ( count( $survivors ) >= $limit ) {
+			break;
+		}
+
+		if ( ! is_array( $candidate_event ) || ! isset( $candidate_event['members'] ) || ! is_array( $candidate_event['members'] ) || empty( $candidate_event['members'] ) ) {
+			continue;
+		}
+
+		$event_members = array_values( $candidate_event['members'] );
+		$member_count  = count( $event_members );
+		$event_id      = (int) $candidate_event['id'];
+
+		if ( 1 === $member_count ) {
+			$single_cat = isset( $event_members[0]['cat_post_id'] ) ? (int) $event_members[0]['cat_post_id'] : 0;
+
+			if ( false === pfoa_recently_adopted_is_currently_adopted( $single_cat, $event_id, $filter_state ) ) {
+				continue;
+			}
+
+			$survivors[] = $candidate_event;
+			continue;
+		}
+
+		if ( 2 === $member_count && ! empty( $candidate_event['bonded_pair'] ) ) {
+			$bond_a = isset( $event_members[0]['cat_post_id'] ) ? (int) $event_members[0]['cat_post_id'] : 0;
+			$bond_b = isset( $event_members[1]['cat_post_id'] ) ? (int) $event_members[1]['cat_post_id'] : 0;
+
+			// Bonded pairs keep whole or drop whole; never downgrade to a
+			// singleton.
+			if ( false === pfoa_recently_adopted_is_currently_adopted( $bond_a, $event_id, $filter_state ) ) {
+				continue;
+			}
+
+			if ( false === pfoa_recently_adopted_is_currently_adopted( $bond_b, $event_id, $filter_state ) ) {
+				continue;
+			}
+
+			$survivors[] = $candidate_event;
+			continue;
+		}
+
+		// Adopted-Together (multi, not a strict bonded pair): drop only
+		// false members, retain true/null in stored order. The bonded_pair
+		// flag is left as-is so badge/count follow automatically.
+		$kept_members = array();
+
+		foreach ( $event_members as $together_member ) {
+			$together_cat = ( is_array( $together_member ) && isset( $together_member['cat_post_id'] ) ) ? (int) $together_member['cat_post_id'] : 0;
+
+			if ( false !== pfoa_recently_adopted_is_currently_adopted( $together_cat, $event_id, $filter_state ) ) {
+				$kept_members[] = $together_member;
+			}
+		}
+
+		if ( empty( $kept_members ) ) {
+			continue;
+		}
+
+		$candidate_event['members'] = array_values( $kept_members );
+		$survivors[]                = $candidate_event;
+	}
+
+	if ( function_exists( 'apply_filters' ) ) {
+		apply_filters( 'pfoa_recently_adopted_unresolvable', $filter_state['report'] );
+	}
+
+	$GLOBALS['pfoa_recently_adopted_unresolvable_report'] = $filter_state['report'];
+
+	if ( ! empty( $filter_state['report'] ) && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		$report_json = function_exists( 'wp_json_encode' ) ? (string) wp_json_encode( $filter_state['report'] ) : (string) json_encode( $filter_state['report'] );
+		error_log( 'pfoa_recently_adopted_unresolvable: ' . $report_json ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+	}
+
+	return $survivors;
 }
 
 /**
