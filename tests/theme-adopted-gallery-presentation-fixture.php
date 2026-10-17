@@ -146,6 +146,13 @@ function fixture_assert( $condition, $message ) {
 	}
 }
 
+function fixture_require( $condition, $invariant, $detail ) {
+	if ( ! $condition ) {
+		fwrite( STDERR, "FAIL [{$invariant}]: {$detail}\n" );
+		exit( 1 );
+	}
+}
+
 function fixture_set_event( $event_id, $uuid, $date, $members ) {
 	$GLOBALS['fixture_meta'][ (int) $event_id ] = array(
 		'_pfoa_event_year'    => '2026',
@@ -287,13 +294,13 @@ fixture_assert( false !== strpos( $out, 'pfoa-adoption-event-count-1' ), 'groupi
 // of the 5 multi-cat events below is non-bonded (no bonded helpers defined
 // yet, cat_post_id 0), so each carries exactly one green Adopted Together
 // badge; no red bonded badge renders anywhere in this set.
-fixture_assert( 5 === substr_count( $out, 'pfoa-adoption-event-together-badge' ), 'badges: every non-bonded multi-cat event carries the green badge (5 multis)' );
-fixture_assert( 5 === substr_count( $out, 'Adopted Together' ), 'badges: green badge text on all non-bonded multis' );
-fixture_assert( 0 === substr_count( $out, 'pfoa-adoption-event-bonded-badge' ), 'badges: no red bonded badge in the all-non-bonded set' );
+fixture_require( 5 === substr_count( $out, 'pfoa-adoption-event-together-badge' ), 'Adopted Together gallery', 'expected exactly 5 green badges on all-non-bonded multis, found ' . substr_count( $out, 'pfoa-adoption-event-together-badge' ) );
+fixture_require( 5 === substr_count( $out, 'Adopted Together' ), 'Adopted Together gallery', 'expected green badge text on all 5 non-bonded multis' );
+fixture_require( 0 === substr_count( $out, 'pfoa-adoption-event-bonded-badge' ), 'Adopted Together gallery', 'expected 0 red bonded badges in the all-non-bonded set' );
 $solo_badge_evt  = strpos( $out, 'data-pfoa-adoption-event="uuid-same-low"' );
 $solo_badge_next = strpos( $out, 'data-pfoa-adoption-event="uuid-same-high"', (int) $solo_badge_evt );
 $solo_badge_card = substr( $out, (int) $solo_badge_evt, (int) $solo_badge_next - (int) $solo_badge_evt );
-fixture_assert( false === strpos( $solo_badge_card, 'badge' ), 'badges: singleton carries no badge' );
+fixture_require( false === strpos( $solo_badge_card, 'badge' ), 'Single gallery', 'expected singleton carries no badge markup' );
 
 // (AG-12 conditional badges on TRUE bonded pairs, PFOA 0.1.86) A reciprocal
 // bonded pair keeps its --bonded classification (class + metadata) and
@@ -328,13 +335,16 @@ fixture_set_event(
 	)
 );
 $out_bonded = pfoa_present_adoption_events( fixture_gallery( array( 701, 702 ) ) );
-fixture_assert( false !== strpos( $out_bonded, 'pfoa-adoption-event--bonded' ), 'badges: true bonded pair keeps --bonded class' );
-fixture_assert( false !== strpos( $out_bonded, 'pfoa-adoption-event-count-2' ), 'badges: bonded pair keeps count-2 class' );
-fixture_assert( 1 === substr_count( $out_bonded, 'pfoa-adoption-event-bonded-badge' ), 'badges: bonded pair renders the red bonded badge' );
-fixture_assert( 1 === substr_count( $out_bonded, 'Bonded Pair' ), 'badges: bonded pair red badge text' );
-fixture_assert( false !== strpos( $out_bonded, 'adopted together as a bonded pair' ), 'badges: bonded pair screen-reader suffix' );
-fixture_assert( false === strpos( $out_bonded, 'pfoa-adoption-event-together-badge' ), 'badges: bonded pair renders no green badge' );
-fixture_assert( false === strpos( $out_bonded, 'Adopted Together' ), 'badges: no adopted-together text on a bonded pair' );
+fixture_require( false !== strpos( $out_bonded, 'pfoa-adoption-event--bonded' ), 'Bonded Pair gallery', 'expected true bonded pair keeps --bonded class' );
+fixture_require( false !== strpos( $out_bonded, 'pfoa-adoption-event-count-2' ), 'Bonded Pair gallery', 'expected bonded pair keeps count-2 class' );
+fixture_require( 1 === substr_count( $out_bonded, 'pfoa-adoption-event-bonded-badge' ), 'Bonded Pair gallery', 'expected exactly 1 red bonded badge, found ' . substr_count( $out_bonded, 'pfoa-adoption-event-bonded-badge' ) );
+fixture_require( 1 === substr_count( $out_bonded, 'Bonded Pair' ), 'Bonded Pair gallery', 'expected exactly 1 red "Bonded Pair" text node' );
+fixture_require( false !== strpos( $out_bonded, 'adopted together as a bonded pair' ), 'Bonded Pair gallery', 'expected bonded screen-reader suffix' );
+fixture_require( false === strpos( $out_bonded, 'pfoa-adoption-event-together-badge' ), 'Bonded Pair gallery', 'expected 0 green together badges on bonded pair (universal-green regression)' );
+fixture_require( false === strpos( $out_bonded, 'Adopted Together' ), 'Bonded Pair gallery', 'expected no adopted-together text on a bonded pair' );
+// Badge CSS guard: gallery scope keeps red brand + green CTA colors.
+fixture_require( 1 === preg_match( '/body\.page-id-22514 \.pfoa-adoption-event-bonded-badge\s*\{\s*background:\s*var\(--pfoa-color-brand\)/', $css_late = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' ) ), 'CSS gallery red color', 'expected gallery red badge background var(--pfoa-color-brand) (#934244)' );
+fixture_require( 1 === preg_match( '/body\.page-id-22514 \.pfoa-adoption-event-together-badge\s*\{\s*background:\s*var\(--pfoa-cta-primary\)/', $css_late ), 'CSS gallery green color', 'expected gallery green badge background var(--pfoa-cta-primary) (#057205)' );
 
 // (PFOA 0.1.125 regression) Solo title + date remain within the solo card:
 // members render first, then title, then date — all inside the same

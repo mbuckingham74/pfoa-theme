@@ -54,6 +54,13 @@ if [[ -z "$version" ]]; then
 	exit 1
 fi
 
+# Mandatory theme verification gate: badge/presentation fixtures must pass
+# before any zip is produced, so badge regressions block the release.
+if ! "$script_dir/verify-theme.sh"; then
+	echo "Error: Theme verification failed — refusing to build." >&2
+	exit 1
+fi
+
 mkdir -p "$dist_dir"
 archive="$dist_dir/pfoa-theme-$version.zip"
 build_dir="$(mktemp -d "${TMPDIR:-/tmp}/pfoa-theme-build.XXXXXX")"
