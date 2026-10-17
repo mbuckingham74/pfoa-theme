@@ -15,7 +15,7 @@
 # Run with:
 #   bash scripts/verify-theme.sh; echo $?
 #
-# Exits nonzero if php is missing, if no fixtures are found, or if any
+# Exits nonzero if php or a mandatory baseline fixture is missing, or if any
 # fixture fails. Each failure names the failing fixture file so the
 # broken invariant is traceable via that fixture's own FAIL diagnostic.
 
@@ -30,19 +30,39 @@ if ! command -v php >/dev/null 2>&1; then
 	exit 1
 fi
 
+# The eight fixtures present at regression gate 441d05a are mandatory.
+# Discovery alone would silently weaken the gate when a file is deleted.
+mandatory_fixtures=(
+	theme-adoption-badge-conditional-fixture.php
+	theme-adoption-event-gallery-integrity-fixture.php
+	theme-adoption-event-legacy-anchor-fixture.php
+	theme-adoption-event-senior-shadow-fixture.php
+	theme-adoption-universal-green-regression-fixture.php
+	theme-adopted-gallery-presentation-fixture.php
+	theme-recently-adopted-currency-fixture.php
+	theme-recently-adopted-selection-fixture.php
+)
+missing=0
+for fixture in "${mandatory_fixtures[@]}"; do
+	if [[ ! -f "$tests_dir/$fixture" || -L "$tests_dir/$fixture" ]]; then
+		echo "Error: mandatory theme verification fixture missing or symlinked: $fixture" >&2
+		missing=1
+	fi
+done
+if (( missing )); then
+	exit 1
+fi
+
 shopt -s nullglob
 # shellcheck disable=SC2206
 fixtures=(
-	$tests_dir/theme-adoption-*.php
-	$tests_dir/theme-adopted-gallery-*.php
-	$tests_dir/theme-recently-adopted-*.php
+	"$tests_dir"/theme-adoption-*.php
+	"$tests_dir"/theme-adopted-gallery-*.php
+	"$tests_dir"/theme-recently-adopted-*.php
 )
 shopt -u nullglob
 
-# De-duplicate + deterministic order (globs are disjoint, but a future
-# regression fixture must never run twice or slip through unsorted).
-# shellcheck disable=SC2207
-fixtures=( $(printf '%s\n' "${fixtures[@]:-}" | LC_ALL=C sort -u) )
+# The patterns are disjoint; Bash expands each in deterministic name order.
 
 if (( ${#fixtures[@]} == 0 )); then
 	echo "Error: no theme verification fixtures found in $tests_dir (expected tests/theme-adoption-*.php, tests/theme-adopted-gallery-*.php, tests/theme-recently-adopted-*.php)." >&2

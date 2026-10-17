@@ -1,5 +1,8 @@
 # Build output is reproducible and should not be versioned.
 /dist/*.zip
 
+# Deployment receipts, retained packages/backups, and per-run logs.
+/deployments/
+
 # Operating-system metadata does not belong in the repository or theme ZIP.
 .DS_Store
