@@ -283,20 +283,21 @@ fixture_assert( false !== strpos( $out, 'pfoa-adoption-event-count-3' ), 'groupi
 fixture_assert( false !== strpos( $out, 'pfoa-adoption-event-count-n' ), 'grouping: quad count class' );
 fixture_assert( false !== strpos( $out, 'pfoa-adoption-event-count-1' ), 'grouping: single count class' );
 
-// (AG-12 universal green, PFOA 0.1.129) Singleton carries no badge; each
-// of the 5 multi-cat events (2 trios, 1 quad, 2 pairs) carries exactly one
-// green Adopted Together badge; no red bonded badge renders anywhere.
-fixture_assert( 5 === substr_count( $out, 'pfoa-adoption-event-together-badge' ), 'badges: every multi-cat event carries the green badge (5 multis)' );
-fixture_assert( 5 === substr_count( $out, 'Adopted Together' ), 'badges: green badge text on all multis' );
-fixture_assert( 0 === substr_count( $out, 'pfoa-adoption-event-bonded-badge' ), 'badges: no red bonded badge on adopted gallery' );
+// (AG-12 conditional badges, PFOA 0.1.86) Singleton carries no badge; each
+// of the 5 multi-cat events below is non-bonded (no bonded helpers defined
+// yet, cat_post_id 0), so each carries exactly one green Adopted Together
+// badge; no red bonded badge renders anywhere in this set.
+fixture_assert( 5 === substr_count( $out, 'pfoa-adoption-event-together-badge' ), 'badges: every non-bonded multi-cat event carries the green badge (5 multis)' );
+fixture_assert( 5 === substr_count( $out, 'Adopted Together' ), 'badges: green badge text on all non-bonded multis' );
+fixture_assert( 0 === substr_count( $out, 'pfoa-adoption-event-bonded-badge' ), 'badges: no red bonded badge in the all-non-bonded set' );
 $solo_badge_evt  = strpos( $out, 'data-pfoa-adoption-event="uuid-same-low"' );
 $solo_badge_next = strpos( $out, 'data-pfoa-adoption-event="uuid-same-high"', (int) $solo_badge_evt );
 $solo_badge_card = substr( $out, (int) $solo_badge_evt, (int) $solo_badge_next - (int) $solo_badge_evt );
 fixture_assert( false === strpos( $solo_badge_card, 'badge' ), 'badges: singleton carries no badge' );
 
-// (AG-12 universal green on TRUE bonded pairs, PFOA 0.1.129) A reciprocal
-// bonded pair keeps its --bonded classification (class + metadata) but
-// renders the same green badge — never the red one.
+// (AG-12 conditional badges on TRUE bonded pairs, PFOA 0.1.86) A reciprocal
+// bonded pair keeps its --bonded classification (class + metadata) and
+// renders the red Bonded Pair badge — never the green one.
 function pfoa_cat_is_bonded( $cat_id ) {
 	return in_array( (int) $cat_id, array( 701, 702 ), true );
 }
@@ -329,10 +330,11 @@ fixture_set_event(
 $out_bonded = pfoa_present_adoption_events( fixture_gallery( array( 701, 702 ) ) );
 fixture_assert( false !== strpos( $out_bonded, 'pfoa-adoption-event--bonded' ), 'badges: true bonded pair keeps --bonded class' );
 fixture_assert( false !== strpos( $out_bonded, 'pfoa-adoption-event-count-2' ), 'badges: bonded pair keeps count-2 class' );
-fixture_assert( 1 === substr_count( $out_bonded, 'pfoa-adoption-event-together-badge' ), 'badges: bonded pair renders the green together badge' );
-fixture_assert( 1 === substr_count( $out_bonded, 'Adopted Together' ), 'badges: bonded pair green badge text' );
-fixture_assert( false === strpos( $out_bonded, 'pfoa-adoption-event-bonded-badge' ), 'badges: bonded pair renders no red badge' );
-fixture_assert( false === strpos( $out_bonded, 'Bonded Pair' ), 'badges: no bonded-pair text on adopted gallery' );
+fixture_assert( 1 === substr_count( $out_bonded, 'pfoa-adoption-event-bonded-badge' ), 'badges: bonded pair renders the red bonded badge' );
+fixture_assert( 1 === substr_count( $out_bonded, 'Bonded Pair' ), 'badges: bonded pair red badge text' );
+fixture_assert( false !== strpos( $out_bonded, 'adopted together as a bonded pair' ), 'badges: bonded pair screen-reader suffix' );
+fixture_assert( false === strpos( $out_bonded, 'pfoa-adoption-event-together-badge' ), 'badges: bonded pair renders no green badge' );
+fixture_assert( false === strpos( $out_bonded, 'Adopted Together' ), 'badges: no adopted-together text on a bonded pair' );
 
 // (PFOA 0.1.125 regression) Solo title + date remain within the solo card:
 // members render first, then title, then date — all inside the same

@@ -3986,15 +3986,16 @@ function pfoa_present_adoption_events( $content ) {
 		if ( ! empty( $names ) ) {
 			$combined_title = '<h2 class="pfoa-adoption-event-title">' . implode( ' &amp; ', array_map( 'esc_html', $names ) );
 
-		// PFOA 0.1.129 — presentation only: universal green "Adopted
-		// Together" badge on every multi-cat event (count 2+, bonded or
-		// not); singletons stay badge-free. Absolutely positioned by CSS
-		// so title/card geometry is unchanged; the visually-hidden suffix
-		// gives assistive-tech context. The $is_bonded_pair /
-		// $is_adopted_together calculation, semantic classes, and
-		// metadata above are preserved untouched — only this public badge
-		// render branch is unified.
-		if ( 1 < $member_count ) {
+		// PFOA 0.1.82 — presentation only: visible "Bonded Pair" badge
+		// inside the existing title (names stay primary). Absolutely
+		// positioned by CSS so title/card geometry is unchanged; the
+		// visually-hidden suffix gives assistive-tech context.
+		// PFOA 0.1.86 — presentation only: green "Adopted Together"
+		// badge for non-bonded multi-cat events; single-cat => no badge,
+		// true-bonded 2-member => red badge via the branch above.
+		if ( $is_bonded_pair ) {
+			$combined_title .= ' <span class="pfoa-adoption-event-bonded-badge">' . esc_html__( 'Bonded Pair', 'pfoa-theme' ) . '<span class="screen-reader-text"> ' . esc_html__( 'adopted together as a bonded pair', 'pfoa-theme' ) . '</span></span>';
+		} elseif ( $is_adopted_together ) {
 			$combined_title .= ' <span class="pfoa-adoption-event-together-badge">' . esc_html__( 'Adopted Together', 'pfoa-theme' ) . '<span class="screen-reader-text"> ' . esc_html__( 'in the same adoption event', 'pfoa-theme' ) . '</span></span>';
 		}
 
@@ -4820,8 +4821,9 @@ function pfoa_get_recently_adopted_events( $limit = 4 ) {
 		// Bonded-pair classification preserved in data exactly as in
 		// pfoa_present_adoption_events(): strict reciprocal validation via
 		// the Cat Profiles helpers, fail-closed; 3+ member events never
-		// bonded. The public badge below is nevertheless always green
-		// "Adopted Together" for count > 1.
+		// bonded. The public badge below is conditional (0.1.86): red
+		// "Bonded Pair" for true bonded pairs, green "Adopted Together"
+		// for non-bonded multi-cat events, none for singletons.
 		$member_count   = count( $members );
 		$is_bonded_pair = false;
 
@@ -4992,8 +4994,9 @@ function pfoa_get_recently_adopted_events( $limit = 4 ) {
  *
  * Presentation only: card markup mirrors pfoa_present_adoption_events()
  * (same div.pfoa-adoption-event[.multi][data-pfoa-adoption-event] wrapper,
- * combined ' & ' title, green "Adopted Together" badge on multi-cat events
- * only, historical date line, member grid via
+ * combined ' & ' title, conditional badge (red "Bonded Pair" for true
+ * bonded pairs, green "Adopted Together" for non-bonded multi-cat
+ * events, none for singletons), historical date line, member grid via
  * pfoa_adoption_event_member_media()). role="group" + aria-label are set
  * inline here because the shortcode path has no DOM-insertion pass.
  *
@@ -5039,7 +5042,14 @@ function pfoa_render_recently_adopted_event_card( $event ) {
 	if ( ! empty( $names ) ) {
 		$combined_title = '<h2 class="pfoa-adoption-event-title">' . implode( ' &amp; ', array_map( 'esc_html', $names ) );
 
-		if ( 1 < $member_count ) {
+		// Conditional badge (0.1.86 parity with pfoa_present_adoption_events):
+		// true bonded pair => red Bonded Pair; non-bonded multi-cat
+		// (2+ incl. 3+) => green Adopted Together; singleton => no badge.
+		// Classification ($is_bonded_pair from upstream bonded_pair data)
+		// is untouched — presentation only.
+		if ( $is_bonded_pair ) {
+			$combined_title .= ' <span class="pfoa-adoption-event-bonded-badge">' . esc_html__( 'Bonded Pair', 'pfoa-theme' ) . '<span class="screen-reader-text"> ' . esc_html__( 'adopted together as a bonded pair', 'pfoa-theme' ) . '</span></span>';
+		} elseif ( 2 <= $member_count ) {
 			$combined_title .= ' <span class="pfoa-adoption-event-together-badge">' . esc_html__( 'Adopted Together', 'pfoa-theme' ) . '<span class="screen-reader-text"> ' . esc_html__( 'in the same adoption event', 'pfoa-theme' ) . '</span></span>';
 		}
 

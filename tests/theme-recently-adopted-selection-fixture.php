@@ -9,11 +9,12 @@
  * tiebreak), cross-year coverage (no year filter), limit handling (default
  * 4, fewer when fewer qualify), invalid-date/future/missing-uuid/empty-
  * member exclusion, stored member order + photo/caption/name preservation,
- * green "Adopted Together" on multi-cat cards only (singletons badge-free),
- * section wrapper + aria grouping, shortcode limit attribute, empty-set '',
- * scoped CSS contract (Version 0.1.131, page-id-20323 block, no
- * bonded-badge, only green together-badge, no hardcoded IDs), and no DB
- * writes.
+ * conditional badges (red "Bonded Pair" for true bonded pairs, green
+ * "Adopted Together" for non-bonded multi-cat cards, singletons
+ * badge-free), section wrapper + aria grouping, shortcode limit attribute,
+ * empty-set '',
+ * scoped CSS contract (page-id-20323 block, red bonded-badge + green
+ * together-badge, no hardcoded IDs), and no DB writes.
  *
  * Run with:
  *   php tests/theme-recently-adopted-selection-fixture.php
@@ -243,7 +244,9 @@ fixture_set_event( 85, 'uuid-no-members', '2026-10-12', array() );
 $top_clean = pfoa_get_recently_adopted_events();
 fixture_assert( array( 22 ) === fixture_ids( $top_clean ), 'selection: invalid/future/uuid-less/memberless events excluded' );
 
-// (RA-06) Presentation: full shortcode render of the RA-01 set.
+// (RA-06) Presentation: full shortcode render of the RA-01 set. Both pairs
+// are non-bonded here (no bonded helpers defined yet, cat_post_id 0), so
+// both multi-cat cards carry the green badge; singletons stay badge-free.
 $GLOBALS['fixture_event_ids'] = array( 11, 22, 33, 44 );
 $out = pfoa_recently_adopted_events( array() );
 fixture_assert( 0 === strpos( $out, '<section class="pfoa-adoption-events pfoa-recently-adopted"' ), 'render: section wrapper with scope class' );
@@ -276,8 +279,9 @@ $GLOBALS['fixture_event_ids'] = array( 81 );
 $out_empty = pfoa_recently_adopted_events( array() );
 fixture_assert( '' === $out_empty, 'shortcode: empty string when nothing qualifies' );
 
-// (RA-08) Bonded classification preserved in data, public badge stays
-// green: a strict reciprocal pair keeps --bonded but renders Together.
+// (RA-08) Bonded classification preserved in data, public badge is
+// conditional red: a strict reciprocal pair keeps --bonded and renders the
+// red Bonded Pair badge — never the green one.
 function pfoa_cat_is_bonded( $cat_id ) {
 	return in_array( (int) $cat_id, array( 901, 902 ), true );
 }
@@ -311,12 +315,16 @@ $top_bonded = pfoa_get_recently_adopted_events( 1 );
 fixture_assert( true === ( $top_bonded[0]['bonded_pair'] ?? null ), 'data: true reciprocal pair classified bonded' );
 $out_bonded = pfoa_recently_adopted_events( array( 'limit' => 1 ) );
 fixture_assert( false !== strpos( $out_bonded, 'pfoa-adoption-event--bonded' ), 'render: bonded pair keeps --bonded class' );
-fixture_assert( 1 === substr_count( $out_bonded, 'pfoa-adoption-event-together-badge' ), 'render: bonded pair shows the green badge' );
-fixture_assert( false === strpos( $out_bonded, 'pfoa-adoption-event-bonded-badge' ), 'render: bonded pair shows no red badge' );
+fixture_assert( 1 === substr_count( $out_bonded, 'pfoa-adoption-event-bonded-badge' ), 'render: bonded pair shows the red badge' );
+fixture_assert( 1 === substr_count( $out_bonded, 'Bonded Pair' ), 'render: bonded pair red badge text' );
+fixture_assert( false !== strpos( $out_bonded, 'adopted together as a bonded pair' ), 'render: bonded pair screen-reader suffix' );
+fixture_assert( false === strpos( $out_bonded, 'pfoa-adoption-event-together-badge' ), 'render: bonded pair shows no green badge' );
+fixture_assert( false === strpos( $out_bonded, 'Adopted Together' ), 'render: no adopted-together text on a bonded pair' );
 
 // (RA-09) Theme source contract: version bump, shortcode registration,
-// deterministic ordering, no hardcoded IDs, no bonded-badge in the new
-// CSS block (page-id-20323 scoped), only the green together-badge.
+// deterministic ordering, no hardcoded IDs, and both badges styled in the
+// new CSS block (page-id-20323 scoped): red bonded-badge (#934244 via
+// --pfoa-color-brand) + green together-badge (#057205 via --pfoa-accent).
 $functions_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
 fixture_assert( false !== strpos( $functions_source, "add_shortcode( 'pfoa_recently_adopted'" ), 'source: shortcode registered' );
 fixture_assert( false !== strpos( $functions_source, 'function pfoa_get_recently_adopted_events' ), 'source: selector present' );
@@ -330,12 +338,14 @@ foreach ( array( '24653', '24654', '24655', '24559' ) as $live_id ) {
 	fixture_assert( false === strpos( $functions_source, "'_pfoa_event_date', " . $live_id ), 'source: no hardcoded event ID ' . $live_id );
 }
 $css = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' );
-fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.151/', $css ), 'css: theme version 0.1.151' );
+fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.157/', $css ), 'css: theme version 0.1.157' );
 $block_pos = strpos( $css, 'body.page-id-20323 .pfoa-recently-adopted' );
 fixture_assert( false !== $block_pos, 'css: page-id-20323 scoped recently-adopted block' );
 $css_block = substr( $css, (int) $block_pos, 15000 );
 fixture_assert( false !== strpos( $css_block, 'pfoa-adoption-event-together-badge' ), 'css: green together badge styled in scope' );
-fixture_assert( false === strpos( $css_block, 'bonded-badge' ), 'css: no bonded-badge in the new block' );
+fixture_assert( false !== strpos( $css_block, 'pfoa-adoption-event-bonded-badge' ), 'css: red bonded badge styled in scope' );
+fixture_assert( 1 === preg_match( '/\.pfoa-recently-adopted \.pfoa-adoption-event-bonded-badge\s*\{\s*background:\s*var\(--pfoa-color-brand\)/', $css_block ), 'css: bonded badge keeps brand red (#934244)' );
+fixture_assert( 1 === preg_match( '/\.pfoa-recently-adopted \.pfoa-adoption-event-together-badge\s*\{\s*background:\s*var\(--pfoa-cta-primary\)/', $css_block ), 'css: together badge keeps CTA green (#057205)' );
 fixture_assert( 1 === preg_match( '/pfoa-adoption-event--bonded,\s*body\.page-id-20323 \.pfoa-recently-adopted > \.pfoa-adoption-event--together\s*\{\s*position:\s*relative\s*;/', $css_block ), 'css: bonded+together cards establish badge containing block' );
 fixture_assert( false !== strpos( $css_block, 'position: absolute' ), 'css: badge stays absolute (zero flow)' );
 fixture_assert( false !== strpos( $css_block, 'translate(-50%, 50%)' ), 'css: badge stays centered-straddle' );
