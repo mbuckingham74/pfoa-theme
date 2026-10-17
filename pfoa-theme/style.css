@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.154
+ Version: 0.1.155
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -5492,100 +5492,141 @@ body.page-id-20323 .pfoa-adoptable-text p:last-child {
 		font-size: 1rem;
 	}
 }
-/* Pet Tidings (page 4799 only, theme 0.1.154) — centered layout, rhythm,
- * archive cleanup, non-sticky header.
- * The page is year + up to 4 season PDF links per row with empty <td></td>
- * fillers authored in content. Hiding empty cells on all breakpoints lets
- * populated cells share the row without gaps. Headings and paragraphs keep
- * the shared 720px centered measure; the form and archive are centered in
- * the same lane so nothing drifts wide. Vertical spacing only separates the
- * current-edition note, preferences form, past-issues heading, and archive.
- * The header stays in normal flow on this page so screen captures show a
- * single header. Strict scope: every selector below starts with
- * body.page-id-4799, so other pages, header/nav, and the preferences form
- * function ([pfoa_pet_tidings_preferences] / pfoa-pt-*) are untouched.
- * Content (years, labels, PDF links) is unchanged — presentation only.
+/* Pet Tidings (page 4799 only, theme 0.1.155) — centered layout, intro grid,
+ * prefs rhythm, archive rows, non-sticky header.
+ * Supports fixer markup contract: div.wp-block-group.pfoa-pt-page >
+ * h2.pfoa-pt-title, div.pfoa-pt-intro (__media + __text), div.pfoa-pt-follow,
+ * section.pfoa-pt-prefs (h2.pfoa-pt-section + [pfoa_pet_tidings_preferences]),
+ * current-edition .wp-block-buttons, div.pfoa-pt-archive (__row/__year/__links).
+ * Supersedes 0.1.154 table/float rules — no td:empty, no wp-block-table
+ * card rules. Strict scope: every selector below starts with
+ * body.page-id-4799, so other pages stay untouched. The preferences form
+ * internals (.pfoa-pt-form / .pfoa-pt-wrap function) are not restyled beyond
+ * lane width; header/nav/footer keep site design except the existing
+ * non-sticky header rule. Content (labels, URLs) unchanged — presentation only.
  */
+body.page-id-4799 .entry-content div.wp-block-group.pfoa-pt-page {
+	max-width: min(46rem, 100%);
+	margin-inline: auto;
+	overflow-wrap: break-word;
+}
+body.page-id-4799 .entry-content section.pfoa-pt-prefs,
+body.page-id-4799 .entry-content div.pfoa-pt-archive {
+	max-width: min(46rem, 100%);
+	margin-inline: auto;
+}
 body.page-id-4799 .entry-content .pfoa-pt-wrap {
-	max-width: min(44rem, 100%);
+	max-width: 100%;
 	margin-inline: auto;
-	margin-block: 2rem;
-	clear: both;
 }
-body.page-id-4799 .entry-content .wp-block-buttons {
-	margin-block: 1.5rem;
+body.page-id-4799 .entry-content h2.pfoa-pt-title,
+body.page-id-4799 .entry-content h2.pfoa-pt-section {
+	text-align: center;
+	text-wrap: balance;
+	margin-block: 0 1rem;
 }
-body.page-id-4799 .entry-content figure.wp-block-table {
-	max-width: var(--pfoa-prose-width);
-	margin-inline: auto;
-	margin-top: 1.5rem;
-	overflow-x: visible;
+body.page-id-4799 .entry-content div.pfoa-pt-intro,
+body.page-id-4799 .entry-content div.pfoa-pt-follow,
+body.page-id-4799 .entry-content section.pfoa-pt-prefs,
+body.page-id-4799 .entry-content div.pfoa-pt-archive {
+	margin-block: 2.25rem;
 }
-body.page-id-4799 .entry-content figure.wp-block-table table {
-	width: 100%;
-	table-layout: auto;
+body.page-id-4799 .entry-content div.pfoa-pt-intro {
+	margin-block-start: 1.5rem;
+	display: grid;
+	grid-template-columns: 210px minmax(0, 1fr);
+	gap: 1.5rem;
+	align-items: start;
 }
-body.page-id-4799 .entry-content figure.wp-block-table table td:empty {
-	display: none;
+body.page-id-4799 .entry-content div.pfoa-pt-intro__media {
+	min-width: 0;
 }
-body.page-id-4799 .entry-content figure.wp-block-table table td {
-	padding: 0.5rem 0.75rem;
-	overflow-wrap: normal;
-	word-break: normal;
+body.page-id-4799 .entry-content div.pfoa-pt-intro__media figure.wp-block-image {
+	float: none;
+	margin: 0;
+	max-width: 100%;
 }
-body.page-id-4799 .entry-content figure.wp-block-table table td:first-child {
-	width: 1%;
-	white-space: nowrap;
+body.page-id-4799 .entry-content div.pfoa-pt-intro__media figure.wp-block-image img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	border-radius: var(--pfoa-radius);
+}
+body.page-id-4799 .entry-content div.pfoa-pt-intro__text {
+	min-width: 0;
+}
+body.page-id-4799 .entry-content div.pfoa-pt-intro__text > p:first-child {
+	margin-top: 0;
+}
+body.page-id-4799 .entry-content div.pfoa-pt-follow p {
+	margin-block: 1rem;
+}
+body.page-id-4799 .entry-content div.wp-block-group.pfoa-pt-page > div.wp-block-buttons,
+body.page-id-4799 .entry-content div.pfoa-pt-page .wp-block-buttons {
+	justify-content: center;
+	margin-block: 2.25rem;
+}
+body.page-id-4799 .entry-content div.pfoa-pt-archive {
+	overflow-x: clip;
+}
+body.page-id-4799 .entry-content div.pfoa-pt-archive__row {
+	display: flex;
+	align-items: baseline;
+	gap: 1rem;
+	padding: 0.5rem 0;
+	border-bottom: 1px solid var(--pfoa-border-default);
+}
+body.page-id-4799 .entry-content div.pfoa-pt-archive__row:first-child {
+	border-top: 1px solid var(--pfoa-border-default);
+}
+body.page-id-4799 .entry-content span.pfoa-pt-archive__year {
+	flex: 0 0 4ch;
 	font-weight: 700;
 }
-body.page-id-4799 .entry-content figure.wp-block-table table td a {
+body.page-id-4799 .entry-content span.pfoa-pt-archive__links {
 	display: inline-flex;
-	align-items: center;
-	gap: 0.35rem;
-	padding-block: 0.4rem;
-	white-space: nowrap;
-	overflow-wrap: normal;
-	word-break: normal;
+	flex-wrap: wrap;
+	gap: 0.5rem 1rem;
+	min-width: 0;
+}
+body.page-id-4799 .entry-content span.pfoa-pt-archive__links a {
+	overflow-wrap: anywhere;
 }
 @media (max-width: 600px) {
-	body.page-id-4799 .entry-content figure.wp-block-table {
+	body.page-id-4799 .entry-content div.wp-block-group.pfoa-pt-page,
+	body.page-id-4799 .entry-content section.pfoa-pt-prefs,
+	body.page-id-4799 .entry-content div.pfoa-pt-archive {
 		max-width: 100%;
-		overflow-x: visible;
+		overflow-x: clip;
 	}
-	body.page-id-4799 .entry-content figure.wp-block-table table,
-	body.page-id-4799 .entry-content figure.wp-block-table tbody {
-		display: block;
-		width: 100%;
+	body.page-id-4799 .entry-content div.pfoa-pt-intro {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 1rem;
 	}
-	body.page-id-4799 .entry-content figure.wp-block-table table {
-		border: 0;
+	body.page-id-4799 .entry-content div.pfoa-pt-intro__media {
+		max-width: 240px;
+		margin-inline: auto;
 	}
-	body.page-id-4799 .entry-content figure.wp-block-table tr {
-		display: flex;
+	body.page-id-4799 .entry-content div.pfoa-pt-archive__row {
 		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.5rem 0.6rem;
-		border: 1px solid var(--pfoa-border-default);
-		border-radius: 0.5rem;
-		padding: 0.75rem 0.85rem;
-		margin-bottom: 0.75rem;
-		background: #fff;
+		gap: 0.5rem;
+		padding: 0.75rem 0;
 	}
-	body.page-id-4799 .entry-content figure.wp-block-table table td {
+	body.page-id-4799 .entry-content span.pfoa-pt-archive__year {
+		flex-basis: 100%;
+	}
+	body.page-id-4799 .entry-content span.pfoa-pt-archive__links {
+		flex-basis: 100%;
+		gap: 0.5rem 0.6rem;
+	}
+	body.page-id-4799 .entry-content span.pfoa-pt-archive__links a {
 		display: inline-flex;
 		align-items: center;
-		border: 0;
-		padding: 0;
-	}
-	body.page-id-4799 .entry-content figure.wp-block-table table td:first-child {
-		flex-basis: 100%;
-		width: auto;
-	}
-	body.page-id-4799 .entry-content figure.wp-block-table table td a {
 		border: 1px solid var(--pfoa-border-default);
 		border-radius: 999px;
 		padding: 0.45rem 0.85rem;
 		background: var(--pfoa-surface-subtle);
+		text-decoration: none;
 	}
 }
 @media (min-width: 1320px) {
