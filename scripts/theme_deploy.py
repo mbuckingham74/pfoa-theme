@@ -15,7 +15,6 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-import time
 from datetime import datetime, timezone
 import uuid
 import zipfile
@@ -171,6 +170,11 @@ class Deployment:
         self.log.flush()
         if proc.returncode:
             detail = (err or out).decode(errors="replace")[-3000:].strip()
+            if proc.returncode in (124, 137, -signal.SIGKILL):
+                detail = "hard deadline expired or process received SIGKILL; work may be incomplete. " + detail
+                self.receipt["command_termination"] = {
+                    "stage": stage, "exit_code": proc.returncode,
+                    "cause": "hard deadline or SIGKILL"}
             raise RuntimeError(f"{stage}: command exited {proc.returncode}: {detail}")
         return out.decode("utf-8").strip()
 
@@ -218,10 +222,10 @@ class Deployment:
             command = self.container("php", "-r", "echo hash_file('sha256', $argv[1]);", path)
         else:
             command = "sha256sum -- " + shlex.quote(path)
-        result = self.ssh(stage, command).split()[0]
-        if not re.fullmatch("[0-9a-f]{64}", result):
+        fields = self.ssh(stage, command).split()
+        if not fields or not re.fullmatch("[0-9a-f]{64}", fields[0]):
             raise RuntimeError(stage + ": invalid SHA-256 readback")
-        return result
+        return fields[0]
 
     def equal_hash(self, stage, path, expected, container=False):
         actual = self.hash_remote(stage, path, container)
@@ -452,6 +456,8 @@ class Deployment:
                 code = 1
                 self.receipt["status"] = "FAILED"
                 self.receipt["lock_cleanup_error"] = str(exc)
+                self.receipt.setdefault("failure", {"stage": self.stage, "message": str(exc)})
+                self.receipt["checks"].append({"stage": self.stage, "result": "FAIL", "detail": str(exc)})
                 print("FAILED [lock cleanup]: " + str(exc), file=sys.stderr)
             self.receipt["remote_state_uncertain"] = self.remote_uncertain
             self.receipt["remote_lock_retained"] = self.locked

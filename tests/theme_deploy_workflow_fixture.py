@@ -34,6 +34,8 @@ with (state / 'events.jsonl').open('a') as f:
 if kind == 'ssh':
     assert 'michael@100.120.233.4' in a
     assert 'StrictHostKeyChecking=yes' in a and 'ControlMaster=no' in a
+    if scenario == 'lock-release-failed' and 'rmdir' in a[-1]:
+        print('simulated lock release failure', file=sys.stderr); sys.exit(39)
     env = dict(os.environ, HOME=str(state / 'home'))
     sys.exit(subprocess.call(['bash', '-c', a[-1]], env=env))
 if kind == 'scp':
@@ -84,7 +86,7 @@ sys.stderr.buffer.write(result.stderr)
 if scenario == 'late-container-corrupt' and 'eval' in cmd and list((container / 'tmp').glob('*/theme.zip')):
     for zip_path in (container / 'tmp').glob('*/theme.zip'):
         with zip_path.open('ab') as f: f.write(b'changed after transfer verification')
-sys.exit(result.returncode)
+sys.exit(result.returncode if result.returncode >= 0 else 128 - result.returncode)
 '''
 WP = r'''<?php
 // Only loaded in the test container tree. Execute the wrapper's actual eval
@@ -288,12 +290,13 @@ EDITZIP
     exercise('wrong-version-readback', scenario='wrong-version', failure='active version mismatch', attempted=True)
     exercise('wrong-active-readback', scenario='wrong-active', failure='incorrect target stylesheet', attempted=True)
     exercise('wrong-file-readback', scenario='wrong-files', failure='Installed file parity failed', attempted=True)
+    exercise('lock-release-failure', scenario='lock-release-failed', failure='simulated lock release failure', attempted=True)
     def slow_build(repo):
         path = repo / 'scripts/build-zip.sh'
         path.write_text(path.read_text().replace('set -euo pipefail', 'set -euo pipefail\nsleep 60 & echo "$!" > "$PFOA_TEST_STATE/child.pid"; wait', 1))
     exercise('build-timeout', mutate=slow_build, options=('--build-timeout','1'), failure='timed out')
     exercise('transfer-timeout', scenario='transfer-timeout', options=('--timeout','1'), failure='timed out')
-    exercise('container-install-timeout', scenario='install-timeout', options=('--timeout','1'), failure='exited', attempted=True, reached=False)
+    exercise('container-install-timeout', scenario='install-timeout', options=('--timeout','1'), failure='hard deadline', attempted=True, reached=False)
 
 atomic = {'result':'PASS','cases':results,'count':len(results),'network':'isolated test doubles only'}
 (REPORT / 'results.json').write_text(json.dumps(atomic, indent=2) + '\n')

@@ -238,7 +238,7 @@ Schema version 1 includes:
 | `backup` | Container/host/local paths, SHA-256, original version/file hashes and verified flag |
 | `installation_attempted` | True immediately before the install command is submitted |
 | `failure`, `recovery`, `log`, `log_sha256` | Actionable failure stage/detail and evidence |
-| `remote_state_uncertain`, `remote_lock_retained`, `process_cleanup` | Recovery/timeout state, when applicable |
+| `remote_state_uncertain`, `remote_lock_retained`, `process_cleanup`, `command_termination` | Recovery/timeout state, when applicable |
 | `timeouts_seconds` | Configured operation/build deadlines |
 
 Successful statuses are `VALIDATED_NOT_DEPLOYED` and `DEPLOYED_VERIFIED`. `FAILED`
@@ -264,7 +264,7 @@ actual badge regressions, failed mandatory/newly discovered fixtures, stale ZIP
 content, committed build residue, dirty tracked source, host/container corruption and corruption immediately before installation,
 wrong URLs/multisite, failed backup/transfers/installation, local build/transfer
 process-tree deadlines, container installation deadline, wrong active slug/version,
-extra installed files, and final receipt/package/backup checksum integrity.
+extra installed files, lock-release failure, and final receipt/package/backup checksum integrity.
 
 The first authorized DEV rehearsal should run validation, review its identity
 and backup, perform a verified deployment, compare real installed-file parity,
