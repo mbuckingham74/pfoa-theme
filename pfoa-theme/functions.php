@@ -108,6 +108,23 @@ function pfoa_enqueue_assets() {
 		}
 	}
 
+	// PFOA 0.1.156 — presentation only: Pet Tidings disclosure auto-open
+	// (page 4799 only). Collapsed by default; the script sets open=true when
+	// the URL carries pfoa_pt_done or the disclosure contains form feedback.
+	if ( function_exists( 'is_page' ) && is_page( 4799 ) ) {
+		$disclosure_script = get_template_directory() . '/assets/js/pfoa-pet-tidings-disclosure.js';
+
+		if ( file_exists( $disclosure_script ) ) {
+			wp_enqueue_script(
+				'pfoa-pet-tidings-disclosure',
+				get_template_directory_uri() . '/assets/js/pfoa-pet-tidings-disclosure.js',
+				array(),
+				(string) filemtime( $disclosure_script ),
+				array( 'strategy' => 'defer' )
+			);
+		}
+	}
+
 	if ( is_front_page() ) {
 		$front_page_id = (int) get_option( 'page_on_front' );
 
@@ -5799,3 +5816,96 @@ function pfoa_present_adopted_bonded_pairs( $content ) {
 }
 
 add_filter( 'the_content', 'pfoa_present_adopted_bonded_pairs', 1000 );
+
+/**
+ * PFOA 0.1.156 — presentation only: auto-open the Pet Tidings preferences
+ * disclosure (page 4799 only) when form feedback is pending, so the result
+ * is visible even without JS.
+ *
+ * Adds the open attribute to details.pfoa-pt-disclosure when the request
+ * carries ?pfoa_pt_done (prefs redirect) or $GLOBALS['pfoa_pt_pending'] is
+ * non-empty (form repopulated with errors/success in the same request).
+ * Narrowly scoped to page 4799 main-loop content; returns $content
+ * unchanged otherwise. No content edits, no URL/label changes, no output
+ * of user data — attribute addition only.
+ *
+ * @param string $content Post content.
+ * @return string Possibly-opened content.
+ */
+function pfoa_pet_tidings_disclosure_open( $content ) {
+	if ( function_exists( 'is_admin' ) && is_admin() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_feed' ) && is_feed() ) {
+		return $content;
+	}
+
+	if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+		return $content;
+	}
+
+	if ( ! is_string( $content ) || '' === $content ) {
+		return $content;
+	}
+
+	if ( false === strpos( $content, 'pfoa-pt-disclosure' ) ) {
+		return $content;
+	}
+
+	if ( function_exists( 'in_the_loop' ) && ! in_the_loop() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_main_query' ) && ! is_main_query() ) {
+		return $content;
+	}
+
+	$is_target_page = false;
+
+	if ( function_exists( 'is_page' ) && is_page( 4799 ) ) {
+		$is_target_page = true;
+	} elseif ( function_exists( 'get_post' ) ) {
+		$post = get_post();
+
+		if ( $post instanceof WP_Post && 4799 === (int) $post->ID ) {
+			$is_target_page = true;
+		}
+	}
+
+	if ( ! $is_target_page ) {
+		return $content;
+	}
+
+	$should_open = isset( $_GET['pfoa_pt_done'] );
+
+	if ( ! $should_open && ! empty( $GLOBALS['pfoa_pt_pending'] ) ) {
+		$should_open = true;
+	}
+
+	if ( ! $should_open ) {
+		return $content;
+	}
+
+	$opened = preg_replace_callback(
+		'/<details\b([^>]*?)>/i',
+		function ( $matches ) {
+			$attrs = isset( $matches[1] ) ? $matches[1] : '';
+
+			if ( false === strpos( $attrs, 'pfoa-pt-disclosure' ) ) {
+				return $matches[0];
+			}
+
+			if ( preg_match( '/\bopen\b/i', $attrs ) ) {
+				return $matches[0];
+			}
+
+			return '<details' . $attrs . ' open>';
+		},
+		$content
+	);
+
+	return is_string( $opened ) ? $opened : $content;
+}
+
+add_filter( 'the_content', 'pfoa_pet_tidings_disclosure_open', 1001 );

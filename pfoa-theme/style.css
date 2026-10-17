@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
 Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.155
+ Version: 0.1.156
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -5492,24 +5492,36 @@ body.page-id-20323 .pfoa-adoptable-text p:last-child {
 		font-size: 1rem;
 	}
 }
-/* Pet Tidings (page 4799 only, theme 0.1.155) — centered layout, intro grid,
- * prefs rhythm, archive rows, non-sticky header.
- * Supports fixer markup contract: div.wp-block-group.pfoa-pt-page >
- * h2.pfoa-pt-title, div.pfoa-pt-intro (__media + __text), div.pfoa-pt-follow,
- * section.pfoa-pt-prefs (h2.pfoa-pt-section + [pfoa_pet_tidings_preferences]),
- * current-edition .wp-block-buttons, div.pfoa-pt-archive (__row/__year/__links).
- * Supersedes 0.1.154 table/float rules — no td:empty, no wp-block-table
- * card rules. Strict scope: every selector below starts with
- * body.page-id-4799, so other pages stay untouched. The preferences form
- * internals (.pfoa-pt-form / .pfoa-pt-wrap function) are not restyled beyond
- * lane width; header/nav/footer keep site design except the existing
- * non-sticky header rule. Content (labels, URLs) unchanged — presentation only.
+/* Pet Tidings (page 4799 only, theme 0.1.156) — centered layout, current card,
+ * intro grid, prefs rhythm + disclosure accordion, archive rows, non-sticky
+ * header.
+ * Supports markup contract: div.wp-block-group.pfoa-pt-page >
+ * h2.pfoa-pt-title (PET TIDINGS NEWSLETTER), div.pfoa-pt-intro (__media +
+ * __text, unchanged), div.pfoa-pt-follow (unchanged),
+ * section.pfoa-pt-current (h2.pfoa-pt-section "Current Edition" + paragraph +
+ * div.wp-block-buttons, same PDF URL, styled as primary page action,
+ * centered/prominent), h2.pfoa-pt-title "PET TIDINGS PAST ISSUES" +
+ * div.pfoa-pt-archive (__row/__year/__links, unchanged rows),
+ * section.pfoa-pt-prefs (h2.pfoa-pt-section "Newsletter Delivery
+ * Preferences" + p.pfoa-pt-prefs-explainer + details.pfoa-pt-disclosure >
+ * summary "Manage newsletter preferences" +
+ * div.pfoa-pt-disclosure__content > [pfoa_pet_tidings_preferences]).
+ * Details has NO open attribute by default (collapsed; auto-opened only via
+ * pfoa_pt_done / form feedback, see functions.php + disclosure JS).
+ * Supersedes 0.1.155 rules — adds current-card + disclosure support, keeps
+ * 0.1.154 table/float removals (no td:empty, no wp-block-table card rules).
+ * Strict scope: every selector below starts with body.page-id-4799, so
+ * other pages stay untouched. The preferences form internals
+ * (.pfoa-pt-form / .pfoa-pt-wrap function) are not restyled beyond lane
+ * width; header/nav/footer keep site design except the existing non-sticky
+ * header rule. Content (labels, URLs) unchanged — presentation only.
  */
 body.page-id-4799 .entry-content div.wp-block-group.pfoa-pt-page {
 	max-width: min(46rem, 100%);
 	margin-inline: auto;
 	overflow-wrap: break-word;
 }
+body.page-id-4799 .entry-content section.pfoa-pt-current,
 body.page-id-4799 .entry-content section.pfoa-pt-prefs,
 body.page-id-4799 .entry-content div.pfoa-pt-archive {
 	max-width: min(46rem, 100%);
@@ -5527,6 +5539,7 @@ body.page-id-4799 .entry-content h2.pfoa-pt-section {
 }
 body.page-id-4799 .entry-content div.pfoa-pt-intro,
 body.page-id-4799 .entry-content div.pfoa-pt-follow,
+body.page-id-4799 .entry-content section.pfoa-pt-current,
 body.page-id-4799 .entry-content section.pfoa-pt-prefs,
 body.page-id-4799 .entry-content div.pfoa-pt-archive {
 	margin-block: 2.25rem;
@@ -5561,10 +5574,75 @@ body.page-id-4799 .entry-content div.pfoa-pt-intro__text > p:first-child {
 body.page-id-4799 .entry-content div.pfoa-pt-follow p {
 	margin-block: 1rem;
 }
+body.page-id-4799 .entry-content section.pfoa-pt-current {
+	text-align: center;
+	background: var(--pfoa-surface-subtle);
+	border: 1px solid var(--pfoa-border-default);
+	border-radius: var(--pfoa-radius);
+	padding: 1.75rem 1.5rem 2rem;
+}
+body.page-id-4799 .entry-content section.pfoa-pt-current h2.pfoa-pt-section {
+	margin-block: 0 0.75rem;
+}
+body.page-id-4799 .entry-content section.pfoa-pt-current p {
+	margin-block: 0 1.5rem;
+	max-width: 36rem;
+	margin-inline: auto;
+}
+body.page-id-4799 .entry-content section.pfoa-pt-current div.wp-block-buttons {
+	justify-content: center;
+	margin-block: 0;
+}
+body.page-id-4799 .entry-content section.pfoa-pt-current div.wp-block-buttons .wp-block-button__link {
+	font-size: 1.125rem;
+	padding: 0.9rem 2rem;
+}
 body.page-id-4799 .entry-content div.wp-block-group.pfoa-pt-page > div.wp-block-buttons,
 body.page-id-4799 .entry-content div.pfoa-pt-page .wp-block-buttons {
 	justify-content: center;
 	margin-block: 2.25rem;
+}
+body.page-id-4799 .entry-content section.pfoa-pt-prefs p.pfoa-pt-prefs-explainer {
+	max-width: 36rem;
+	margin-inline: auto;
+	text-align: center;
+}
+body.page-id-4799 .entry-content details.pfoa-pt-disclosure {
+	border: 1px solid var(--pfoa-border-default);
+	border-radius: var(--pfoa-radius);
+	background: var(--pfoa-color-background);
+	padding: 0;
+	margin-block: 1.5rem 0;
+}
+body.page-id-4799 .entry-content details.pfoa-pt-disclosure > summary {
+	list-style: none;
+	cursor: pointer;
+	font-weight: 700;
+	text-align: center;
+	padding: 1rem 1.25rem;
+	border-radius: var(--pfoa-radius);
+}
+body.page-id-4799 .entry-content details.pfoa-pt-disclosure > summary::-webkit-details-marker {
+	display: none;
+}
+body.page-id-4799 .entry-content details.pfoa-pt-disclosure > summary::after {
+	content: "+";
+	display: inline-block;
+	margin-inline-start: 0.5rem;
+	font-weight: 700;
+}
+body.page-id-4799 .entry-content details.pfoa-pt-disclosure[open] > summary::after {
+	content: "–";
+}
+body.page-id-4799 .entry-content details.pfoa-pt-disclosure > summary:hover {
+	text-decoration: underline;
+}
+body.page-id-4799 .entry-content details.pfoa-pt-disclosure > summary:focus-visible {
+	outline: 2px solid var(--pfoa-color-brand);
+	outline-offset: 2px;
+}
+body.page-id-4799 .entry-content details.pfoa-pt-disclosure > div.pfoa-pt-disclosure__content {
+	padding: 0 1.25rem 1.5rem;
 }
 body.page-id-4799 .entry-content div.pfoa-pt-archive {
 	overflow-x: clip;
@@ -5594,6 +5672,7 @@ body.page-id-4799 .entry-content span.pfoa-pt-archive__links a {
 }
 @media (max-width: 600px) {
 	body.page-id-4799 .entry-content div.wp-block-group.pfoa-pt-page,
+	body.page-id-4799 .entry-content section.pfoa-pt-current,
 	body.page-id-4799 .entry-content section.pfoa-pt-prefs,
 	body.page-id-4799 .entry-content div.pfoa-pt-archive {
 		max-width: 100%;
@@ -5606,6 +5685,9 @@ body.page-id-4799 .entry-content span.pfoa-pt-archive__links a {
 	body.page-id-4799 .entry-content div.pfoa-pt-intro__media {
 		max-width: 240px;
 		margin-inline: auto;
+	}
+	body.page-id-4799 .entry-content section.pfoa-pt-current {
+		padding: 1.5rem 1rem 1.75rem;
 	}
 	body.page-id-4799 .entry-content div.pfoa-pt-archive__row {
 		flex-wrap: wrap;
