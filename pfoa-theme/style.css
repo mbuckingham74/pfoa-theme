@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
  Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.162
+ Version: 0.1.163
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -25,15 +25,17 @@ Text Domain: pfoa-theme
 	--pfoa-color-focus: #005fcc;
 
 	/* Semantic color foundation (meaning-based roles). */
-	--pfoa-surface-structural: #D3D3FF;
-	--pfoa-surface-footer: #D3D3FF;
+	/* PFOA 0.1.163 — Approved royal-blue header/footer (was structural/footer
+	 * #D3D3FF with #302D2B text; now #002894 with #FFFFFF text for contrast). */
+	--pfoa-surface-structural: #002894;
+	--pfoa-surface-footer: #002894;
 	--pfoa-surface-tinted: #E3E5FA;
 	--pfoa-surface-subtle: #F0F1FB;
 	--pfoa-surface-page: #FBFCFA;
 	--pfoa-text-primary: #302D2B;
 	--pfoa-text-muted: #525873;
-	--pfoa-text-on-structural: #302D2B;
-	--pfoa-text-on-structural-strong: #302D2B;
+	--pfoa-text-on-structural: #FFFFFF;
+	--pfoa-text-on-structural-strong: #FFFFFF;
 	--pfoa-text-on-action: #FFFFFF;
 	--pfoa-action-primary: #434EBE;
 	--pfoa-action-hover: #303873;
@@ -1750,6 +1752,31 @@ body.page-id-4968 #staff-roster a:focus-visible {
 	text-underline-offset: 0.16em;
 }
 
+/* PFOA 0.1.163 — Approved royal-blue header/footer: utility row sits on the
+ * royal header, so rest/hover/label/separator render white (was
+ * action-primary/action-hover/muted, which fails on #002894). Hover keeps
+ * underline; focus ring comes from the .site-header :focus-visible rule.
+ * Scoped to .site-header so the mobile stacked utility stays consistent. */
+.site-header .utility-menu a,
+.site-header .utility-group__list a,
+.site-header .utility-group__label {
+	color: #FFFFFF;
+}
+
+.site-header .utility-group__item + .utility-group__item::before {
+	color: #FFFFFF;
+}
+
+.site-header .utility-menu a:hover,
+.site-header .utility-menu a:focus-visible,
+.site-header .utility-menu .current-menu-item > a,
+.site-header .utility-group__list a:hover,
+.site-header .utility-group__list a:focus-visible {
+	color: #FFFFFF;
+	text-decoration: underline;
+	text-underline-offset: 0.16em;
+}
+
 .site-header__utility--mobile {
 	display: none;
 	background: transparent;
@@ -2426,7 +2453,8 @@ body.page-id-4968 #staff-roster a:focus-visible {
 	position: absolute;
 	inset: 0;
 	display: block;
-	background: linear-gradient(90deg, rgb(33 30 29 / 78%), rgb(33 30 29 / 36%) 64%, rgb(33 30 29 / 18%));
+	/* PFOA 0.1.163 — Hero brightness (was 78%/36%/18%). */
+	background: linear-gradient(90deg, rgb(33 30 29 / 55%), rgb(33 30 29 / 25%) 64%, rgb(33 30 29 / 12%));
 }
 
 .front-page-content .homepage-hero__image {
@@ -2621,8 +2649,10 @@ body.page-id-4968 #staff-roster a:focus-visible {
 }
 
 /* Primary pathways */
+/* PFOA 0.1.163 — Approved five-card palette (section was
+ * var(--pfoa-surface-subtle), cards were var(--pfoa-surface-page)). */
 .front-page-content .homepage-pathways {
-	background: var(--pfoa-surface-subtle);
+	background: #6B97C0;
 	color: var(--pfoa-text-primary);
 	/* No section heading remains; keep a modest hero-to-cards gap. */
 	padding-block: clamp(1.5rem, 3vw, 2.5rem) clamp(2.5rem, 4vw, 3.5rem);
@@ -2658,7 +2688,7 @@ body.page-id-4968 #staff-roster a:focus-visible {
 	border: 1px solid var(--pfoa-border-default);
 	border-radius: var(--pfoa-radius);
 	padding: clamp(1rem, 2vw, 1.5rem) var(--pfoa-space-4);
-	background: var(--pfoa-surface-page);
+	background: #FFFFFF;
 	text-align: center;
 }
 
