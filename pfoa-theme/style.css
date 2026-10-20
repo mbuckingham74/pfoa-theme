@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
  Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.163
+ Version: 0.1.164
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -2649,10 +2649,10 @@ body.page-id-4968 #staff-roster a:focus-visible {
 }
 
 /* Primary pathways */
-/* PFOA 0.1.163 — Approved five-card palette (section was
- * var(--pfoa-surface-subtle), cards were var(--pfoa-surface-page)). */
+/* PFOA 0.1.164 — Marilyn revised five-card palette (was #6B97C0,
+ * now #D5E1ED; cards remain #FFFFFF). */
 .front-page-content .homepage-pathways {
-	background: #6B97C0;
+	background: #D5E1ED;
 	color: var(--pfoa-text-primary);
 	/* No section heading remains; keep a modest hero-to-cards gap. */
 	padding-block: clamp(1.5rem, 3vw, 2.5rem) clamp(2.5rem, 4vw, 3.5rem);

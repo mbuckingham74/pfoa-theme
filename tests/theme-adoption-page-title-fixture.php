@@ -186,9 +186,9 @@ $gate_pos    = strpos( $part, 'pfoa_should_render_page_title' );
 $content_pos = strpos( $part, '<div class="entry-content">' );
 fixture_assert( false !== $gate_pos && false !== $content_pos && $gate_pos < $content_pos, 'part: title header renders above .entry-content' );
 
-// style.css: version 0.1.163, and no display:none touches the title header.
+// style.css: version 0.1.164, and no display:none touches the title header.
 $css = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' );
-fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.163/', $css ), 'css: theme version 0.1.163' );
+fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.164/', $css ), 'css: theme version 0.1.164' );
 fixture_assert( false !== strpos( $css, '.page-content .entry-header' ), 'css: existing page-content entry-header styling intact' );
 $blocks = explode( '}', $css );
 foreach ( $blocks as $block ) {
@@ -212,4 +212,4 @@ foreach ( $blocks as $block ) {
 // No writes during helper evaluation.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during title gating' );
 
-fwrite( STDOUT, "PASS: theme adoption page title fixture (standard renders, 5 ID + 5 slug exclusions, content-h1 suppression, front-page suppression, null-post safety, filter override, part markup single header, css 0.1.163 no display:none, no writes)\n" );
+fwrite( STDOUT, "PASS: theme adoption page title fixture (standard renders, 5 ID + 5 slug exclusions, content-h1 suppression, front-page suppression, null-post safety, filter override, part markup single header, css 0.1.164 no display:none, no writes)\n" );
