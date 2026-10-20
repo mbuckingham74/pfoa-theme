@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
  Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.161
+ Version: 0.1.162
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -1076,6 +1076,24 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 	display: block;
 	margin-inline: auto;
 	height: auto;
+}
+
+/* PFOA 0.1.162 — Staff roster (page-id-4968, #staff-roster): remove persistent
+ * underlines. Color is owned by page content (navy #000080); hover/focus
+ * underline and theme focus ring preserve keyboard visibility. Scoped to
+ * Staff only; ordinary content links keep global underline styling. */
+body.page-id-4968 #staff-roster a {
+	text-decoration: none;
+}
+
+body.page-id-4968 #staff-roster a:hover,
+body.page-id-4968 #staff-roster a:focus-visible {
+	text-decoration: underline;
+}
+
+body.page-id-4968 #staff-roster a:focus-visible {
+	outline: 3px solid var(--pfoa-focus-ring);
+	outline-offset: 3px;
 }
 
 /* Caption companion table immediately following a photo-grid (facilities pattern). */
