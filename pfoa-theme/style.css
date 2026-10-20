@@ -1,8 +1,8 @@
 /*
 Theme Name: PFOA
 Author: PFOA project
-Description: A conventional, accessible foundation for the PFOA website.
- Version: 0.1.160
+ Description: A conventional, accessible foundation for the PFOA website.
+ Version: 0.1.161
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -5747,4 +5747,43 @@ body.page-id-25036 .entry-content .gca-column.one-third iframe[src*="youtube-noc
 	height: auto;
 	aspect-ratio: 16 / 9;
 	display: block;
+}
+
+/* PFOA 0.1.161 — In Memoriam parent gallery mobile caption correction
+ * (page-id-5421 only, https://dev.safehavenpfoa.org/inmemoriam/).
+ * Root cause: global `.page-content .entry-content { overflow-wrap: anywhere; }`
+ * fragments caption words inside the fixed 6-column photo table
+ * (`table.aligncenter[table-layout:fixed]` + `td[width="16%"]`), which leaves
+ * only ~47px of caption width at 390px. At narrow widths restore word-boundary
+ * wrapping and reflow the six columns into three so intact names fit.
+ * Scope is strictly body.page-id-5421 + table.aligncenter photo-grid markup;
+ * desktop (>600px) keeps the accepted 6-column fixed presentation untouched.
+ * No markup, link, lightbox, or biography changes. */
+@media (max-width: 600px) {
+	body.page-id-5421 .page-content .entry-content table.aligncenter td span,
+	body.page-id-5421 .page-content .entry-content table.aligncenter td span a {
+		overflow-wrap: break-word;
+		word-break: normal;
+	}
+	body.page-id-5421 .page-content .entry-content table.aligncenter,
+	body.page-id-5421 .page-content .entry-content table.aligncenter tbody,
+	body.page-id-5421 .page-content .entry-content table.aligncenter tr {
+		display: block;
+		width: 100%;
+	}
+	body.page-id-5421 .page-content .entry-content table.aligncenter tr {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 8px 4px;
+	}
+	body.page-id-5421 .page-content .entry-content table.aligncenter td {
+		display: block;
+		width: auto;
+		padding: 4px;
+	}
+	body.page-id-5421 .page-content .entry-content table.aligncenter td img {
+		width: 100%;
+		height: auto;
+		max-width: 150px;
+	}
 }
