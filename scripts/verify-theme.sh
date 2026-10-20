@@ -37,6 +37,7 @@ mandatory_fixtures=(
 	theme-adoption-event-gallery-integrity-fixture.php
 	theme-adoption-event-legacy-anchor-fixture.php
 	theme-adoption-event-senior-shadow-fixture.php
+	theme-adoption-page-title-fixture.php
 	theme-adoption-universal-green-regression-fixture.php
 	theme-adopted-gallery-presentation-fixture.php
 	theme-recently-adopted-currency-fixture.php

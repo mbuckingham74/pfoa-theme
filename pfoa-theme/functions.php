@@ -5919,3 +5919,69 @@ function pfoa_pet_tidings_disclosure_open( $content ) {
 }
 
 add_filter( 'the_content', 'pfoa_pet_tidings_disclosure_open', 1001 );
+
+/**
+ * Decide whether the shared Page content part should render the page title.
+ *
+ * OPT-OUT shared-path fix (PFOA 0.1.160): render the title on ALL Pages
+ * except explicit exclusions. Returns false when any hold:
+ *   - is_front_page() (the static front page renders via front-page.php);
+ *   - current page ID or slug is in the exclusion set (defence in depth
+ *     against re-imports/renames), filterable via
+ *     `pfoa_page_title_excluded_pages` returning an array of IDs/slugs;
+ *   - stored post_content of the current post already contains a
+ *     case-insensitive `<h1[\s>]` (covers content-owned H1 pages + any
+ *     future content-H1 page).
+ * Else true. Safe outside the loop (get_post() null checks).
+ *
+ * @return bool
+ */
+function pfoa_should_render_page_title() {
+	if ( function_exists( 'is_front_page' ) && is_front_page() ) {
+		return false;
+	}
+
+	$excluded_ids   = array( 5421, 4159, 5656, 20323, 22514 );
+	$excluded_slugs = array( 'inmemoriam', 'sponsoredanimals', 'adoptionstories', 'adoptablecats2', 'adopted2026' );
+
+	if ( function_exists( 'apply_filters' ) ) {
+		$filtered = apply_filters( 'pfoa_page_title_excluded_pages', array_merge( $excluded_ids, $excluded_slugs ) );
+
+		if ( is_array( $filtered ) ) {
+			$excluded_ids   = array();
+			$excluded_slugs = array();
+
+			foreach ( $filtered as $entry ) {
+				if ( is_int( $entry ) || ( is_string( $entry ) && preg_match( '/^\d+$/', $entry ) ) ) {
+					$excluded_ids[] = (int) $entry;
+				} elseif ( is_string( $entry ) && '' !== $entry ) {
+					$excluded_slugs[] = strtolower( $entry );
+				}
+			}
+		}
+	}
+
+	$post = function_exists( 'get_post' ) ? get_post() : null;
+
+	if ( $post ) {
+		$post_id = isset( $post->ID ) ? (int) $post->ID : 0;
+
+		if ( $post_id && in_array( $post_id, $excluded_ids, true ) ) {
+			return false;
+		}
+
+		$slug = isset( $post->post_name ) ? strtolower( (string) $post->post_name ) : '';
+
+		if ( '' !== $slug && in_array( $slug, $excluded_slugs, true ) ) {
+			return false;
+		}
+
+		$content = isset( $post->post_content ) ? (string) $post->post_content : '';
+
+		if ( '' !== $content && 1 === preg_match( '/<h1[\s>]/i', $content ) ) {
+			return false;
+		}
+	}
+
+	return true;
+}

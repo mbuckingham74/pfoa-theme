@@ -7,7 +7,10 @@
  * template filename. It uses the ordinary WordPress Page loop and delegates
  * the presentation to the shared Page content part so existing embeds,
  * galleries, links, and plugin output can run unchanged. That shared part
- * owns the title, the_content(), and Page-link rendering.
+ * renders the page title conditionally via pfoa_should_render_page_title()
+ * (all Pages except the title-excluded set, front page, and pages whose
+ * stored content already carries an H1), plus the_content() and Page-link
+ * rendering.
  *
  * @package PFOA
  */
