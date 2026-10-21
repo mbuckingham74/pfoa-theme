@@ -71,6 +71,23 @@
 		}
 	};
 
+	var toggleSubmenu = function ( button ) {
+		setSubmenuState( button, button.getAttribute( 'aria-expanded' ) !== 'true' );
+	};
+
+	/* A placeholder parent link ("#", empty or missing href) owns no destination,
+	 * so on mobile a tap on the label toggles the same submenu as its arrow button.
+	 * Real destination links are never intercepted, and desktop behavior is untouched. */
+	var isPlaceholderParentLink = function ( link ) {
+		if ( ! link ) {
+			return false;
+		}
+
+		var href = link.getAttribute( 'href' );
+
+		return href === null || href === '' || href === '#';
+	};
+
 	var closeSubmenus = function () {
 		submenuButtons.forEach( function ( button ) {
 			setSubmenuState( button, false );
@@ -152,13 +169,24 @@
 		var menuItem = getMenuItem( button );
 
 		button.addEventListener( 'click', function () {
-			var open = button.getAttribute( 'aria-expanded' ) !== 'true';
-
-			setSubmenuState( button, open );
+			toggleSubmenu( button );
 		} );
 
 		if ( ! menuItem ) {
 			return;
+		}
+
+		var parentLink = menuItem.querySelector( ':scope > a' );
+
+		if ( isPlaceholderParentLink( parentLink ) ) {
+			parentLink.addEventListener( 'click', function ( event ) {
+				if ( ! mobileQuery.matches ) {
+					return;
+				}
+
+				event.preventDefault();
+				toggleSubmenu( button );
+			} );
 		}
 
 		menuItem.addEventListener( 'mouseenter', function () {
