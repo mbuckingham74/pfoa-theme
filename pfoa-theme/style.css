@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
  Description: A conventional, accessible foundation for the PFOA website.
-  Version: 0.1.173
+  Version: 0.1.174
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -842,6 +842,16 @@ body.page-id-22514 .entry-content > p {
 	 * column (ties body.page group at 0,2,2, wins by order): 65ch measure
 	 * with auto inline margins centers at ~392-1047 on 1440px. Text stays
 	 * left-aligned; gallery/compat/float rules untouched. */
+}
+
+/* PFOA 0.1.174 — Adopted 2026 header alignment (page 22514 scope only):
+ * center H1 + intro over the full gallery content width/centerline;
+ * heading text/typography, URL/links, cards/spacing/chronology untouched.
+ */
+body.page-id-22514 .entry-content > h1:first-child,
+body.page-id-22514 .entry-content > p:first-of-type {
+	max-width: 100%;
+	text-align: center;
 }
 
 /* PFOA 0.1.129 — Adopted 2026 vertical rhythm (page 22514 scope only):
