@@ -1,8 +1,8 @@
 /*
 Theme Name: PFOA
 Author: PFOA project
- Description: A conventional, accessible foundation for the PFOA website.
-  Version: 0.1.175
+  Description: A conventional, accessible foundation for the PFOA website.
+   Version: 0.1.176
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6055,4 +6055,46 @@ body.page-id-11290 .page-content .entry-header .entry-title {
 body.page-id-11290 .page-content .entry-content div.wp-block-buttons {
 	margin-block: 24px;
 	justify-content: center;
+}
+
+/* PFOA 0.1.176 — In Memoriam heading + gallery link correction
+ * (page-id-5421 only, https://dev.safehavenpfoa.org/inmemoriam/).
+ * Heading root cause: the page's primary heading is content-owned (theme
+ * title suppressed for inmemoriam via pfoa_should_render_page_title
+ * exclusion, so no duplicate H1). Content carries an H4 with inline navy
+ * 18px styling; the standard interior H1 is large dark left-aligned with a
+ * gold entry-header divider (centered full-shell variant on Home Front,
+ * page-id-11290). Pair with the one-time content edit promoting that H4 to
+ * a plain <h1>IN MEMORIAM</h1> (no inline color/size): this rule centers it
+ * over the full gallery content width with the gold divider and consistent
+ * vertical rhythm. Intro paragraph and photo-grid table markup untouched.
+ * Link root cause: persistent underlines come from the theme-owned global
+ * treatment (theme.json elements.link textDecoration underline +
+ * style.css `a` thickness/offset), NOT the gallery component
+ * (pfoa-gallery-lightbox owns .pfoa-cat-gallery/lightbox only and does not
+ * target this legacy table.aligncenter photo-grid) and NOT a separate
+ * gallery stylesheet. Page content owns the navy #000080 caption color via
+ * inline styles, which is preserved. Following the Staff roster precedent
+ * (page-id-4968 #staff-roster), remove the persistent underline from
+ * caption links only (td span a; image links untouched), keep authored
+ * navy color and theme font-weight:600 for distinguishability, restore
+ * underline on hover/focus-visible, and leave the global focus-ring
+ * outline intact for keyboard visibility. Desktop grid and mobile 600px
+ * reflow (0.1.161) untouched. */
+body.page-id-5421 .page-content .entry-content > h1:first-child {
+	max-width: 100%;
+	margin-top: 0;
+	margin-bottom: var(--pfoa-space-6);
+	border-bottom: 2px solid var(--pfoa-color-gold);
+	padding-bottom: var(--pfoa-space-4);
+	text-align: center;
+}
+
+body.page-id-5421 .page-content .entry-content table.aligncenter td span a {
+	text-decoration: none;
+}
+
+body.page-id-5421 .page-content .entry-content table.aligncenter td span a:hover,
+body.page-id-5421 .page-content .entry-content table.aligncenter td span a:focus-visible {
+	text-decoration: underline;
 }
