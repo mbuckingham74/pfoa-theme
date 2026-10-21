@@ -6111,3 +6111,45 @@ function pfoa_should_render_page_title() {
 
 	return true;
 }
+
+/**
+ * Make core Table block scroll regions keyboard-focusable (PFOA 0.1.173,
+ * P1-04 companion to the figure.wp-block-table scroll-surface CSS).
+ *
+ * On small screens wide tables scroll internally inside
+ * figure.wp-block-table. A bare figure is not keyboard-focusable, so
+ * keyboard users could not reach the overflow. This adds tabindex="0" with
+ * role="region" and a generic label to core/table figures that do not
+ * already carry a tabindex. Native table semantics are untouched; no
+ * markup, order, link, or content changes.
+ *
+ * @param string $block_content Rendered block HTML.
+ * @param array  $block         Parsed block.
+ * @return string
+ */
+function pfoa_table_scroll_region_attrs( $block_content, $block ) {
+	if ( ! is_string( $block_content ) || '' === $block_content ) {
+		return $block_content;
+	}
+
+	if ( ! is_array( $block ) || 'core/table' !== ( $block['blockName'] ?? '' ) ) {
+		return $block_content;
+	}
+
+	if ( 1 === preg_match( '/<figure[^>]*\stabindex\s*=/i', $block_content ) ) {
+		return $block_content;
+	}
+
+	$replaced = preg_replace(
+		'/<figure(\s+class="wp-block-table")/',
+		'<figure tabindex="0" role="region" aria-label="Scrollable table"$1',
+		$block_content,
+		1
+	);
+
+	return is_string( $replaced ) ? $replaced : $block_content;
+}
+
+if ( function_exists( 'add_filter' ) ) {
+	add_filter( 'render_block', 'pfoa_table_scroll_region_attrs', 10, 2 );
+}

@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
  Description: A conventional, accessible foundation for the PFOA website.
-  Version: 0.1.172
+  Version: 0.1.173
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -5972,5 +5972,51 @@ body.page-id-25036 .entry-content .gca-column.one-third iframe[src*="youtube-noc
 @media (max-width: 360px) {
 	body.page-id-4511 .page-content .entry-content table:has(td img) td span {
 		font-size: 11.5px !important;
+	}
+}
+
+/* PFOA 0.1.173 — P1-03 page-title wrap safety net + P1-04 Events table mobile fix
+ * (About https://dev.safehavenpfoa.org/missionandobjectives/ page-id-6738,
+ *  Lifetime https://dev.safehavenpfoa.org/lifetimecare/ page-id-5574,
+ *  Events https://dev.safehavenpfoa.org/eventscalendar/ page-id-4657).
+ * P1-03 root cause: the theme renders raw post_title as h1.entry-title and
+ * three titles lack spaces (MissionAndObjectives / LifetimeCare /
+ * EventsCalendar). The title rule computed overflow-wrap:normal +
+ * max-width:none, so About overflowed 44px @390 / 114px @320. Content lane
+ * owns titles (no DB writes here); this is a scoped safety net on the
+ * page-title rule only (NOT global *): unspaced titles break mid-word instead
+ * of escaping the viewport, spaced titles keep natural word wrapping.
+ * P1-04 root cause: global `.page-content .entry-content
+ * { overflow-wrap:anywhere; }` fragments the Events Calendar wp-block-table
+ * headers/cells mid-word at 390/320 ("Dat es", "Locatio n", "Tim es").
+ * At <=600px the table wrapper owns its horizontal scroll surface and cells
+ * return to word-boundary wrapping: headers stay on one whole-word line,
+ * body cells wrap whole words only, and wide tables scroll internally with
+ * zero page-level overflow. Native table semantics are kept; the scroll
+ * region is keyboard-focusable via the PFOA 0.1.173 render_block filter in
+ * functions.php. Desktop (>600px) presentation is untouched. */
+.page-content .entry-title,
+.page-title {
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+	.page-content .entry-content figure.wp-block-table {
+		display: block;
+		max-width: 100%;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.page-content .entry-content figure.wp-block-table th {
+		white-space: nowrap;
+		overflow-wrap: normal;
+		word-break: normal;
+	}
+
+	.page-content .entry-content figure.wp-block-table td {
+		overflow-wrap: break-word;
+		word-break: normal;
 	}
 }
