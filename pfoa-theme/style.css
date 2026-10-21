@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
   Description: A conventional, accessible foundation for the PFOA website.
-   Version: 0.1.180
+   Version: 0.1.181
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6220,5 +6220,121 @@ body.page-id-11290 .page-content .entry-content figure.wp-block-image.alignright
 		width: 100%;
 		max-width: 280px;
 		margin: 0 auto var(--pfoa-space-4);
+	}
+}
+
+/* PFOA 0.1.181 — From The Home Front intro grouping (theme-only, no content edit)
+ * (page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
+ * Replaces the 0.1.180 float/clear presentation (figure 270px float:right +
+ * buttons clear:both pushed the Week 276 CTA beneath the photo, leaving
+ * blank space under the intro paragraph). Flat DEV sibling order is:
+ * figure.alignright(1) + p TALES(2) + p intro(3) + div.buttons Week276(4) +
+ * p "If you missed..."(5) + columns/links/... . This block neutralizes the
+ * float/clear dependency (float:none + clear:none below, later order wins
+ * at equal specificity) and groups the intro as one cohesive grid:
+ * desktop left ~600px (TALES centered + intro left-aligned + CTA centered
+ * with 24px spacing, all inside column 1) / right 280px Wills photo with
+ * 32px gap, centered in the existing shell. Everything from child 5 spans
+ * full width so "If you missed..." starts cleanly centered; weekly
+ * links/grid/columns/iframe keep their own layout via min-width:0.
+ * H1/gold divider, wording, photo source, CTA label/destination/green
+ * styling, and story links untouched; no global rules changed. */
+body.page-id-11290 .page-content .entry-content {
+	display: grid;
+	grid-template-columns: minmax(0, 600px) 280px;
+	justify-content: center;
+	column-gap: 32px;
+	row-gap: 0;
+	align-items: start;
+}
+
+body.page-id-11290 .page-content .entry-content > figure.wp-block-image.alignright:first-child {
+	grid-column: 2;
+	grid-row: 1 / span 3;
+	float: none;
+	width: 100%;
+	max-width: 280px;
+	margin: 0;
+	min-width: 0;
+}
+
+body.page-id-11290 .page-content .entry-content > figure.wp-block-image.alignright:first-child img {
+	width: 100%;
+	height: auto;
+	display: block;
+}
+
+body.page-id-11290 .page-content .entry-content > p:nth-child(2) {
+	grid-column: 1;
+	grid-row: 1;
+	max-width: 100%;
+	margin-inline: 0;
+	text-align: center;
+	min-width: 0;
+}
+
+body.page-id-11290 .page-content .entry-content > p:nth-child(3) {
+	grid-column: 1;
+	grid-row: 2;
+	max-width: 100%;
+	margin-inline: 0;
+	text-align: left;
+	min-width: 0;
+}
+
+body.page-id-11290 .page-content .entry-content > div.wp-block-buttons:nth-child(4) {
+	grid-column: 1;
+	grid-row: 3;
+	clear: none;
+	width: 100%;
+	max-width: 100%;
+	margin-inline: 0;
+	margin-block: 24px;
+	justify-content: center;
+	min-width: 0;
+}
+
+body.page-id-11290 .page-content .entry-content > :nth-child(n+5) {
+	grid-column: 1 / -1;
+	min-width: 0;
+}
+
+@media (max-width: 720px) {
+	body.page-id-11290 .page-content .entry-content {
+		grid-template-columns: minmax(0, 100%);
+		column-gap: 0;
+	}
+
+	body.page-id-11290 .page-content .entry-content > p:nth-child(2) {
+		grid-column: 1;
+		grid-row: auto;
+		order: 1;
+	}
+
+	body.page-id-11290 .page-content .entry-content > p:nth-child(3) {
+		grid-column: 1;
+		grid-row: auto;
+		order: 2;
+	}
+
+	body.page-id-11290 .page-content .entry-content > div.wp-block-buttons:nth-child(4) {
+		grid-column: 1;
+		grid-row: auto;
+		order: 3;
+	}
+
+	body.page-id-11290 .page-content .entry-content > figure.wp-block-image.alignright:first-child {
+		grid-column: 1;
+		grid-row: auto;
+		order: 4;
+		max-width: 280px;
+		margin: 0 auto var(--pfoa-space-4);
+		justify-self: center;
+	}
+
+	body.page-id-11290 .page-content .entry-content > :nth-child(n+5) {
+		grid-column: 1;
+		grid-row: auto;
+		order: 5;
 	}
 }
