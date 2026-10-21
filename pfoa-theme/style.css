@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
  Description: A conventional, accessible foundation for the PFOA website.
-  Version: 0.1.167
+  Version: 0.1.170
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3762,17 +3762,34 @@ body.page-id-4968 #staff-roster a:focus-visible {
  * Does not alter markup, data attributes, dialog hooks, bonded-pair model, or lifecycle behavior.
  * Tokens reused: --pfoa-color-background, --pfoa-color-border, --pfoa-color-muted,
  * --pfoa-action-primary/hover, --pfoa-focus-ring, --pfoa-radius, --pfoa-space-*, --pfoa-transition.
- * Breakpoints reused from theme system: 1319px / 720px / 480px. Content max-width untouched.
+ * Breakpoints reused from theme system: 1319px / 720px / 480px.
+ * Content width: scoped 0.1.170 desktop widening for page-id-20323 only (see below).
  * Reduced motion is covered by the theme's existing global prefers-reduced-motion rule.
  */
+/* PFOA 0.1.170 — Adoptable Cats 5-track centered projection (visual only, CSS-only).
+ * Supersedes the 0.1.169 4-track flex projection with ~5 photograph-widths per
+ * row: singles occupy 1 track, bonded cards span 2 tracks + 1 host gap, members
+ * side-by-side. Centered flex wrapping absorbs partial-row remainders as
+ * symmetric side margins, keeps DOM = visual = keyboard order (no dense
+ * backfill, no order overrides), and keeps all composition ownership in the
+ * theme (no markup/JS/plugin changes). Track math: single = (100% - 4*gap)/5,
+ * bonded = 2*single + gap = (200% - 3*gap)/5, so the 0.1.58 bonded-photos
+ * internal-gap alignment (host gap 32 + 2x17 insets = 66px) still holds.
+ * Breakpoints, 2-up bonded photos, badge, typography untouched.
+ */
 div.pfoa-cat-cards {
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
 	gap: var(--pfoa-space-5);
-	align-items: start;
+	align-items: flex-start;
+	align-content: flex-start;
 }
 
 div.pfoa-cat-cards article.pfoa-cat-card {
+	box-sizing: border-box;
+	flex: 0 1 calc((100% - 4 * var(--pfoa-space-5)) / 5);
+	max-width: calc((100% - 4 * var(--pfoa-space-5)) / 5);
 	min-width: 0;
 	margin: 0;
 	border: 1.5px solid var(--pfoa-color-border);
@@ -3781,6 +3798,36 @@ div.pfoa-cat-cards article.pfoa-cat-card {
 	background: var(--pfoa-color-background);
 	box-shadow: 0 1px 2px rgb(33 30 29 / 6%);
 	transition: box-shadow var(--pfoa-transition), transform var(--pfoa-transition);
+}
+
+/* PFOA 0.1.170 — bonded card spans 2 tracks + 1 host gap in the centered
+ * flex projection: 2*single + gap = (200% - 3*gap)/5. Placed here (before
+ * the 1319/720/480 overrides below) so equal-specificity breakpoint rules
+ * win at ≤1319px.
+ */
+div.pfoa-cat-cards > article.pfoa-cat-bonded-card {
+	box-sizing: border-box;
+	flex: 0 1 calc((200% - 3 * var(--pfoa-space-5)) / 5);
+	max-width: calc((200% - 3 * var(--pfoa-space-5)) / 5);
+}
+
+/* PFOA 0.1.170 — scoped desktop gallery widening, Adoptable Cats page only.
+ * body.page narrows .content-shell to 960px, where a 5-track single would be
+ * (960 - 4*32)/5 = ~166px with ~131px photos — smaller than today's 4-track
+ * ~216px tracks. Restore room with --pfoa-content-width:1400px scoped to
+ * body.page-id-20323 (verified body class + is_page(20323) in functions.php),
+ * applied only above the 1319px breakpoint so the 3-track/2-track/stack
+ * projections are untouched. At full width single = (1400-128)/5 ≈ 254px
+ * (~219px photos); at a 1440px viewport the gutter-bound shell is 1360px so
+ * single ≈ 246px (~211px photos). Shell stays centered (margin-inline:auto)
+ * via the existing min(100% - gutters, token) width rule — no viewport
+ * overflow. Specificity body.page.page-id-20323 beats body.page regardless
+ * of source order. Sitewide content width unchanged.
+ */
+@media (min-width: 1320px) {
+	body.page.page-id-20323 .content-shell {
+		--pfoa-content-width: 1400px;
+	}
 }
 
 div.pfoa-cat-cards a.pfoa-cat-card-media {
@@ -3839,15 +3886,34 @@ div.pfoa-cat-cards a.pfoa-cat-card-media:focus-visible {
 }
 
 @media (max-width: 1319px) {
-	div.pfoa-cat-cards {
-		grid-template-columns: repeat(3, minmax(0, 1fr));
+	/* PFOA 0.1.169 — 3-track centered projection: single = (100% - 2*gap)/3,
+	 * bonded = 2*single + gap = (200% - gap)/3. */
+	div.pfoa-cat-cards article.pfoa-cat-card {
+		flex-basis: calc((100% - 2 * var(--pfoa-space-5)) / 3);
+		max-width: calc((100% - 2 * var(--pfoa-space-5)) / 3);
+	}
+
+	div.pfoa-cat-cards > article.pfoa-cat-bonded-card {
+		flex-basis: calc((200% - var(--pfoa-space-5)) / 3);
+		max-width: calc((200% - var(--pfoa-space-5)) / 3);
 	}
 }
 
 @media (max-width: 720px) {
+	/* PFOA 0.1.169 — 2-track centered projection: single = (100% - gap)/2,
+	 * bonded spans both tracks = full row. */
 	div.pfoa-cat-cards {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: var(--pfoa-space-4);
+	}
+
+	div.pfoa-cat-cards article.pfoa-cat-card {
+		flex-basis: calc((100% - var(--pfoa-space-4)) / 2);
+		max-width: calc((100% - var(--pfoa-space-4)) / 2);
+	}
+
+	div.pfoa-cat-cards > article.pfoa-cat-bonded-card {
+		flex-basis: 100%;
+		max-width: 100%;
 	}
 
 	/* PFOA 0.1.58 — Host gap drops to 24px here: 24+17+17 = 58px. */
@@ -3857,8 +3923,12 @@ div.pfoa-cat-cards a.pfoa-cat-card-media:focus-visible {
 }
 
 @media (max-width: 480px) {
-	div.pfoa-cat-cards {
-		grid-template-columns: 1fr;
+	/* PFOA 0.1.169 — single-column stack: every card full width, bonded
+	 * 2-up photos retained (see .pfoa-cat-bonded-photos below). */
+	div.pfoa-cat-cards article.pfoa-cat-card,
+	div.pfoa-cat-cards > article.pfoa-cat-bonded-card {
+		flex-basis: 100%;
+		max-width: 100%;
 	}
 }
 
@@ -3869,9 +3939,9 @@ div.pfoa-cat-cards a.pfoa-cat-card-media:focus-visible {
  * square photos, centered shared name + relationship line. Reuses 0.1.39 tokens
  * and interaction treatment. Reduced motion relies on the existing global rule.
  */
-div.pfoa-cat-cards > article.pfoa-cat-bonded-card {
-	grid-column: span 2;
-}
+/* PFOA 0.1.169 — bonded 2-track sizing lives with the base card rule
+ * above (before the breakpoint overrides) so the cascade holds.
+ */
 
 div.pfoa-cat-cards article.pfoa-cat-bonded-card {
 	min-width: 0;
@@ -4024,11 +4094,9 @@ div.pfoa-cat-cards .pfoa-cat-bonded-badge {
 }
 
 @media (max-width: 480px) {
-	div.pfoa-cat-cards > article.pfoa-cat-bonded-card {
-		grid-column: span 1;
-	}
-
-	/* PFOA 0.1.58 — Single-column span: retain deliberate compact two-photo
+	/* PFOA 0.1.169 — single-column stack: bonded card is full width (see
+	 * the 480px flex-basis override above); 2-up photos retained.
+	 * PFOA 0.1.58 — Single-column span: retain deliberate compact two-photo
 	 * presentation; cross-column formula does not apply.
 	 */
 	div.pfoa-cat-cards .pfoa-cat-bonded-photos {

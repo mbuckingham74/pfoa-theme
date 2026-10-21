@@ -2896,6 +2896,16 @@ function pfoa_present_bonded_pairs( $content ) {
 
 		$structured_ids = array_keys( $profile_to_card );
 
+		// PFOA 0.1.169 — stored document order index (static page markup
+		// order). $profile_to_card is built by scanning candidates in XPath
+		// document order, so its keys already run document-first; the flip
+		// gives each post ID its document position for pair ordering below.
+		$structured_position = array();
+
+		foreach ( $structured_ids as $structured_position_index => $structured_position_id ) {
+			$structured_position[ (int) $structured_position_id ] = $structured_position_index;
+		}
+
 		foreach ( $structured_ids as $structured_id ) {
 			$structured_id = (int) $structured_id;
 
@@ -2955,9 +2965,26 @@ function pfoa_present_bonded_pairs( $content ) {
 				continue;
 			}
 
-			// Canonical deterministic order comes from the API response.
-			$first_id  = $pair_ids[0];
-			$second_id = $pair_ids[1];
+			// PFOA 0.1.169 — pair identity comes from the API, but presentation
+			// order follows the stored document order, NOT the API canonical
+			// CatID-first order. The card first in the stored static markup
+			// provides the photo sequence, title text order, and title/article
+			// attrs. Stored order matches Production chronology (Mary before
+			// Paul, Athena before Hunter, Oliver before Isaac); canonical
+			// CatID-first order would render Paul & Mary and Isaac & Oliver.
+			$canon_a = $pair_ids[0];
+			$canon_b = $pair_ids[1];
+
+			$pos_a = isset( $structured_position[ $canon_a ] ) ? $structured_position[ $canon_a ] : PHP_INT_MAX;
+			$pos_b = isset( $structured_position[ $canon_b ] ) ? $structured_position[ $canon_b ] : PHP_INT_MAX;
+
+			if ( $pos_b < $pos_a ) {
+				$first_id  = $canon_b;
+				$second_id = $canon_a;
+			} else {
+				$first_id  = $canon_a;
+				$second_id = $canon_b;
+			}
 
 			if ( isset( $structured_consumed[ $first_id ] ) || isset( $structured_consumed[ $second_id ] ) ) {
 				continue;
@@ -3031,7 +3058,8 @@ function pfoa_present_bonded_pairs( $content ) {
 				continue;
 			}
 
-			// Canonical first member provides the title link + article attrs.
+			// PFOA 0.1.169 — document-first member provides the title link +
+			// article attrs (href/dialog/profile-id from its own card).
 			$first_href         = trim( (string) $first_media->getAttribute( 'href' ) );
 			$first_dialog       = trim( (string) $first_media->getAttribute( 'data-pfoa-cat-dialog' ) );
 			$first_profile_attr = trim( (string) $first_media->getAttribute( 'data-pfoa-profile-id' ) );
@@ -3081,16 +3109,34 @@ function pfoa_present_bonded_pairs( $content ) {
 			$structured_bonded->appendChild( $structured_photos );
 
 			// Preserve both member media links (href + dialog + profile-id) and
-			// images (src/srcset/sizes/alt) in canonical member order.
-			$structured_media_nodes = array( $first_media, $second_media );
+			// images (src/srcset/sizes/alt) in stored document order. Each
+			// clone carries its own member's data-pfoa-profile-id: singles
+			// carry the ID on the article, not the media link, so the ID is
+			// propagated explicitly. The article keeps the document-first
+			// member's attrs only (never duplicated per member).
+			$structured_media_nodes = array(
+				array( $first_media, $first_id ),
+				array( $second_media, $second_id ),
+			);
 
-			foreach ( $structured_media_nodes as $structured_media_node ) {
+			foreach ( $structured_media_nodes as $structured_media_pair ) {
+				$structured_media_node = $structured_media_pair[0];
+				$structured_member_id  = (int) $structured_media_pair[1];
+
+				if ( ! $structured_media_node instanceof DOMElement ) {
+					continue;
+				}
+
 				$structured_media_clone = $structured_media_node->cloneNode( true );
 
 				$structured_media_class = trim( (string) $structured_media_clone->getAttribute( 'class' ) );
 
 				if ( false === strpos( ' ' . $structured_media_class . ' ', ' pfoa-cat-bonded-photo ' ) ) {
 					$structured_media_clone->setAttribute( 'class', trim( $structured_media_class . ' pfoa-cat-bonded-photo' ) );
+				}
+
+				if ( 0 < $structured_member_id ) {
+					$structured_media_clone->setAttribute( 'data-pfoa-profile-id', (string) $structured_member_id );
 				}
 
 				$structured_photos->appendChild( $structured_media_clone );
@@ -3142,6 +3188,8 @@ function pfoa_present_bonded_pairs( $content ) {
 				continue;
 			}
 
+			// PFOA 0.1.169 — anchor at the document-first card so the combined
+			// card keeps the pair's stored position (no reordering).
 			$structured_parent->insertBefore( $structured_bonded, $first_card );
 			$structured_parent->removeChild( $first_card );
 			$structured_parent->removeChild( $second_card );
@@ -3631,6 +3679,112 @@ function pfoa_collect_gallery_item_identity( $item_node, $xpath ) {
 	return $result;
 }
 
+// PFOA 0.1.168 — presentation only: display predicate for the bonded-pair
+// badge shared by pfoa_present_adoption_events() and
+// pfoa_get_recently_adopted_events(). Theme-local; no plugin/contract
+// changes, no Cat ID reads/writes, no ID invention, no writes of any kind.
+// Branch (1): stored-classification display fallback — when the event's
+// stored classification is valid bonded_pair AND exactly 2 member cat IDs
+// are supplied AND the reciprocal raw-partner links agree (read WITHOUT
+// the Cat-ID gate), return true. This covers events whose profiles carry
+// reciprocal _pfoa_cat_bonded_partner_post_id links but blank Cat IDs
+// (where the strict pfoa_cat_is_bonded() predicate is fail-closed false).
+// Branch (2): otherwise the pre-0.1.168 strict predicate runs unchanged
+// (pfoa_cat_is_bonded() on both sides + pfoa_cat_get_bonded_pair()
+// canonical equality), so legacy/blank-classification events render
+// exactly as before. Any check failing => false (fail-closed).
+// @param int   $event_id Adoption event post ID (0 when unknown).
+// @param array $bond_ids Two int cat post IDs in member order.
+// @return bool True when the event displays the Bonded Pair badge.
+function pfoa_adoption_event_is_bonded_pair_for_display( $event_id, $bond_ids ) {
+	$event_id = (int) $event_id;
+
+	if ( ! is_array( $bond_ids ) || 2 !== count( $bond_ids ) ) {
+		return false;
+	}
+
+	$bond_ids = array_values( $bond_ids );
+	$cat_a    = (int) $bond_ids[0];
+	$cat_b    = (int) $bond_ids[1];
+
+	if ( 0 >= $cat_a || 0 >= $cat_b || $cat_a === $cat_b ) {
+		return false;
+	}
+
+	// Branch (1): stored bonded_pair classification + reciprocal raw
+	// partner agreement (no Cat-ID gate). Read-only single-row meta or
+	// the canonical stored-classification reader when present.
+	if ( 0 < $event_id ) {
+		$stored_is_bonded = false;
+
+		if ( function_exists( 'pfoa_tx_read_stored_classification' ) ) {
+			$stored = pfoa_tx_read_stored_classification( $event_id );
+
+			if ( is_array( $stored ) && isset( $stored['state'], $stored['value'] ) ) {
+				$stored_is_bonded = ( 'valid' === $stored['state'] && 'bonded_pair' === $stored['value'] );
+			} elseif ( is_string( $stored ) ) {
+				$stored_is_bonded = ( 'bonded_pair' === trim( $stored ) );
+			}
+		} elseif ( function_exists( 'get_post_meta' ) ) {
+			$stored_raw = get_post_meta( $event_id, '_pfoa_event_classification', true );
+
+			if ( is_string( $stored_raw ) ) {
+				$stored_is_bonded = ( 'bonded_pair' === trim( $stored_raw ) );
+			}
+		}
+
+		if ( $stored_is_bonded ) {
+			$raw_a = 0;
+			$raw_b = 0;
+
+			if ( function_exists( 'pfoa_cat_get_bonded_partner_id' ) ) {
+				$raw_a = (int) pfoa_cat_get_bonded_partner_id( $cat_a );
+				$raw_b = (int) pfoa_cat_get_bonded_partner_id( $cat_b );
+			} elseif ( function_exists( 'pfoa_cat_read_bonded_partner_raw' ) ) {
+				$raw_a = (int) pfoa_cat_read_bonded_partner_raw( $cat_a );
+				$raw_b = (int) pfoa_cat_read_bonded_partner_raw( $cat_b );
+			} elseif ( function_exists( 'get_post_meta' ) ) {
+				$raw_a = (int) get_post_meta( $cat_a, '_pfoa_cat_bonded_partner_post_id', true );
+				$raw_b = (int) get_post_meta( $cat_b, '_pfoa_cat_bonded_partner_post_id', true );
+			}
+
+			if ( $raw_a === $cat_b && $raw_b === $cat_a ) {
+				$pair_sorted   = array( $cat_a, $cat_b );
+				$member_sorted = array( $cat_a, $cat_b );
+
+				sort( $pair_sorted, SORT_NUMERIC );
+				sort( $member_sorted, SORT_NUMERIC );
+
+				if ( $pair_sorted === $member_sorted ) {
+					return true;
+				}
+			}
+		}
+	}
+
+	// Branch (2): pre-0.1.168 strict predicate, unchanged (requires valid
+	// established Cat IDs both sides via pfoa_cat_is_bonded()).
+	if ( function_exists( 'pfoa_cat_is_bonded' ) && function_exists( 'pfoa_cat_get_bonded_pair' ) ) {
+		if ( pfoa_cat_is_bonded( $cat_a ) && pfoa_cat_is_bonded( $cat_b ) ) {
+			$bond_pair = pfoa_cat_get_bonded_pair( $cat_a );
+
+			if ( is_array( $bond_pair ) ) {
+				$bond_pair   = array_map( 'intval', array_values( $bond_pair ) );
+				$bond_sorted = array( $cat_a, $cat_b );
+
+				sort( $bond_pair, SORT_NUMERIC );
+				sort( $bond_sorted, SORT_NUMERIC );
+
+				if ( $bond_pair === $bond_sorted ) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 function pfoa_present_adoption_events( $content ) {
 	if ( function_exists( 'is_admin' ) && is_admin() ) {
 		return $content;
@@ -3912,37 +4066,23 @@ function pfoa_present_adoption_events( $content ) {
 		$count_class  = 3 < $member_count ? 'n' : (string) $member_count;
 
 		// PFOA 0.1.82 — presentation only: bonded-pair indicator for TRUE
-		// bonded 2-member events only. Strict reciprocal validation via the
-		// Cat Profiles helpers (fail-closed: helpers absent, IDs missing /
-		// duplicated, or any check failing leaves the event unlabelled).
-		// 3+ member events are NEVER labelled bonded. No bond data, event
-		// meta, or stored facts are read beyond the helpers or written.
+		// bonded 2-member events only. PFOA 0.1.168 routes the predicate
+		// through pfoa_adoption_event_is_bonded_pair_for_display()
+		// (stored bonded_pair + reciprocal raw-partner agreement, else
+		// the strict helpers fail-closed). 3+ member events are NEVER
+		// labelled bonded. No bond data, event meta, or stored facts are
+		// written; no Cat IDs read or invented.
 		$is_bonded_pair = false;
 
-		if ( 2 === $member_count && function_exists( 'pfoa_cat_is_bonded' ) && function_exists( 'pfoa_cat_get_bonded_pair' ) ) {
+		if ( 2 === $member_count ) {
 			$bond_ids = array();
 
 			foreach ( $event['members'] as $bond_member ) {
 				$bond_ids[] = ( is_array( $bond_member ) && isset( $bond_member['cat_post_id'] ) ) ? (int) $bond_member['cat_post_id'] : 0;
 			}
 
-			if ( 0 < $bond_ids[0] && 0 < $bond_ids[1] && $bond_ids[0] !== $bond_ids[1] ) {
-				if ( pfoa_cat_is_bonded( $bond_ids[0] ) && pfoa_cat_is_bonded( $bond_ids[1] ) ) {
-					$bond_pair = pfoa_cat_get_bonded_pair( $bond_ids[0] );
-
-					if ( is_array( $bond_pair ) ) {
-						$bond_pair   = array_map( 'intval', array_values( $bond_pair ) );
-						$bond_sorted = $bond_ids;
-
-						sort( $bond_pair, SORT_NUMERIC );
-						sort( $bond_sorted, SORT_NUMERIC );
-
-						if ( $bond_pair === $bond_sorted ) {
-							$is_bonded_pair = true;
-						}
-					}
-				}
-			}
+			$gate_event_id  = ( is_array( $event ) && isset( $event['id'] ) ) ? (int) $event['id'] : 0;
+			$is_bonded_pair = pfoa_adoption_event_is_bonded_pair_for_display( $gate_event_id, $bond_ids );
 		}
 
 		// PFOA 0.1.86 — presentation only: adopted-together indicator for
@@ -4819,38 +4959,24 @@ function pfoa_get_recently_adopted_events( $limit = 4 ) {
 		}
 
 		// Bonded-pair classification preserved in data exactly as in
-		// pfoa_present_adoption_events(): strict reciprocal validation via
-		// the Cat Profiles helpers, fail-closed; 3+ member events never
-		// bonded. The public badge below is conditional (0.1.86): red
-		// "Bonded Pair" for true bonded pairs, green "Adopted Together"
-		// for non-bonded multi-cat events, none for singletons.
+		// pfoa_present_adoption_events(): PFOA 0.1.168 routes the
+		// predicate through pfoa_adoption_event_is_bonded_pair_for_display()
+		// (stored bonded_pair + reciprocal raw-partner agreement, else the
+		// strict helpers fail-closed); 3+ member events never bonded. The
+		// public badge below is conditional (0.1.86): red "Bonded Pair"
+		// for true bonded pairs, green "Adopted Together" for non-bonded
+		// multi-cat events, none for singletons.
 		$member_count   = count( $members );
 		$is_bonded_pair = false;
 
-		if ( 2 === $member_count && function_exists( 'pfoa_cat_is_bonded' ) && function_exists( 'pfoa_cat_get_bonded_pair' ) ) {
+		if ( 2 === $member_count ) {
 			$bond_ids = array();
 
 			foreach ( $members as $bond_member ) {
 				$bond_ids[] = ( is_array( $bond_member ) && isset( $bond_member['cat_post_id'] ) ) ? (int) $bond_member['cat_post_id'] : 0;
 			}
 
-			if ( 0 < $bond_ids[0] && 0 < $bond_ids[1] && $bond_ids[0] !== $bond_ids[1] ) {
-				if ( pfoa_cat_is_bonded( $bond_ids[0] ) && pfoa_cat_is_bonded( $bond_ids[1] ) ) {
-					$bond_pair = pfoa_cat_get_bonded_pair( $bond_ids[0] );
-
-					if ( is_array( $bond_pair ) ) {
-						$bond_pair   = array_map( 'intval', array_values( $bond_pair ) );
-						$bond_sorted = $bond_ids;
-
-						sort( $bond_pair, SORT_NUMERIC );
-						sort( $bond_sorted, SORT_NUMERIC );
-
-						if ( $bond_pair === $bond_sorted ) {
-							$is_bonded_pair = true;
-						}
-					}
-				}
-			}
+			$is_bonded_pair = pfoa_adoption_event_is_bonded_pair_for_display( $event_id, $bond_ids );
 		}
 
 		$candidates[] = array(
