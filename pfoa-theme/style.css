@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
   Description: A conventional, accessible foundation for the PFOA website.
-   Version: 0.1.179
+   Version: 0.1.180
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6053,6 +6053,7 @@ body.page-id-11290 .page-content .entry-header .entry-title {
 }
 
 body.page-id-11290 .page-content .entry-content div.wp-block-buttons {
+	clear: both;
 	margin-block: 24px;
 	justify-content: center;
 }
@@ -6183,5 +6184,41 @@ body.page-id-22514 .page-content .entry-content > h1:first-child {
 		overflow-wrap: normal;
 		word-break: normal;
 		font-size: clamp(1.75rem, 8vw, 2.25rem);
+	}
+}
+
+/* PFOA 0.1.180 — From The Home Front float layout correction
+ * (page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
+ * Root cause: global `.entry-content .alignright { float:right;
+ * max-width:50%; }` renders Wills (624x504 natural) at ~480px in the 960px
+ * shell, squeezing intro prose and intruding into the buttons flex line so
+ * the centered Week 276 CTA reads left-shifted. 0.1.175 centering alone
+ * cannot fix this while the float intrudes.
+ * Fix (desktop): constrain the figure to a balanced supporting size
+ * (~270px, capped at 40% so narrow desktops stay proportional), keep the
+ * right float with a comfortable gutter, and preserve aspect ratio. Clear
+ * the float at the Week 276 buttons (see clear:both on the 0.1.175 rule
+ * above) so the CTA + everything after uses full/normal width. H1,
+ * typography, colors, links, and content untouched; no global rules
+ * changed. */
+body.page-id-11290 .page-content .entry-content figure.wp-block-image.alignright {
+	width: 270px;
+	max-width: 40%;
+	float: right;
+	margin: 0.35rem 0 var(--pfoa-space-3) var(--pfoa-space-4);
+}
+
+body.page-id-11290 .page-content .entry-content figure.wp-block-image.alignright img {
+	width: 100%;
+	height: auto;
+	display: block;
+}
+
+@media (max-width: 720px) {
+	body.page-id-11290 .page-content .entry-content figure.wp-block-image.alignright {
+		float: none;
+		width: 100%;
+		max-width: 280px;
+		margin: 0 auto var(--pfoa-space-4);
 	}
 }
