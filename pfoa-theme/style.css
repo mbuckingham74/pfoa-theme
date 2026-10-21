@@ -1,8 +1,8 @@
 /*
-Theme Name: PFOA
-Author: PFOA project
-  Description: A conventional, accessible foundation for the PFOA website.
-   Version: 0.1.182
+ Theme Name: PFOA
+ Author: PFOA project
+   Description: A conventional, accessible foundation for the PFOA website.
+    Version: 0.1.183
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6031,33 +6031,6 @@ body.page-id-25036 .entry-content .gca-column.one-third iframe[src*="youtube-noc
 	}
 }
 
-/* PFOA 0.1.175 — From The Home Front styling correction
- * (page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
- * (a) Center the page H1 FromTheHomeFront within the main content area:
- * entry-header spans the full content shell with centered text so the
- * single-word title sits on the content centerline. Typography, wording,
- * and heading hierarchy are untouched; other pages keep the 720px
- * left-aligned title boundary.
- * (b) Give the green Week 276 CTA (the page's only div.wp-block-buttons)
- * ~24px equal visual spacing above and below. Adjacent prose carries
- * 0 top / 20px bottom margins, so a symmetric 24px buttons margin yields
- * 24px collapsed gaps on both sides at desktop and mobile. No content,
- * link, image, or layout changes. */
-body.page-id-11290 .page-content .entry-header {
-	max-width: 100%;
-	text-align: center;
-}
-
-body.page-id-11290 .page-content .entry-header .entry-title {
-	text-align: center;
-}
-
-body.page-id-11290 .page-content .entry-content div.wp-block-buttons {
-	clear: both;
-	margin-block: 24px;
-	justify-content: center;
-}
-
 /* PFOA 0.1.177 — In Memoriam heading + gallery link correction
  * (page-id-5421 only, https://dev.safehavenpfoa.org/inmemoriam/).
  * Heading root cause: the page's primary heading is content-owned (theme
@@ -6187,51 +6160,65 @@ body.page-id-22514 .page-content .entry-content > h1:first-child {
 	}
 }
 
-/* PFOA 0.1.182 — From The Home Front intro as native columns
- * (page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
- * SUPERSEDES 0.1.180 + 0.1.181 (both removed): 0.1.180 shrank the floated
- * Wills photo to 270px and cleared the Week 276 CTA beneath it (blank space
- * under the intro); 0.1.181 grouped the intro with a fragile nth-child grid
- * over live .entry-content children that breaks on any empty/added block
- * (e.g. the empty heading now removed from content). The underlying conflict
- * (global .alignright float + 720px centered prose squeezing the intro and
- * intruding into the buttons) is resolved in content, not CSS: the intro is
- * now one native wp:columns group (isStackedOnMobile, vertically centered)
- * holding copy + CTA in column 1 and the Wills photo (ID 20390, no alignment
- * class) in column 2, so no theme floats, clears, or nth-child hooks are
- * needed. H1 centering + gold divider come from the existing body.page
- * .entry-header rules untouched; the Week 276 CTA keeps its 24px
- * margin-block + centering from the 0.1.175 rule above. This block only:
- * vertically centers the intro columns with a 32px gap and caps the photo
- * at 280px (width:100% height:auto preserves the 624x504 aspect) centered
- * in its column. Following content (catch-up paragraph, weekly columns,
- * ATHENA, video) is untouched and keeps the shared container alignment — no
- * full-bleed hacks. Mobile (max-width:720px): core isStackedOnMobile stacks
- * the columns; the guard below only prevents overflow. No global or shell
- * rules changed. */
-body.page-id-11290 .page-content .entry-content > .wp-block-columns:first-child {
-	align-items: center;
-	column-gap: 32px;
+/* PFOA 0.1.183 — From The Home Front layout correction (consolidated,
+ * page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
+ * SUPERSEDES 0.1.175 + 0.1.182 (both prior blocks removed and folded in
+ * here — no additional competing override).
+ * (a) H1: the old page-specific centering is REMOVED as redundant — the
+ * global body.page .entry-header rule (0.1.178) already centers every page
+ * title on the shared centerline. Mobile single-line fit (0.1.179) stays
+ * untouched. Typography, wording, and heading hierarchy are untouched.
+ * (b) Week 276 CTA (the page's only div.wp-block-buttons): keeps the
+ * accepted symmetric 24px margin-block + centering for even spacing above
+ * and below. The old `clear:both` is REMOVED as ineffective — the intro is
+ * native columns with no floats left to clear.
+ * (c) Intro: hooked on the stable `.pfoa-homefront-intro` Additional CSS
+ * class (not fragile :first-child). Top-aligned (flex-start) so unequal
+ * column heights add no centering slack. Core columns bottom margin is
+ * neutralized (margin-bottom:0) and the following catch-up paragraph
+ * ("If you missed any of my weekly columns...") carries an explicit 30px
+ * top margin, giving a predictable ~30px separation instead of the old
+ * combined columns-margin + paragraph-flow stack. Photo capped at ~280px,
+ * centered in its column (width:100% height:auto preserves aspect).
+ * Preserved untouched: 960px shell, 720px prose, full-width weekly
+ * four-column links, shared centerline, H1, gold divider, copy, links,
+ * image, and CTA styling. Mobile (max-width:720px): core
+ * isStackedOnMobile stacks intro + weekly links naturally with centered
+ * CTA and paragraph rhythm; the guard only prevents overflow. */
+body.page-id-11290 .page-content .entry-content div.wp-block-buttons {
+	margin-block: 24px;
+	justify-content: center;
 }
 
-body.page-id-11290 .page-content .entry-content > .wp-block-columns:first-child > .wp-block-column {
+body.page-id-11290 .page-content .entry-content .wp-block-columns.pfoa-homefront-intro {
+	align-items: flex-start;
+	column-gap: 32px;
+	margin-bottom: 0;
+}
+
+body.page-id-11290 .page-content .entry-content .wp-block-columns.pfoa-homefront-intro > .wp-block-column {
 	min-width: 0;
 }
 
-body.page-id-11290 .page-content .entry-content > .wp-block-columns:first-child figure.wp-block-image {
+body.page-id-11290 .page-content .entry-content .wp-block-columns.pfoa-homefront-intro + p {
+	margin-top: 30px;
+}
+
+body.page-id-11290 .page-content .entry-content .wp-block-columns.pfoa-homefront-intro figure.wp-block-image {
 	max-width: 280px;
 	margin-inline: auto;
 }
 
-body.page-id-11290 .page-content .entry-content > .wp-block-columns:first-child figure.wp-block-image img {
+body.page-id-11290 .page-content .entry-content .wp-block-columns.pfoa-homefront-intro figure.wp-block-image img {
 	width: 100%;
 	height: auto;
 	display: block;
 }
 
 @media (max-width: 720px) {
-	body.page-id-11290 .page-content .entry-content > .wp-block-columns:first-child > .wp-block-column {
+	body.page-id-11290 .page-content .entry-content .wp-block-columns.pfoa-homefront-intro > .wp-block-column {
 		min-width: 0;
 		max-width: 100%;
 	}
 }
+
