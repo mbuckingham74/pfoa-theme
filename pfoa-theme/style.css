@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
   Description: A conventional, accessible foundation for the PFOA website.
-   Version: 0.1.181
+   Version: 0.1.182
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6187,154 +6187,51 @@ body.page-id-22514 .page-content .entry-content > h1:first-child {
 	}
 }
 
-/* PFOA 0.1.180 — From The Home Front float layout correction
+/* PFOA 0.1.182 — From The Home Front intro as native columns
  * (page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
- * Root cause: global `.entry-content .alignright { float:right;
- * max-width:50%; }` renders Wills (624x504 natural) at ~480px in the 960px
- * shell, squeezing intro prose and intruding into the buttons flex line so
- * the centered Week 276 CTA reads left-shifted. 0.1.175 centering alone
- * cannot fix this while the float intrudes.
- * Fix (desktop): constrain the figure to a balanced supporting size
- * (~270px, capped at 40% so narrow desktops stay proportional), keep the
- * right float with a comfortable gutter, and preserve aspect ratio. Clear
- * the float at the Week 276 buttons (see clear:both on the 0.1.175 rule
- * above) so the CTA + everything after uses full/normal width. H1,
- * typography, colors, links, and content untouched; no global rules
- * changed. */
-body.page-id-11290 .page-content .entry-content figure.wp-block-image.alignright {
-	width: 270px;
-	max-width: 40%;
-	float: right;
-	margin: 0.35rem 0 var(--pfoa-space-3) var(--pfoa-space-4);
-}
-
-body.page-id-11290 .page-content .entry-content figure.wp-block-image.alignright img {
-	width: 100%;
-	height: auto;
-	display: block;
-}
-
-@media (max-width: 720px) {
-	body.page-id-11290 .page-content .entry-content figure.wp-block-image.alignright {
-		float: none;
-		width: 100%;
-		max-width: 280px;
-		margin: 0 auto var(--pfoa-space-4);
-	}
-}
-
-/* PFOA 0.1.181 — From The Home Front intro grouping (theme-only, no content edit)
- * (page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
- * Replaces the 0.1.180 float/clear presentation (figure 270px float:right +
- * buttons clear:both pushed the Week 276 CTA beneath the photo, leaving
- * blank space under the intro paragraph). Flat DEV sibling order is:
- * figure.alignright(1) + p TALES(2) + p intro(3) + div.buttons Week276(4) +
- * p "If you missed..."(5) + columns/links/... . This block neutralizes the
- * float/clear dependency (float:none + clear:none below, later order wins
- * at equal specificity) and groups the intro as one cohesive grid:
- * desktop left ~600px (TALES centered + intro left-aligned + CTA centered
- * with 24px spacing, all inside column 1) / right 280px Wills photo with
- * 32px gap, centered in the existing shell. Everything from child 5 spans
- * full width so "If you missed..." starts cleanly centered; weekly
- * links/grid/columns/iframe keep their own layout via min-width:0.
- * H1/gold divider, wording, photo source, CTA label/destination/green
- * styling, and story links untouched; no global rules changed. */
-body.page-id-11290 .page-content .entry-content {
-	display: grid;
-	grid-template-columns: minmax(0, 600px) 280px;
-	justify-content: center;
+ * SUPERSEDES 0.1.180 + 0.1.181 (both removed): 0.1.180 shrank the floated
+ * Wills photo to 270px and cleared the Week 276 CTA beneath it (blank space
+ * under the intro); 0.1.181 grouped the intro with a fragile nth-child grid
+ * over live .entry-content children that breaks on any empty/added block
+ * (e.g. the empty heading now removed from content). The underlying conflict
+ * (global .alignright float + 720px centered prose squeezing the intro and
+ * intruding into the buttons) is resolved in content, not CSS: the intro is
+ * now one native wp:columns group (isStackedOnMobile, vertically centered)
+ * holding copy + CTA in column 1 and the Wills photo (ID 20390, no alignment
+ * class) in column 2, so no theme floats, clears, or nth-child hooks are
+ * needed. H1 centering + gold divider come from the existing body.page
+ * .entry-header rules untouched; the Week 276 CTA keeps its 24px
+ * margin-block + centering from the 0.1.175 rule above. This block only:
+ * vertically centers the intro columns with a 32px gap and caps the photo
+ * at 280px (width:100% height:auto preserves the 624x504 aspect) centered
+ * in its column. Following content (catch-up paragraph, weekly columns,
+ * ATHENA, video) is untouched and keeps the shared container alignment — no
+ * full-bleed hacks. Mobile (max-width:720px): core isStackedOnMobile stacks
+ * the columns; the guard below only prevents overflow. No global or shell
+ * rules changed. */
+body.page-id-11290 .page-content .entry-content > .wp-block-columns:first-child {
+	align-items: center;
 	column-gap: 32px;
-	row-gap: 0;
-	align-items: start;
 }
 
-body.page-id-11290 .page-content .entry-content > figure.wp-block-image.alignright:first-child {
-	grid-column: 2;
-	grid-row: 1 / span 3;
-	float: none;
-	width: 100%;
-	max-width: 280px;
-	margin: 0;
+body.page-id-11290 .page-content .entry-content > .wp-block-columns:first-child > .wp-block-column {
 	min-width: 0;
 }
 
-body.page-id-11290 .page-content .entry-content > figure.wp-block-image.alignright:first-child img {
+body.page-id-11290 .page-content .entry-content > .wp-block-columns:first-child figure.wp-block-image {
+	max-width: 280px;
+	margin-inline: auto;
+}
+
+body.page-id-11290 .page-content .entry-content > .wp-block-columns:first-child figure.wp-block-image img {
 	width: 100%;
 	height: auto;
 	display: block;
 }
 
-body.page-id-11290 .page-content .entry-content > p:nth-child(2) {
-	grid-column: 1;
-	grid-row: 1;
-	max-width: 100%;
-	margin-inline: 0;
-	text-align: center;
-	min-width: 0;
-}
-
-body.page-id-11290 .page-content .entry-content > p:nth-child(3) {
-	grid-column: 1;
-	grid-row: 2;
-	max-width: 100%;
-	margin-inline: 0;
-	text-align: left;
-	min-width: 0;
-}
-
-body.page-id-11290 .page-content .entry-content > div.wp-block-buttons:nth-child(4) {
-	grid-column: 1;
-	grid-row: 3;
-	clear: none;
-	width: 100%;
-	max-width: 100%;
-	margin-inline: 0;
-	margin-block: 24px;
-	justify-content: center;
-	min-width: 0;
-}
-
-body.page-id-11290 .page-content .entry-content > :nth-child(n+5) {
-	grid-column: 1 / -1;
-	min-width: 0;
-}
-
 @media (max-width: 720px) {
-	body.page-id-11290 .page-content .entry-content {
-		grid-template-columns: minmax(0, 100%);
-		column-gap: 0;
-	}
-
-	body.page-id-11290 .page-content .entry-content > p:nth-child(2) {
-		grid-column: 1;
-		grid-row: auto;
-		order: 1;
-	}
-
-	body.page-id-11290 .page-content .entry-content > p:nth-child(3) {
-		grid-column: 1;
-		grid-row: auto;
-		order: 2;
-	}
-
-	body.page-id-11290 .page-content .entry-content > div.wp-block-buttons:nth-child(4) {
-		grid-column: 1;
-		grid-row: auto;
-		order: 3;
-	}
-
-	body.page-id-11290 .page-content .entry-content > figure.wp-block-image.alignright:first-child {
-		grid-column: 1;
-		grid-row: auto;
-		order: 4;
-		max-width: 280px;
-		margin: 0 auto var(--pfoa-space-4);
-		justify-self: center;
-	}
-
-	body.page-id-11290 .page-content .entry-content > :nth-child(n+5) {
-		grid-column: 1;
-		grid-row: auto;
-		order: 5;
+	body.page-id-11290 .page-content .entry-content > .wp-block-columns:first-child > .wp-block-column {
+		min-width: 0;
+		max-width: 100%;
 	}
 }
