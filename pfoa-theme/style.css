@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
  Description: A conventional, accessible foundation for the PFOA website.
-  Version: 0.1.174
+  Version: 0.1.175
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6029,4 +6029,30 @@ body.page-id-25036 .entry-content .gca-column.one-third iframe[src*="youtube-noc
 		overflow-wrap: break-word;
 		word-break: normal;
 	}
+}
+
+/* PFOA 0.1.175 — From The Home Front styling correction
+ * (page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
+ * (a) Center the page H1 FromTheHomeFront within the main content area:
+ * entry-header spans the full content shell with centered text so the
+ * single-word title sits on the content centerline. Typography, wording,
+ * and heading hierarchy are untouched; other pages keep the 720px
+ * left-aligned title boundary.
+ * (b) Give the green Week 276 CTA (the page's only div.wp-block-buttons)
+ * ~24px equal visual spacing above and below. Adjacent prose carries
+ * 0 top / 20px bottom margins, so a symmetric 24px buttons margin yields
+ * 24px collapsed gaps on both sides at desktop and mobile. No content,
+ * link, image, or layout changes. */
+body.page-id-11290 .page-content .entry-header {
+	max-width: 100%;
+	text-align: center;
+}
+
+body.page-id-11290 .page-content .entry-header .entry-title {
+	text-align: center;
+}
+
+body.page-id-11290 .page-content .entry-content div.wp-block-buttons {
+	margin-block: 24px;
+	justify-content: center;
 }
