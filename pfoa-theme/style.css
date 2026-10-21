@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
   Description: A conventional, accessible foundation for the PFOA website.
-   Version: 0.1.178
+   Version: 0.1.179
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6163,4 +6163,25 @@ body.page-id-22514 .page-content .entry-content > h1:first-child {
 	font-size: clamp(2.25rem, 4vw, 3rem);
 	line-height: 1.1;
 	text-align: center;
+}
+
+/* PFOA 0.1.179 — Home Front mobile H1 single-line fit
+ * (page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
+ * Root cause: the shared title safety net (0.1.173)
+ * `.page-content .entry-title { overflow-wrap: anywhere; }` fragments the
+ * single-word H1 FromTheHomeFront mid-word at 390px (leaving `ont` on a
+ * second line). At <=600px neutralize that behavior page-scoped
+ * (overflow-wrap:normal + word-break:normal) and scale the title down just
+ * enough to fit one line: clamp(1.75rem,8vw,2.25rem) yields ~31px at 390px
+ * (~274px word in a 350px lane) and 28px at 320px (~246px word in a 280px
+ * lane). Centered alignment, Georgia 700, dark color, and gold divider come
+ * from the existing entry-header rules untouched; desktop (>600px) keeps
+ * the standard clamp(2.25rem,4vw,3rem). All other pages keep the shared
+ * anywhere safety net (P1-03 unspaced-title protection) untouched. */
+@media (max-width: 600px) {
+	body.page-id-11290 .page-content .entry-header .entry-title {
+		overflow-wrap: normal;
+		word-break: normal;
+		font-size: clamp(1.75rem, 8vw, 2.25rem);
+	}
 }
