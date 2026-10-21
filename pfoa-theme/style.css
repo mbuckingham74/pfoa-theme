@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
   Description: A conventional, accessible foundation for the PFOA website.
-   Version: 0.1.177
+   Version: 0.1.178
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6100,4 +6100,67 @@ body.page-id-5421 .page-content .entry-content table.aligncenter td span a {
 body.page-id-5421 .page-content .entry-content table.aligncenter td span a:hover,
 body.page-id-5421 .page-content .entry-content table.aligncenter td span a:focus-visible {
 	text-decoration: underline;
+}
+
+/* PFOA 0.1.178 — Standardized page title presentation (recommendations A + C).
+ * Visual reference: accepted Home Front (page-id-11290, theme-owned H1 with
+ * entry-header max-width:100% + centered text) and In Memoriam (page-id-5421,
+ * content-owned H1 with gold divider, centered).
+ * (A) Standard pages: every Page rendering the shared theme title now uses
+ * the centered full-shell heading container. Typography (Georgia 700,
+ * clamp(2.25rem,4vw,3rem), 1.1, primary color), gold divider, and vertical
+ * rhythm come from the existing .page-content .entry-header rule untouched;
+ * only alignment and container change here. Scoped to body.page so posts
+ * (body.single, content-single.php), archives/home/search (.page-title),
+ * Cat Profiles (body.single-pfoa_cat), and the homepage hero
+ * (front-page.php owns .front-page-content, no entry-header) keep their own
+ * heading systems. Pages with content-owned H1s render no entry-header, so
+ * this rule does not touch them; they are covered below. Home Front keeps
+ * its identical page-specific centering (now redundant, preserved).
+ * (C) Four landing pages keep their single content-owned H1 (theme title
+ * stays suppressed via pfoa_should_render_page_title, so no duplicate H1)
+ * and gain the standard centered presentation with divider. 4159/5656 pair
+ * with the one-time content edit promoting each navy H4 to a plain <h1>
+ * (same precedent as In Memoriam 0.1.176); :first-of-type tolerates the
+ * legacy top-anchor markup. 20323 reuses its .pfoa-adoptable-heading hook
+ * (stays inside the 720px intro, centered on the same centerline); 22514
+ * reuses its first-child hook (intro/gallery rules untouched). Galleries,
+ * cards, intro copy, links, and layouts are untouched. */
+body.page .page-content .entry-header {
+	max-width: 100%;
+	text-align: center;
+}
+
+body.page .page-content .entry-header .entry-title {
+	text-align: center;
+}
+
+body.page-id-4159 .page-content .entry-content > h1:first-of-type,
+body.page-id-5656 .page-content .entry-content > h1:first-of-type {
+	max-width: 100%;
+	margin-top: 0;
+	margin-bottom: var(--pfoa-space-6);
+	border-bottom: 2px solid var(--pfoa-color-gold);
+	padding-bottom: var(--pfoa-space-4);
+	text-align: center;
+}
+
+body.page-id-20323 .pfoa-adoptable-intro .pfoa-adoptable-heading {
+	max-width: 100%;
+	margin-bottom: var(--pfoa-space-6);
+	border-bottom: 2px solid var(--pfoa-color-gold);
+	padding-bottom: var(--pfoa-space-4);
+	font-size: clamp(2.25rem, 4vw, 3rem);
+	line-height: 1.1;
+}
+
+body.page-id-22514 .page-content .entry-content > h1:first-child {
+	max-width: 100%;
+	margin-top: 0;
+	margin-bottom: var(--pfoa-space-6);
+	border-bottom: 2px solid var(--pfoa-color-gold);
+	padding-bottom: var(--pfoa-space-4);
+	font-size: clamp(2.25rem, 4vw, 3rem);
+	line-height: 1.1;
+	text-align: center;
 }
