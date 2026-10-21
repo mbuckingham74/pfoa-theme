@@ -47,8 +47,8 @@ fixture_assert( file_exists( $css_path ), 'css: style.css exists' );
 $css = (string) file_get_contents( $css_path );
 fixture_assert( '' !== $css, 'css: style.css readable' );
 
-// Version gate for this release (0.1.161 block preserved; header now 0.1.166).
-	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.166/', $css ), 'css: theme version 0.1.166' );
+// Version gate for this release (0.1.161 block preserved; header now 0.1.167).
+	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.167/', $css ), 'css: theme version 0.1.167' );
 
 // Release marker comment present.
 fixture_assert( false !== strpos( $css, 'PFOA 0.1.161' ), 'css: 0.1.161 release marker present' );
@@ -64,7 +64,11 @@ fixture_assert(
 // explanatory header names the inherited guard).
 $pos_5421 = strpos( $css, '/* PFOA 0.1.161' );
 fixture_assert( false !== $pos_5421, 'css: 0.1.161 block located' );
-$block_161 = substr( $css, (int) $pos_5421, 8000 );
+// Bound the 0.1.161 block at the next release marker so later releases
+// (e.g. 0.1.167 with its own narrow queries) never leak into this scope.
+$next_marker = strpos( $css, '/* PFOA 0.1.', (int) $pos_5421 + 12 );
+$block_len   = false !== $next_marker ? (int) $next_marker - (int) $pos_5421 : 8000;
+$block_161   = substr( $css, (int) $pos_5421, $block_len );
 $block_161_code = (string) preg_replace( '/\/\*.*?\*\//s', '', $block_161 );
 fixture_assert( false === strpos( $block_161_code, 'anywhere' ), 'css: 5421 block never uses anywhere' );
 

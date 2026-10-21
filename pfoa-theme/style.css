@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
  Description: A conventional, accessible foundation for the PFOA website.
-  Version: 0.1.166
+  Version: 0.1.167
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -5877,5 +5877,40 @@ body.page-id-25036 .entry-content .gca-column.one-third iframe[src*="youtube-noc
 		width: 100%;
 		height: auto;
 		max-width: 150px;
+	}
+}
+
+/* PFOA 0.1.167 — Fundraisers hub mobile caption correction
+ * (page-id-4511 only, https://dev.safehavenpfoa.org/fundraisers/).
+ * Root cause: global `.page-content .entry-content { overflow-wrap: anywhere; }`
+ * fragments caption words inside the fixed 4-column tile table (content-authored
+ * `table[style*="table-layout: fixed"]` + `td[width="25%"]`; the inline fixed
+ * layout wins over the theme photo-grid `table-layout: auto`), leaving ~80px
+ * caption lanes at 390px (~62px at 320px) where 17px words such as
+ * "fundraising" cannot fit intact. At narrow widths restore word-boundary
+ * wrapping, tighten the theme-owned cell padding (4px wins over the
+ * presentation-attribute cellpadding, so it needs a page-scoped override),
+ * and scale caption type (content-authored inline 17px, hence !important)
+ * so the longest caption word fits its lane whole: 13px at <=600px and
+ * 11.5px at <=360px (verified zero mid-word splits at 390/360/320px).
+ * Scope is strictly body.page-id-4511 + photo-grid (`:has(td img)`) tile
+ * tables; photos, order, links, lightbox behavior, and desktop (>600px)
+ * presentation are untouched. The four-column baseline is preserved. */
+@media (max-width: 600px) {
+	body.page-id-4511 .page-content .entry-content table:has(td img) td {
+		padding: 2px !important;
+	}
+	body.page-id-4511 .page-content .entry-content table:has(td img) td span,
+	body.page-id-4511 .page-content .entry-content table:has(td img) td span a {
+		overflow-wrap: break-word;
+		word-break: normal;
+	}
+	body.page-id-4511 .page-content .entry-content table:has(td img) td span {
+		font-size: 13px !important;
+	}
+}
+@media (max-width: 360px) {
+	body.page-id-4511 .page-content .entry-content table:has(td img) td span {
+		font-size: 11.5px !important;
 	}
 }
