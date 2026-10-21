@@ -2,7 +2,7 @@
 Theme Name: PFOA
 Author: PFOA project
  Description: A conventional, accessible foundation for the PFOA website.
-  Version: 0.1.171
+  Version: 0.1.172
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -5264,20 +5264,31 @@ body.page-id-4264 .pfoa-board-member-role {
  * body.page-id-20323 .pfoa-recently-adopted, so Adopted 2026 (page 22514),
  * the paw filler, and all global rules are untouched. No new card/badge
  * system: same square photos, blue centered names, card shell, green pill,
- * and responsive tracks as the accepted Adopted language. Cards use the
+ * and responsive language as the accepted Adopted language. Cards use the
  * functions.php event markup (div.pfoa-adoption-event, members grid,
  * captions, badge, date; lightbox via wp_get_attachment_link, no .gallery
- * classes) rendered inside .pfoa-recently-adopted as a standalone grid.
+ * classes) rendered inside .pfoa-recently-adopted as a standalone row.
+ * PFOA 0.1.172 — compact centered flex (Adoptable Cats parity, visual only,
+ * CSS-only, DEV scope): flex-wrap + justify-content:center mirrors
+ * div.pfoa-cat-cards so all four events (7 photos) fit one centered desktop
+ * row at 1440px and incomplete rows center at smaller widths. DOM = visual
+ * = keyboard order kept (no order overrides, no dense backfill). Card width
+ * still follows content per AG-07 (photo + shell formula); events stay
+ * indivisible per AG-06. Compact photo fits 7 units in the 960px shell:
+ * 7*photo + 6*gap + 7*shell <= 100cqw, i.e.
+ * photo = (100cqw - 6*gap - 7*shell)/7 (fallback 99px).
  */
 body.page-id-20323 .pfoa-recently-adopted {
 	container-type: inline-size;
-	--pfoa-adopted-photo: 123px;
+	--pfoa-adopted-photo: 99px;
 	--pfoa-adopted-gap: var(--pfoa-space-2);
 	--pfoa-adopted-card-shell: calc(var(--pfoa-space-2) * 2 + 3px);
-	display: grid;
-	grid-template-columns: repeat(6, minmax(0, 1fr));
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
 	gap: 28px var(--pfoa-space-2);
-	align-items: stretch;
+	align-items: flex-start;
+	align-content: flex-start;
 	max-width: 100%;
 	margin: 0;
 	padding: 0;
@@ -5285,12 +5296,12 @@ body.page-id-20323 .pfoa-recently-adopted {
 
 @supports (width: 1cqw) {
 	body.page-id-20323 .pfoa-recently-adopted {
-		--pfoa-adopted-photo: calc((100cqw - 5 * var(--pfoa-space-2)) / 6 - (var(--pfoa-space-2) * 2 + 3px));
+		--pfoa-adopted-photo: calc((100cqw - 6 * var(--pfoa-adopted-gap) - 7 * var(--pfoa-adopted-card-shell)) / 7);
 	}
 }
 
 /* If events arrive inside an intermediate section wrapper, let them join
- * the single outer grid instead of forming a second nested grid. */
+ * the single outer flex row instead of forming a nested layout. */
 body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-events {
 	display: contents;
 }
@@ -5298,9 +5309,9 @@ body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-events {
 /* Independent Event cards: each Event carries its own border/shell, so
  * neighbouring Events stay visually separate horizontally and vertically. */
 body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event {
-	justify-self: start;
-	align-self: stretch;
+	align-self: flex-start;
 	display: flex;
+	flex: 0 1 auto;
 	flex-direction: column;
 	justify-content: flex-start;
 	min-width: 0;
@@ -5315,22 +5326,18 @@ body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event {
 }
 
 body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-1 {
-	grid-column: span 1;
 	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 1);
 }
 
 body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-2 {
-	grid-column: span 2;
 	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 2 + var(--pfoa-adopted-gap));
 }
 
 body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-3 {
-	grid-column: span 3;
 	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 3 + var(--pfoa-adopted-gap) * 2);
 }
 
 body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-n {
-	grid-column: span 4;
 	width: calc((var(--pfoa-adopted-photo) + var(--pfoa-adopted-card-shell)) * 4 + var(--pfoa-adopted-gap) * 3);
 }
 
@@ -5497,9 +5504,11 @@ body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-together-badge {
 }
 
 @media (max-width: 1319px) {
+	/* PFOA 0.1.172 — flex wrapping centers partial rows; photo returns to
+	 * the accepted Adopted readable scale once one-row fit is no longer
+	 * the goal. No grid tracks in this scope. */
 	body.page-id-20323 .pfoa-recently-adopted {
 		--pfoa-adopted-photo: 204px;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
 	}
 
 	@supports (width: 1cqw) {
@@ -5512,7 +5521,6 @@ body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-together-badge {
 @media (max-width: 720px) {
 	body.page-id-20323 .pfoa-recently-adopted {
 		--pfoa-adopted-photo: 191px;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
 	}
 
 	@supports (width: 1cqw) {
@@ -5523,7 +5531,7 @@ body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-together-badge {
 
 	body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-3,
 	body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-n {
-		grid-column: 1 / -1;
+		flex-basis: 100%;
 		width: 100%;
 	}
 
@@ -5541,7 +5549,6 @@ body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-together-badge {
 @media (max-width: 480px) {
 	body.page-id-20323 .pfoa-recently-adopted {
 		--pfoa-adopted-photo: 142px;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
 	@supports (width: 1cqw) {
@@ -5553,7 +5560,7 @@ body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-together-badge {
 	body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-2,
 	body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-3,
 	body.page-id-20323 .pfoa-recently-adopted > .pfoa-adoption-event-count-n {
-		grid-column: 1 / -1;
+		flex-basis: 100%;
 		width: 100%;
 	}
 
