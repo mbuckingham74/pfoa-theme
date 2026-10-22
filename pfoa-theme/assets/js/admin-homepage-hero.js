@@ -134,7 +134,7 @@
 		'<li class="pfoa-hero-carousel-item">' +
 		'<span class="pfoa-hero-carousel-preview">' + thumb + '</span> ' +
 		'<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][' + index + '][id]" value="' + id + '" /> ' +
-		'<input type="hidden" name="pfoa_hero[carousel_items][' + index + '][link_page_id]" value="0" /> ' +
+		'<label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">— No link —</option></select></label> ' +
 		'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
 		'<label class="pfoa-hero-carousel-brightness">Image brightness <select name="pfoa_hero[carousel_items][' + index + '][brightness]"><option value="100" selected="selected">Original (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option></select></label> ' +
 		'<label class="pfoa-hero-carousel-headline-size">Headline size <select name="pfoa_hero[carousel_items][' + index + '][headline_scale]"><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option></select></label> ' +

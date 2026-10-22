@@ -854,9 +854,157 @@ function pfoa_get_hero_defaults() {
 }
 
 /**
- * Sanitize an optional hero image destination page ID.
+ * Whether a Cat Profile is complete for hero-link eligibility (HP-02).
  *
- * Only a published page is accepted; anything else becomes 0 (not clickable).
+ * Mirrors the canonical pfoa-cat-profiles convention: profiles with no
+ * explicitly stored state default to complete; only an explicitly stored
+ * non-'1' value (thumbnail-only / coming-soon) counts as incomplete.
+ *
+ * @param int $post_id Cat Profile post ID.
+ * @return bool
+ */
+function pfoa_is_hero_link_cat_complete( $post_id ) {
+	$post_id = absint( $post_id );
+
+	if ( ! $post_id ) {
+		return false;
+	}
+
+	if ( function_exists( 'pfoa_cat_is_profile_complete' ) ) {
+		return (bool) pfoa_cat_is_profile_complete( $post_id );
+	}
+
+	if ( ! metadata_exists( 'post', $post_id, '_pfoa_cat_profile_complete' ) ) {
+		return true;
+	}
+
+	return '1' === (string) get_post_meta( $post_id, '_pfoa_cat_profile_complete', true );
+}
+
+/**
+ * Whether a post ID is an eligible hero image destination (HP-02).
+ *
+ * Eligible: published WordPress pages, plus published complete
+ * pfoa_cat profiles. Anything else is rejected.
+ *
+ * @param int $post_id Candidate destination post ID.
+ * @return bool
+ */
+function pfoa_is_hero_link_destination_eligible( $post_id ) {
+	$post_id = absint( $post_id );
+
+	if ( ! $post_id || 'publish' !== get_post_status( $post_id ) ) {
+		return false;
+	}
+
+	$post_type = get_post_type( $post_id );
+
+	if ( 'page' === $post_type ) {
+		return true;
+	}
+
+	if ( 'pfoa_cat' === $post_type && pfoa_is_hero_link_cat_complete( $post_id ) ) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * Return published, complete Cat Profiles for hero-link selectors (HP-02).
+ *
+ * Alphabetically ordered by title. Returns an empty array when the
+ * pfoa_cat post type is unavailable.
+ *
+ * @return WP_Post[]
+ */
+function pfoa_get_hero_link_cat_profiles() {
+	if ( ! post_type_exists( 'pfoa_cat' ) ) {
+		return array();
+	}
+
+	$cats = get_posts(
+		array(
+			'post_type'   => 'pfoa_cat',
+			'post_status' => 'publish',
+			'numberposts' => -1,
+			'orderby'     => 'title',
+			'order'       => 'ASC',
+		)
+	);
+
+	if ( ! is_array( $cats ) ) {
+		return array();
+	}
+
+	$eligible = array();
+
+	foreach ( $cats as $cat ) {
+		if ( ! $cat instanceof WP_Post ) {
+			continue;
+		}
+
+		if ( pfoa_is_hero_link_cat_complete( $cat->ID ) ) {
+			$eligible[] = $cat;
+		}
+	}
+
+	return $eligible;
+}
+
+/**
+ * Render the hero image destination selector (HP-02).
+ *
+ * Reusable Pages + Cat Profiles grouped selector replacing the previous
+ * page-only wp_dropdown_pages() calls. Field names and the integer
+ * _pfoa_hero storage format are unchanged.
+ *
+ * @param string $name     Select field name (may contain __INDEX__ for the JS template).
+ * @param int    $selected Currently selected destination post ID (0 = no link).
+ * @param string $id       Optional select element ID (empty omits the attribute).
+ * @return void
+ */
+function pfoa_render_hero_link_selector( $name, $selected = 0, $id = '' ) {
+	$selected = absint( $selected );
+
+	$pages = get_pages(
+		array(
+			'sort_column' => 'menu_order, post_title',
+		)
+	);
+
+	if ( ! is_array( $pages ) ) {
+		$pages = array();
+	}
+
+	$cats = pfoa_get_hero_link_cat_profiles();
+	?>
+	<select name="<?php echo esc_attr( $name ); ?>"<?php echo '' !== $id ? ' id="' . esc_attr( $id ) . '"' : ''; ?>>
+		<option value="0"<?php selected( $selected, 0 ); ?>><?php echo esc_html__( '— No link —', 'pfoa-theme' ); ?></option>
+		<optgroup label="<?php esc_attr_e( 'Pages', 'pfoa-theme' ); ?>">
+			<?php foreach ( $pages as $page ) : ?>
+				<?php if ( ! $page instanceof WP_Post || 'publish' !== $page->post_status ) : ?>
+					<?php continue; ?>
+				<?php endif; ?>
+				<option value="<?php echo esc_attr( (string) $page->ID ); ?>"<?php selected( $selected, $page->ID ); ?>><?php echo esc_html( $page->post_title ); ?></option>
+			<?php endforeach; ?>
+		</optgroup>
+		<?php if ( array() !== $cats ) : ?>
+			<optgroup label="<?php esc_attr_e( 'Cat Profiles', 'pfoa-theme' ); ?>">
+				<?php foreach ( $cats as $cat ) : ?>
+					<option value="<?php echo esc_attr( (string) $cat->ID ); ?>"<?php selected( $selected, $cat->ID ); ?>><?php echo esc_html( sprintf( '%s (#%d)', $cat->post_title, $cat->ID ) ); ?></option>
+				<?php endforeach; ?>
+			</optgroup>
+		<?php endif; ?>
+	</select>
+	<?php
+}
+
+/**
+ * Sanitize an optional hero image destination post ID (HP-02).
+ *
+ * A published page or a published, complete pfoa_cat profile is accepted;
+ * anything else becomes 0 (not clickable).
  *
  * @param mixed $value Raw submitted value.
  * @return int
@@ -864,7 +1012,7 @@ function pfoa_get_hero_defaults() {
 function pfoa_sanitize_hero_link_page_id( $value ) {
 	$page_id = absint( $value );
 
-	if ( ! $page_id || 'page' !== get_post_type( $page_id ) || 'publish' !== get_post_status( $page_id ) ) {
+	if ( ! pfoa_is_hero_link_destination_eligible( $page_id ) ) {
 		return 0;
 	}
 
@@ -872,18 +1020,19 @@ function pfoa_sanitize_hero_link_page_id( $value ) {
 }
 
 /**
- * Return the clickable destination for a hero image, if valid.
+ * Return the clickable destination for a hero image, if valid (HP-02).
  *
- * Re-validated at render time so a page that was unpublished or trashed
- * after saving stops being clickable without any re-save.
+ * Re-validated at render time so a destination that was unpublished,
+ * trashed, or marked incomplete after saving stops being clickable
+ * without any re-save.
  *
- * @param int $page_id Destination page ID.
+ * @param int $page_id Destination post ID (page or complete Cat Profile).
  * @return array Array with 'url' and 'title' keys (empty strings when none).
  */
 function pfoa_get_hero_link( $page_id ) {
 	$page_id = absint( $page_id );
 
-	if ( ! $page_id || 'page' !== get_post_type( $page_id ) || 'publish' !== get_post_status( $page_id ) ) {
+	if ( ! pfoa_is_hero_link_destination_eligible( $page_id ) ) {
 		return array(
 			'url'   => '',
 			'title' => '',
@@ -2024,17 +2173,7 @@ function pfoa_site_homepage_page() {
 				<p class="description"><?php esc_html_e( 'Shown when Single Image mode is selected. If empty, the page featured image (or the theme fallback banner) is used.', 'pfoa-theme' ); ?></p>
 				<p>
 					<label for="pfoa-hero-image-link"><?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?></label><br />
-					<?php
-					wp_dropdown_pages(
-						array(
-							'show_option_none' => __( '— No link —', 'pfoa-theme' ),
-							'option_none_value' => 0,
-							'name'              => 'pfoa_hero[image_link_page_id]',
-							'id'                => 'pfoa-hero-image-link',
-							'selected'          => $image_link_page_id,
-						)
-					);
-					?>
+					<?php pfoa_render_hero_link_selector( 'pfoa_hero[image_link_page_id]', $image_link_page_id, 'pfoa-hero-image-link' ); ?>
 				</p>
 				<p class="description"><?php esc_html_e( 'Optional. Clicking the hero image opens this page.', 'pfoa-theme' ); ?></p>
 			</td>
@@ -2059,16 +2198,7 @@ function pfoa_site_homepage_page() {
 								<input type="hidden" class="pfoa-hero-carousel-id" name="<?php echo esc_attr( $carousel_field_base ); ?>[id]" value="<?php echo esc_attr( (string) $carousel_id ); ?>" />
 								<label class="pfoa-hero-carousel-link">
 									<?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?>
-									<?php
-									wp_dropdown_pages(
-										array(
-											'show_option_none' => __( '— No link —', 'pfoa-theme' ),
-											'option_none_value' => 0,
-											'name'              => $carousel_field_base . '[link_page_id]',
-											'selected'          => $carousel_link,
-										)
-									);
-									?>
+									<?php pfoa_render_hero_link_selector( $carousel_field_base . '[link_page_id]', $carousel_link ); ?>
 								</label>
 							<label class="pfoa-hero-carousel-headline">
 								<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
@@ -2108,17 +2238,7 @@ function pfoa_site_homepage_page() {
 						<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][__INDEX__][id]" value="0" />
 						<label class="pfoa-hero-carousel-link">
 							<?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?>
-							<?php
-							wp_dropdown_pages(
-								array(
-									'show_option_none' => __( '— No link —', 'pfoa-theme' ),
-									'option_none_value' => 0,
-									'name'              => 'pfoa_hero[carousel_items][__INDEX__][link_page_id]',
-									'selected'          => 0,
-									'echo'              => 1,
-								)
-							);
-							?>
+							<?php pfoa_render_hero_link_selector( 'pfoa_hero[carousel_items][__INDEX__][link_page_id]', 0 ); ?>
 						</label>
 					<label class="pfoa-hero-carousel-headline">
 						<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
