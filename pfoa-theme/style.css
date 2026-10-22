@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-     Version: 0.1.196
+     Version: 0.1.197
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6759,6 +6759,248 @@ body.page-id-11290 .page-content .entry-content div.pfoa-hf-video iframe {
 
 	body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list {
 		gap: 0.15rem 0.5rem;
+	}
+
+	body.page-id-11290 .page-content .entry-content div.pfoa-hf-video {
+		max-width: 100%;
+	}
+}
+
+/* PFOA 0.1.197 — From The Home Front “Letter from Wills” redesign
+ * (page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
+ * Unified editorial feature (warm card: Wills welcome + Week 276 story),
+ * companion video with an explicit Week 276 association, and a compact
+ * left-aligned previous-columns archive (4 recent + native disclosure for
+ * the older 8). New hooks (.pfoa-hf-feature, .pfoa-hf-welcome,
+ * .pfoa-hf-portrait, .pfoa-hf-story, .pfoa-hf-video__frame,
+ * .pfoa-hf-archive__recent/older/more) are styled below; the 0.1.183 and
+ * 0.1.196 selectors above whose markup was retired stay in place inert.
+ * Reused hooks (.pfoa-hf-page, .pfoa-hf-video, .pfoa-hf-archive,
+ * .pfoa-hf-archive__heading) are restated here with equal-or-higher
+ * specificity so the redesign wins by later order. H1/gold divider, global
+ * rules, and PT 4799 rules are untouched. Every selector below starts with
+ * body.page-id-11290. */
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-page {
+	max-width: min(64rem, 100%);
+	margin-inline: auto;
+	box-sizing: border-box;
+}
+
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-eyebrow {
+	margin-block: 0 1rem;
+	color: var(--pfoa-text-muted);
+	font-size: 0.85rem;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	line-height: 1.5;
+	text-align: center;
+	text-transform: uppercase;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-feature {
+	margin-block: 0 2rem;
+	border: 1px solid var(--pfoa-border-default);
+	border-top: 3px solid var(--pfoa-color-gold);
+	border-radius: var(--pfoa-radius);
+	padding: clamp(1.25rem, 3vw, 2rem);
+	background: #faf5ec;
+	box-sizing: border-box;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-welcome {
+	display: flex;
+	gap: 1.25rem;
+	align-items: flex-start;
+	margin-block: 0 1.5rem;
+}
+
+body.page-id-11290 .page-content .entry-content figure.pfoa-hf-portrait {
+	flex: 0 0 140px;
+	width: 140px;
+	margin: 0;
+}
+
+body.page-id-11290 .page-content .entry-content figure.pfoa-hf-portrait img {
+	display: block;
+	width: 100%;
+	height: auto;
+	border: 1px solid var(--pfoa-border-default);
+	border-radius: var(--pfoa-radius);
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-welcome__copy {
+	flex: 1;
+	min-width: 0;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-welcome__copy p:last-child {
+	margin-bottom: 0;
+}
+
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-story__kicker {
+	margin-block: 0 0.35rem;
+	color: var(--pfoa-text-muted);
+	font-size: 0.8rem;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	line-height: 1.5;
+	text-transform: uppercase;
+}
+
+body.page-id-11290 .page-content .entry-content h2.pfoa-hf-story__title {
+	margin-block: 0 0.75rem;
+}
+
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-story__teaser {
+	margin-block: 0;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-story__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.75rem 1.25rem;
+	margin-block: 1.25rem 0;
+}
+
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-story__browse {
+	margin: 0;
+}
+
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-story__browse a {
+	font-weight: 700;
+}
+
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-story__browse a::after {
+	color: var(--pfoa-color-gold-dark);
+	content: "→";
+	margin-inline-start: 0.35em;
+}
+
+/* The 0.1.196 video container assumed an iframe-only box (aspect-ratio on
+ * the container). The redesign adds a heading + copy, so the ratio moves to
+ * an inner frame and the container only constrains width. Later order plus
+ * equal specificity overrides the earlier container rule. */
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-video {
+	max-width: min(45rem, 100%);
+	margin-inline: auto;
+	margin-block: 0 2rem;
+	aspect-ratio: auto;
+	box-sizing: border-box;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-video__frame {
+	aspect-ratio: 16 / 9;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-video div.pfoa-hf-video__frame iframe {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: 0;
+}
+
+/* The 0.1.196 archive was a centered pale-blue bar with a wrapping link
+ * paragraph. The redesign is a compact left-aligned list archive; the new
+ * hooks below use <ul> rows with dividers, so the retired
+ * p.pfoa-hf-archive__list rule stays inert. The container and heading rules
+ * are restated here (later order wins). */
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-archive {
+	max-width: min(46rem, 100%);
+	margin-inline: auto;
+	text-align: left;
+	box-sizing: border-box;
+}
+
+body.page-id-11290 .page-content .entry-content h2.pfoa-hf-archive__heading {
+	margin-block: 0 0.5rem;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	text-align: left;
+}
+
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__note {
+	margin-block: 0 1rem;
+}
+
+body.page-id-11290 .page-content .entry-content ul.pfoa-hf-archive__recent,
+body.page-id-11290 .page-content .entry-content ul.pfoa-hf-archive__older {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+body.page-id-11290 .page-content .entry-content ul.pfoa-hf-archive__recent {
+	margin-block: 0 0.5rem;
+}
+
+body.page-id-11290 .page-content .entry-content ul.pfoa-hf-archive__recent > li,
+body.page-id-11290 .page-content .entry-content ul.pfoa-hf-archive__older > li {
+	margin: 0;
+	border-top: 1px solid var(--pfoa-border-default);
+}
+
+body.page-id-11290 .page-content .entry-content ul.pfoa-hf-archive__recent > li:last-child,
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-archive__more[open] ul.pfoa-hf-archive__older > li:last-child {
+	border-bottom: 1px solid var(--pfoa-border-default);
+}
+
+body.page-id-11290 .page-content .entry-content ul.pfoa-hf-archive__recent > li > a,
+body.page-id-11290 .page-content .entry-content ul.pfoa-hf-archive__older > li > a {
+	display: flex;
+	align-items: center;
+	min-height: 44px;
+	padding: 0.6rem 0.25rem;
+	font-weight: 600;
+}
+
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-archive__more {
+	margin-block: 0.5rem 0;
+}
+
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-archive__more > summary {
+	display: flex;
+	align-items: center;
+	min-height: 44px;
+	margin: 0;
+	border-radius: var(--pfoa-radius);
+	padding: 0.6rem 0.25rem;
+	color: var(--pfoa-action-primary);
+	font-weight: 700;
+	cursor: pointer;
+}
+
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-archive__more > summary:hover {
+	color: var(--pfoa-action-hover);
+	text-decoration: underline;
+	text-underline-offset: 0.16em;
+}
+
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-archive__more > summary::marker {
+	color: var(--pfoa-color-gold-dark);
+}
+
+@media (max-width: 600px) {
+	body.page-id-11290 .page-content .entry-content div.pfoa-hf-feature {
+		padding: 1.25rem 1rem;
+	}
+
+	body.page-id-11290 .page-content .entry-content div.pfoa-hf-welcome {
+		gap: 1rem;
+	}
+
+	body.page-id-11290 .page-content .entry-content figure.pfoa-hf-portrait {
+		flex-basis: 80px;
+		width: 80px;
+	}
+
+	body.page-id-11290 .page-content .entry-content div.pfoa-hf-story__actions .wp-block-button {
+		flex: 1 1 100%;
+	}
+
+	body.page-id-11290 .page-content .entry-content div.pfoa-hf-story__actions .wp-block-button__link {
+		width: 100%;
 	}
 
 	body.page-id-11290 .page-content .entry-content div.pfoa-hf-video {
