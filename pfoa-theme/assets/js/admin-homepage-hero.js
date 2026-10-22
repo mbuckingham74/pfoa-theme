@@ -182,17 +182,19 @@
 			'<label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">— No link —</option></select></label> ' +
 			'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
 			'<label class="pfoa-hero-carousel-brightness">Image brightness <select name="pfoa_hero[carousel_items][' + index + '][brightness]"><option value="100" selected="selected">Original (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option></select></label> ' +
-			'<label class="pfoa-hero-carousel-headline-size">Headline size <select name="pfoa_hero[carousel_items][' + index + '][headline_scale]"><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option></select></label> ' +
-			'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
-			'<button type="button" class="button pfoa-hero-carousel-down">' + moveDownLabel() + '</button> ' +
-			'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +
-			'</li>'
-		);
+		'<label class="pfoa-hero-carousel-headline-size">Headline size <select name="pfoa_hero[carousel_items][' + index + '][headline_scale]"><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option></select></label> ' +
+		'<label class="pfoa-hero-carousel-zoom">Image zoom <select name="pfoa_hero[carousel_items][' + index + '][zoom]"><option value="50">50%</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option><option value="140">140%</option><option value="150">150%</option></select></label> ' +
+		'<label class="pfoa-hero-carousel-position">Image position <select name="pfoa_hero[carousel_items][' + index + '][position]"><option value="top left">Top left</option><option value="top center">Top center</option><option value="top right">Top right</option><option value="center left">Center left</option><option value="center center" selected="selected">Center (default)</option><option value="center right">Center right</option><option value="bottom left">Bottom left</option><option value="bottom center">Bottom center</option><option value="bottom right">Bottom right</option></select></label> ' +
+		'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
+		'<button type="button" class="button pfoa-hero-carousel-down">' + moveDownLabel() + '</button> ' +
+		'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +
+		'</li>'
+	);
 
-		list.append( fallback );
+	list.append( fallback );
 
-		return fallback;
-	}
+	return fallback;
+}
 
 	// Add empty rows (from the template) until the list holds N rows.
 	// Never removes rows: lowering N only dims extras via refreshInactiveSlots.
@@ -266,8 +268,10 @@
 		'<label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">— No link —</option></select></label> ' +
 		'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
 		'<label class="pfoa-hero-carousel-brightness">Image brightness <select name="pfoa_hero[carousel_items][' + index + '][brightness]"><option value="100" selected="selected">Original (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option></select></label> ' +
-		'<label class="pfoa-hero-carousel-headline-size">Headline size <select name="pfoa_hero[carousel_items][' + index + '][headline_scale]"><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option></select></label> ' +
-		'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
+	'<label class="pfoa-hero-carousel-headline-size">Headline size <select name="pfoa_hero[carousel_items][' + index + '][headline_scale]"><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option></select></label> ' +
+	'<label class="pfoa-hero-carousel-zoom">Image zoom <select name="pfoa_hero[carousel_items][' + index + '][zoom]"><option value="50">50%</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option><option value="140">140%</option><option value="150">150%</option></select></label> ' +
+	'<label class="pfoa-hero-carousel-position">Image position <select name="pfoa_hero[carousel_items][' + index + '][position]"><option value="top left">Top left</option><option value="top center">Top center</option><option value="top right">Top right</option><option value="center left">Center left</option><option value="center center" selected="selected">Center (default)</option><option value="center right">Center right</option><option value="bottom left">Bottom left</option><option value="bottom center">Bottom center</option><option value="bottom right">Bottom right</option></select></label> ' +
+	'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
 		'<button type="button" class="button pfoa-hero-carousel-down">' + moveDownLabel() + '</button> ' +
 		'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +
 		'</li>'

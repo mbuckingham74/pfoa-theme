@@ -73,6 +73,10 @@ if ( 'carousel' === $hero_mode ) {
 
 		$slide_headline_scale = ( is_array( $raw_item ) && isset( $raw_item['headline_scale'] ) ) ? pfoa_sanitize_hero_headline_scale( $raw_item['headline_scale'] ) : 100;
 
+		$slide_zoom = ( is_array( $raw_item ) && isset( $raw_item['zoom'] ) ) ? pfoa_sanitize_hero_zoom( $raw_item['zoom'] ) : 100;
+
+		$slide_position = ( is_array( $raw_item ) && isset( $raw_item['position'] ) ) ? pfoa_sanitize_hero_position( $raw_item['position'] ) : 'center center';
+
 		$carousel_slides[] = array(
 			'id'             => $slide_id,
 			'link_url'       => $slide_link['url'],
@@ -80,6 +84,8 @@ if ( 'carousel' === $hero_mode ) {
 			'headline'       => $slide_headline,
 			'brightness'     => $slide_brightness,
 			'headline_scale' => $slide_headline_scale,
+			'zoom'           => $slide_zoom,
+			'position'       => $slide_position,
 		);
 
 		// Cap at 5 stored slots, render only the first N selected.
@@ -133,8 +139,43 @@ if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fa
 				$slide_brightness = 100;
 			}
 			$brightness_factor = $brightness_factors[ $slide_brightness ];
+			$zoom_factors = array(
+				50  => '0.5',
+				60  => '0.6',
+				70  => '0.7',
+				80  => '0.8',
+				90  => '0.9',
+				100 => '1',
+				110 => '1.1',
+				120 => '1.2',
+				130 => '1.3',
+				140 => '1.4',
+				150 => '1.5',
+			);
+			$slide_zoom = isset( $slide['zoom'] ) ? (int) $slide['zoom'] : 100;
+			if ( ! isset( $zoom_factors[ $slide_zoom ] ) ) {
+				$slide_zoom = 100;
+			}
+			$zoom_factor = $zoom_factors[ $slide_zoom ];
+			$allowed_positions = array(
+				'top left',
+				'top center',
+				'top right',
+				'center left',
+				'center center',
+				'center right',
+				'bottom left',
+				'bottom center',
+				'bottom right',
+			);
+			$slide_position = isset( $slide['position'] ) ? $slide['position'] : 'center center';
+			if ( ! in_array( $slide_position, $allowed_positions, true ) ) {
+				$slide_position = 'center center';
+			}
+			$slide_bg_url = wp_get_attachment_image_url( $slide_id, 'full' );
+			$slide_class  = 'homepage-hero__slide' . ( 0 === $slide_index ? ' is-active' : '' ) . ( $slide_zoom < 100 ? ' is-zoom-out' : '' );
 			?>
-			<div class="homepage-hero__slide<?php echo 0 === $slide_index ? ' is-active' : ''; ?>"<?php echo 0 === $slide_index ? '' : ' aria-hidden="true"'; ?> data-headline="<?php echo esc_attr( $slide['headline'] ); ?>" data-headline-scale="<?php echo esc_attr( (string) ( isset( $slide['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $slide['headline_scale'] ) : 100 ) ); ?>" style="--pfoa-hero-brightness:<?php echo esc_attr( $brightness_factor ); ?>;">
+			<div class="<?php echo esc_attr( $slide_class ); ?>"<?php echo 0 === $slide_index ? '' : ' aria-hidden="true"'; ?> data-headline="<?php echo esc_attr( $slide['headline'] ); ?>" data-headline-scale="<?php echo esc_attr( (string) ( isset( $slide['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $slide['headline_scale'] ) : 100 ) ); ?>" data-zoom="<?php echo esc_attr( (string) $slide_zoom ); ?>" data-position="<?php echo esc_attr( $slide_position ); ?>" style="--pfoa-hero-brightness:<?php echo esc_attr( $brightness_factor ); ?>;--pfoa-hero-zoom:<?php echo esc_attr( $zoom_factor ); ?>;--pfoa-hero-position:<?php echo esc_attr( $slide_position ); ?>;<?php echo $slide_bg_url ? '--pfoa-hero-bg:url(\'' . esc_url( $slide_bg_url ) . '\');' : ''; ?>">
 					<?php
 					echo wp_get_attachment_image(
 						$slide_id,

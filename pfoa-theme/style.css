@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-     Version: 0.1.200
+     Version: 0.1.201
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -2516,7 +2516,7 @@ body.page-id-4968 #staff-roster a:focus-visible {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
-	object-position: center center;
+	object-position: var(--pfoa-hero-position, center center);
 }
 
 .front-page-content .homepage-hero__inner {
@@ -2665,6 +2665,50 @@ body.page-id-4968 #staff-roster a:focus-visible {
    headline/CTAs/scrim/arrows are unaffected. Single-image mode untouched. */
 .front-page-content .homepage-hero--carousel .homepage-hero__slide .homepage-hero__image {
 	filter: brightness(var(--pfoa-hero-brightness, 1));
+}
+
+/* PFOA 0.1.201 — Per-slide hero zoom + position. Zoom is a
+ * unitless factor on the slide wrapper (--pfoa-hero-zoom, 0.5-1.5, default
+ * 1) driving width/height so the image stays centered with cover crop;
+ * 100% computes to exactly the pre-zoom framing. Position
+ * (--pfoa-hero-position, default center center) flows through the base
+ * .homepage-hero__image object-position rule above. Zoom-out (factor < 1)
+ * exposes slide edges, so the slide carries the same image as a blurred
+ * fill via --pfoa-hero-bg (set inline by homepage-hero.php; ::before
+ * cannot read img src). The fill is blurred, dimmed, and overscaled to
+ * hide its own edges, and only renders on .is-zoom-out slides. DOM order
+ * keeps paint order unchanged: fill, image, scrim, link. No fixed pixel
+ * sizes are used, so the 1440px (~482px cap) and 390px (~352px) hero
+ * heights behave as before. Single-image mode is untouched. */
+.front-page-content .homepage-hero--carousel .homepage-hero__slide {
+	overflow: hidden;
+}
+
+.front-page-content .homepage-hero--carousel .homepage-hero__slide::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	display: none;
+	background-image: var(--pfoa-hero-bg, none);
+	background-size: cover;
+	background-position: var(--pfoa-hero-position, center center);
+	background-repeat: no-repeat;
+	filter: blur(20px) brightness(0.7);
+	transform: scale(1.1);
+	pointer-events: none;
+}
+
+.front-page-content .homepage-hero--carousel .homepage-hero__slide.is-zoom-out::before {
+	display: block;
+}
+
+.front-page-content .homepage-hero--carousel .homepage-hero__slide .homepage-hero__image {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: calc(100% * var(--pfoa-hero-zoom, 1));
+	height: calc(100% * var(--pfoa-hero-zoom, 1));
+	transform: translate(-50%, -50%);
 }
 
 .front-page-content .homepage-hero__controls {

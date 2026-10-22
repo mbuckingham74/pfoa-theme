@@ -48,6 +48,26 @@
 			title.classList.add( 'scale-' + scale );
 		}
 
+		var allowedZooms = [ '50', '60', '70', '80', '90', '100', '110', '120', '130', '140', '150' ];
+		var allowedPositions = [ 'top left', 'top center', 'top right', 'center left', 'center center', 'center right', 'bottom left', 'bottom center', 'bottom right' ];
+
+		function applyZoom( slide, zoom ) {
+			if ( allowedZooms.indexOf( zoom ) === -1 ) {
+				zoom = '100';
+			}
+
+			slide.style.setProperty( '--pfoa-hero-zoom', ( parseInt( zoom, 10 ) / 100 ).toString() );
+			slide.classList.toggle( 'is-zoom-out', parseInt( zoom, 10 ) < 100 );
+		}
+
+		function applyPosition( slide, position ) {
+			if ( allowedPositions.indexOf( position ) === -1 ) {
+				position = 'center center';
+			}
+
+			slide.style.setProperty( '--pfoa-hero-position', position );
+		}
+
 		slides.forEach( function ( slide, position ) {
 			var isActive = position === current;
 			slide.classList.toggle( 'is-active', isActive );
@@ -65,6 +85,9 @@
 						applyHeadlineScale( title, slide.getAttribute( 'data-headline-scale' ) );
 					}
 				}
+
+				applyZoom( slide, slide.getAttribute( 'data-zoom' ) );
+				applyPosition( slide, slide.getAttribute( 'data-position' ) );
 			} else {
 				slide.setAttribute( 'aria-hidden', 'true' );
 			}

@@ -801,7 +801,7 @@ function pfoa_homepage_cards_page() {
  *   'image_id'           => int (attachment ID),
  *   'image_link_page_id' => int (published page ID, 0 = not clickable),
  *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
- *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int, 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 70|80|90|100|110|120 ),
+ *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int, 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 70|80|90|100|110|120, 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
  *   'carousel_interval_ms' => 3500|5000|7000 (ms each carousel image stays visible; missing/invalid resolves to 5000),
  *   'ctas'               => array[] of array( 'label' => string, 'url' => string ),
  * ).
@@ -1074,6 +1074,82 @@ function pfoa_sanitize_hero_brightness( $value ) {
 }
 
 /**
+ * Sanitize a per-image hero carousel zoom value.
+ *
+ * Only 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150 are accepted;
+ * anything else becomes 100 (Default).
+ *
+ * @param mixed $value Raw submitted value.
+ * @return int
+ */
+function pfoa_sanitize_hero_zoom( $value ) {
+	$zoom = absint( $value );
+
+	if ( ! in_array( $zoom, array( 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150 ), true ) ) {
+		return 100;
+	}
+
+	return $zoom;
+}
+
+/**
+ * Sanitize a per-image hero carousel image position value.
+ *
+ * Canonical tokens are space-separated CSS object-position values so they
+ * map directly to `object-position` (e.g. 'top left', 'center center').
+ * Hyphenated equivalents ('top-left') and single-word shorthands ('top',
+ * 'left', 'right', 'bottom', 'center') are accepted as aliases and
+ * normalized to their canonical space-separated form. Anything else
+ * becomes 'center center' (CSS equivalent of 'center').
+ *
+ * @param mixed $value Raw submitted value.
+ * @return string
+ */
+function pfoa_sanitize_hero_position( $value ) {
+	$position = strtolower( trim( (string) $value ) );
+	$position = preg_replace( '/\s+/', ' ', $position );
+
+	$aliases = array(
+		'top-left'     => 'top left',
+		'top-center'   => 'top center',
+		'top'          => 'top center',
+		'top-right'    => 'top right',
+		'center-left'  => 'center left',
+		'left'         => 'center left',
+		'center-center' => 'center center',
+		'center'       => 'center center',
+		'center-right' => 'center right',
+		'right'        => 'center right',
+		'bottom-left'  => 'bottom left',
+		'bottom-center' => 'bottom center',
+		'bottom'       => 'bottom center',
+		'bottom-right' => 'bottom right',
+	);
+
+	if ( isset( $aliases[ $position ] ) ) {
+		$position = $aliases[ $position ];
+	}
+
+	$allowed = array(
+		'top left',
+		'top center',
+		'top right',
+		'center left',
+		'center center',
+		'center right',
+		'bottom left',
+		'bottom center',
+		'bottom right',
+	);
+
+	if ( ! in_array( $position, $allowed, true ) ) {
+		return 'center center';
+	}
+
+	return $position;
+}
+
+/**
  * Sanitize a per-image hero carousel headline size value.
  *
  * Only 70, 80, 90, 100, 110, 120 are accepted; anything else becomes 100 (Default).
@@ -1197,6 +1273,8 @@ function pfoa_sanitize_hero( $value ) {
 				'headline'       => isset( $carousel_item['headline'] ) ? sanitize_text_field( $carousel_item['headline'] ) : '',
 				'brightness'     => isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100,
 				'headline_scale' => isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100,
+				'zoom'           => isset( $carousel_item['zoom'] ) ? pfoa_sanitize_hero_zoom( $carousel_item['zoom'] ) : 100,
+				'position'       => isset( $carousel_item['position'] ) ? pfoa_sanitize_hero_position( $carousel_item['position'] ) : 'center center',
 			);
 		}
 	}
@@ -1228,6 +1306,8 @@ function pfoa_sanitize_hero( $value ) {
 				'headline'       => '',
 				'brightness'     => 100,
 				'headline_scale' => 100,
+				'zoom'           => 100,
+				'position'       => 'center center',
 			);
 		}
 	}
@@ -2140,6 +2220,8 @@ function pfoa_site_homepage_page() {
 				'headline'       => isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '',
 				'brightness'     => isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100,
 				'headline_scale' => isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100,
+				'zoom'           => isset( $carousel_item['zoom'] ) ? pfoa_sanitize_hero_zoom( $carousel_item['zoom'] ) : 100,
+				'position'       => isset( $carousel_item['position'] ) ? pfoa_sanitize_hero_position( $carousel_item['position'] ) : 'center center',
 			);
 		}
 	} else {
@@ -2150,6 +2232,8 @@ function pfoa_site_homepage_page() {
 				'headline'       => '',
 				'brightness'     => 100,
 				'headline_scale' => 100,
+				'zoom'           => 100,
+				'position'       => 'center center',
 			);
 		}
 	}
@@ -2165,6 +2249,8 @@ function pfoa_site_homepage_page() {
 			'headline'       => '',
 			'brightness'     => 100,
 			'headline_scale' => 100,
+			'zoom'           => 100,
+			'position'       => 'center center',
 		);
 	}
 
@@ -2241,8 +2327,10 @@ function pfoa_site_homepage_page() {
 					$carousel_id        = absint( $carousel_item['id'] );
 					$carousel_link      = absint( $carousel_item['link_page_id'] );
 					$carousel_headline  = isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '';
-					$carousel_brightness = isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100;
-					$carousel_headline_scale = isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100;
+				$carousel_brightness = isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100;
+				$carousel_headline_scale = isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100;
+				$carousel_zoom = isset( $carousel_item['zoom'] ) ? pfoa_sanitize_hero_zoom( $carousel_item['zoom'] ) : 100;
+				$carousel_position = isset( $carousel_item['position'] ) ? pfoa_sanitize_hero_position( $carousel_item['position'] ) : 'center center';
 						$carousel_preview   = $carousel_id ? wp_get_attachment_image( $carousel_id, array( 80, 80 ) ) : '';
 						$carousel_field_base = 'pfoa_hero[carousel_items][' . $carousel_index . ']';
 						$is_inactive_slot = $carousel_index >= $carousel_slide_count;
@@ -2269,17 +2357,47 @@ function pfoa_site_homepage_page() {
 									<option value="130"<?php selected( $carousel_brightness, 130 ); ?>><?php esc_html_e( '130%', 'pfoa-theme' ); ?></option>
 								</select>
 							</label>
-							<label class="pfoa-hero-carousel-headline-size">
-								<?php esc_html_e( 'Headline size', 'pfoa-theme' ); ?>
-								<select name="<?php echo esc_attr( $carousel_field_base ); ?>[headline_scale]">
-									<option value="70"<?php selected( $carousel_headline_scale, 70 ); ?>><?php esc_html_e( '70%', 'pfoa-theme' ); ?></option>
-									<option value="80"<?php selected( $carousel_headline_scale, 80 ); ?>><?php esc_html_e( '80%', 'pfoa-theme' ); ?></option>
-									<option value="90"<?php selected( $carousel_headline_scale, 90 ); ?>><?php esc_html_e( '90%', 'pfoa-theme' ); ?></option>
-									<option value="100"<?php selected( $carousel_headline_scale, 100 ); ?>><?php esc_html_e( 'Default (100%)', 'pfoa-theme' ); ?></option>
-									<option value="110"<?php selected( $carousel_headline_scale, 110 ); ?>><?php esc_html_e( '110%', 'pfoa-theme' ); ?></option>
-									<option value="120"<?php selected( $carousel_headline_scale, 120 ); ?>><?php esc_html_e( '120%', 'pfoa-theme' ); ?></option>
-								</select>
-							</label>
+						<label class="pfoa-hero-carousel-headline-size">
+							<?php esc_html_e( 'Headline size', 'pfoa-theme' ); ?>
+							<select name="<?php echo esc_attr( $carousel_field_base ); ?>[headline_scale]">
+								<option value="70"<?php selected( $carousel_headline_scale, 70 ); ?>><?php esc_html_e( '70%', 'pfoa-theme' ); ?></option>
+								<option value="80"<?php selected( $carousel_headline_scale, 80 ); ?>><?php esc_html_e( '80%', 'pfoa-theme' ); ?></option>
+								<option value="90"<?php selected( $carousel_headline_scale, 90 ); ?>><?php esc_html_e( '90%', 'pfoa-theme' ); ?></option>
+								<option value="100"<?php selected( $carousel_headline_scale, 100 ); ?>><?php esc_html_e( 'Default (100%)', 'pfoa-theme' ); ?></option>
+								<option value="110"<?php selected( $carousel_headline_scale, 110 ); ?>><?php esc_html_e( '110%', 'pfoa-theme' ); ?></option>
+								<option value="120"<?php selected( $carousel_headline_scale, 120 ); ?>><?php esc_html_e( '120%', 'pfoa-theme' ); ?></option>
+							</select>
+						</label>
+						<label class="pfoa-hero-carousel-zoom">
+							<?php esc_html_e( 'Image zoom', 'pfoa-theme' ); ?>
+							<select name="<?php echo esc_attr( $carousel_field_base ); ?>[zoom]">
+								<option value="50"<?php selected( $carousel_zoom, 50 ); ?>><?php esc_html_e( '50%', 'pfoa-theme' ); ?></option>
+								<option value="60"<?php selected( $carousel_zoom, 60 ); ?>><?php esc_html_e( '60%', 'pfoa-theme' ); ?></option>
+								<option value="70"<?php selected( $carousel_zoom, 70 ); ?>><?php esc_html_e( '70%', 'pfoa-theme' ); ?></option>
+								<option value="80"<?php selected( $carousel_zoom, 80 ); ?>><?php esc_html_e( '80%', 'pfoa-theme' ); ?></option>
+								<option value="90"<?php selected( $carousel_zoom, 90 ); ?>><?php esc_html_e( '90%', 'pfoa-theme' ); ?></option>
+								<option value="100"<?php selected( $carousel_zoom, 100 ); ?>><?php esc_html_e( 'Default (100%)', 'pfoa-theme' ); ?></option>
+								<option value="110"<?php selected( $carousel_zoom, 110 ); ?>><?php esc_html_e( '110%', 'pfoa-theme' ); ?></option>
+								<option value="120"<?php selected( $carousel_zoom, 120 ); ?>><?php esc_html_e( '120%', 'pfoa-theme' ); ?></option>
+								<option value="130"<?php selected( $carousel_zoom, 130 ); ?>><?php esc_html_e( '130%', 'pfoa-theme' ); ?></option>
+								<option value="140"<?php selected( $carousel_zoom, 140 ); ?>><?php esc_html_e( '140%', 'pfoa-theme' ); ?></option>
+								<option value="150"<?php selected( $carousel_zoom, 150 ); ?>><?php esc_html_e( '150%', 'pfoa-theme' ); ?></option>
+							</select>
+						</label>
+						<label class="pfoa-hero-carousel-position">
+							<?php esc_html_e( 'Image position', 'pfoa-theme' ); ?>
+							<select name="<?php echo esc_attr( $carousel_field_base ); ?>[position]">
+								<option value="top left"<?php selected( $carousel_position, 'top left' ); ?>><?php esc_html_e( 'Top left', 'pfoa-theme' ); ?></option>
+								<option value="top center"<?php selected( $carousel_position, 'top center' ); ?>><?php esc_html_e( 'Top center', 'pfoa-theme' ); ?></option>
+								<option value="top right"<?php selected( $carousel_position, 'top right' ); ?>><?php esc_html_e( 'Top right', 'pfoa-theme' ); ?></option>
+								<option value="center left"<?php selected( $carousel_position, 'center left' ); ?>><?php esc_html_e( 'Center left', 'pfoa-theme' ); ?></option>
+								<option value="center center"<?php selected( $carousel_position, 'center center' ); ?>><?php esc_html_e( 'Center (default)', 'pfoa-theme' ); ?></option>
+								<option value="center right"<?php selected( $carousel_position, 'center right' ); ?>><?php esc_html_e( 'Center right', 'pfoa-theme' ); ?></option>
+								<option value="bottom left"<?php selected( $carousel_position, 'bottom left' ); ?>><?php esc_html_e( 'Bottom left', 'pfoa-theme' ); ?></option>
+								<option value="bottom center"<?php selected( $carousel_position, 'bottom center' ); ?>><?php esc_html_e( 'Bottom center', 'pfoa-theme' ); ?></option>
+								<option value="bottom right"<?php selected( $carousel_position, 'bottom right' ); ?>><?php esc_html_e( 'Bottom right', 'pfoa-theme' ); ?></option>
+							</select>
+						</label>
 								<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
 							<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
 							<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
@@ -2310,17 +2428,47 @@ function pfoa_site_homepage_page() {
 							<option value="130"><?php esc_html_e( '130%', 'pfoa-theme' ); ?></option>
 						</select>
 					</label>
-					<label class="pfoa-hero-carousel-headline-size">
-						<?php esc_html_e( 'Headline size', 'pfoa-theme' ); ?>
-						<select name="pfoa_hero[carousel_items][__INDEX__][headline_scale]">
-							<option value="70"><?php esc_html_e( '70%', 'pfoa-theme' ); ?></option>
-							<option value="80"><?php esc_html_e( '80%', 'pfoa-theme' ); ?></option>
-							<option value="90"><?php esc_html_e( '90%', 'pfoa-theme' ); ?></option>
-							<option value="100" selected="selected"><?php esc_html_e( 'Default (100%)', 'pfoa-theme' ); ?></option>
-							<option value="110"><?php esc_html_e( '110%', 'pfoa-theme' ); ?></option>
-							<option value="120"><?php esc_html_e( '120%', 'pfoa-theme' ); ?></option>
-						</select>
-					</label>
+				<label class="pfoa-hero-carousel-headline-size">
+					<?php esc_html_e( 'Headline size', 'pfoa-theme' ); ?>
+					<select name="pfoa_hero[carousel_items][__INDEX__][headline_scale]">
+						<option value="70"><?php esc_html_e( '70%', 'pfoa-theme' ); ?></option>
+						<option value="80"><?php esc_html_e( '80%', 'pfoa-theme' ); ?></option>
+						<option value="90"><?php esc_html_e( '90%', 'pfoa-theme' ); ?></option>
+						<option value="100" selected="selected"><?php esc_html_e( 'Default (100%)', 'pfoa-theme' ); ?></option>
+						<option value="110"><?php esc_html_e( '110%', 'pfoa-theme' ); ?></option>
+						<option value="120"><?php esc_html_e( '120%', 'pfoa-theme' ); ?></option>
+					</select>
+				</label>
+				<label class="pfoa-hero-carousel-zoom">
+					<?php esc_html_e( 'Image zoom', 'pfoa-theme' ); ?>
+					<select name="pfoa_hero[carousel_items][__INDEX__][zoom]">
+						<option value="50"><?php esc_html_e( '50%', 'pfoa-theme' ); ?></option>
+						<option value="60"><?php esc_html_e( '60%', 'pfoa-theme' ); ?></option>
+						<option value="70"><?php esc_html_e( '70%', 'pfoa-theme' ); ?></option>
+						<option value="80"><?php esc_html_e( '80%', 'pfoa-theme' ); ?></option>
+						<option value="90"><?php esc_html_e( '90%', 'pfoa-theme' ); ?></option>
+						<option value="100" selected="selected"><?php esc_html_e( 'Default (100%)', 'pfoa-theme' ); ?></option>
+						<option value="110"><?php esc_html_e( '110%', 'pfoa-theme' ); ?></option>
+						<option value="120"><?php esc_html_e( '120%', 'pfoa-theme' ); ?></option>
+						<option value="130"><?php esc_html_e( '130%', 'pfoa-theme' ); ?></option>
+						<option value="140"><?php esc_html_e( '140%', 'pfoa-theme' ); ?></option>
+						<option value="150"><?php esc_html_e( '150%', 'pfoa-theme' ); ?></option>
+					</select>
+				</label>
+				<label class="pfoa-hero-carousel-position">
+					<?php esc_html_e( 'Image position', 'pfoa-theme' ); ?>
+					<select name="pfoa_hero[carousel_items][__INDEX__][position]">
+						<option value="top left"><?php esc_html_e( 'Top left', 'pfoa-theme' ); ?></option>
+						<option value="top center"><?php esc_html_e( 'Top center', 'pfoa-theme' ); ?></option>
+						<option value="top right"><?php esc_html_e( 'Top right', 'pfoa-theme' ); ?></option>
+						<option value="center left"><?php esc_html_e( 'Center left', 'pfoa-theme' ); ?></option>
+						<option value="center center" selected="selected"><?php esc_html_e( 'Center (default)', 'pfoa-theme' ); ?></option>
+						<option value="center right"><?php esc_html_e( 'Center right', 'pfoa-theme' ); ?></option>
+						<option value="bottom left"><?php esc_html_e( 'Bottom left', 'pfoa-theme' ); ?></option>
+						<option value="bottom center"><?php esc_html_e( 'Bottom center', 'pfoa-theme' ); ?></option>
+						<option value="bottom right"><?php esc_html_e( 'Bottom right', 'pfoa-theme' ); ?></option>
+					</select>
+				</label>
 						<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
 						<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
 						<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
