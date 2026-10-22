@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-     Version: 0.1.197
+     Version: 0.1.198
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6855,12 +6855,18 @@ body.page-id-11290 .page-content .entry-content p.pfoa-hf-story__teaser {
 	margin-block: 0;
 }
 
+/* PFOA 0.1.198 — Center the featured-story actions (page-id-11290 only).
+ * The primary button and the secondary archive link stack vertically and
+ * share the card's horizontal center on desktop and mobile. */
 body.page-id-11290 .page-content .entry-content div.pfoa-hf-story__actions {
 	display: flex;
+	flex-direction: column;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 0.75rem 1.25rem;
-	margin-block: 1.25rem 0;
+	justify-content: center;
+	gap: 0.75rem;
+	margin-block: 1.5rem 0;
+	text-align: center;
 }
 
 body.page-id-11290 .page-content .entry-content p.pfoa-hf-story__browse {
@@ -6993,14 +6999,6 @@ body.page-id-11290 .page-content .entry-content details.pfoa-hf-archive__more > 
 	body.page-id-11290 .page-content .entry-content figure.pfoa-hf-portrait {
 		flex-basis: 80px;
 		width: 80px;
-	}
-
-	body.page-id-11290 .page-content .entry-content div.pfoa-hf-story__actions .wp-block-button {
-		flex: 1 1 100%;
-	}
-
-	body.page-id-11290 .page-content .entry-content div.pfoa-hf-story__actions .wp-block-button__link {
-		width: 100%;
 	}
 
 	body.page-id-11290 .page-content .entry-content div.pfoa-hf-video {
