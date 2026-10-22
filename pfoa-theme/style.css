@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-     Version: 0.1.204
+      Version: 0.1.205
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -2595,6 +2595,14 @@ body.page-id-4968 #staff-roster a:focus-visible {
 	font-size: clamp(3.3rem, 8.4vw, 5rem);
 }
 
+.front-page-content .homepage-hero__title.headline-white {
+	color: #ffffff;
+}
+
+.front-page-content .homepage-hero__title.headline-black {
+	color: #000000;
+}
+
 /* PFOA 0.1.95 — Widen desktop hero headline measure (~3x ch, raised content cap; mobile/tablet-small untouched). */
 @media (min-width: 721px) {
 	.front-page-content .homepage-hero__content {
@@ -3609,6 +3617,14 @@ body.page-id-4968 #staff-roster a:focus-visible {
 
 	.front-page-content .homepage-hero__title.scale-120 {
 		font-size: clamp(2.4rem, 12vw, 3rem);
+	}
+
+	.front-page-content .homepage-hero__title.headline-white {
+		color: #ffffff;
+	}
+
+	.front-page-content .homepage-hero__title.headline-black {
+		color: #000000;
 	}
 
 	.front-page-content .homepage-pathways__grid,

@@ -73,6 +73,8 @@ if ( 'carousel' === $hero_mode ) {
 
 		$slide_headline_scale = ( is_array( $raw_item ) && isset( $raw_item['headline_scale'] ) ) ? pfoa_sanitize_hero_headline_scale( $raw_item['headline_scale'] ) : 100;
 
+		$slide_headline_color = ( is_array( $raw_item ) && isset( $raw_item['headline_color'] ) ) ? pfoa_sanitize_hero_headline_color( $raw_item['headline_color'] ) : 'white';
+
 		$slide_zoom = ( is_array( $raw_item ) && isset( $raw_item['zoom'] ) ) ? pfoa_sanitize_hero_zoom( $raw_item['zoom'] ) : 100;
 
 		$slide_position = ( is_array( $raw_item ) && isset( $raw_item['position'] ) ) ? pfoa_sanitize_hero_position( $raw_item['position'] ) : 'center center';
@@ -84,6 +86,7 @@ if ( 'carousel' === $hero_mode ) {
 			'headline'       => $slide_headline,
 			'brightness'     => $slide_brightness,
 			'headline_scale' => $slide_headline_scale,
+			'headline_color' => $slide_headline_color,
 			'zoom'           => $slide_zoom,
 			'position'       => $slide_position,
 		);
@@ -102,10 +105,12 @@ $is_carousel = array() !== $carousel_slides;
 $carousel_interval_ms = isset( $hero['carousel_interval_ms'] ) ? pfoa_sanitize_hero_carousel_interval_ms( $hero['carousel_interval_ms'] ) : 5000;
 
 $hero_title_scale = 100;
+$hero_title_color = 'white';
 
 if ( $is_carousel ) {
 	$hero_title = $carousel_slides[0]['headline'];
 	$hero_title_scale = isset( $carousel_slides[0]['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_slides[0]['headline_scale'] ) : 100;
+	$hero_title_color = isset( $carousel_slides[0]['headline_color'] ) ? pfoa_sanitize_hero_headline_color( $carousel_slides[0]['headline_color'] ) : 'white';
 }
 
 $has_custom_image   = 0 !== $hero_image;
@@ -175,7 +180,7 @@ if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fa
 			$slide_bg_url = wp_get_attachment_image_url( $slide_id, 'full' );
 			$slide_class  = 'homepage-hero__slide' . ( 0 === $slide_index ? ' is-active' : '' ) . ( $slide_zoom < 100 ? ' is-zoom-out' : '' );
 			?>
-			<div class="<?php echo esc_attr( $slide_class ); ?>"<?php echo 0 === $slide_index ? '' : ' aria-hidden="true"'; ?> data-headline="<?php echo esc_attr( $slide['headline'] ); ?>" data-headline-scale="<?php echo esc_attr( (string) ( isset( $slide['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $slide['headline_scale'] ) : 100 ) ); ?>" data-zoom="<?php echo esc_attr( (string) $slide_zoom ); ?>" data-position="<?php echo esc_attr( $slide_position ); ?>" style="--pfoa-hero-brightness:<?php echo esc_attr( $brightness_factor ); ?>;--pfoa-hero-zoom:<?php echo esc_attr( $zoom_factor ); ?>;--pfoa-hero-position:<?php echo esc_attr( $slide_position ); ?>;<?php echo $slide_bg_url ? '--pfoa-hero-bg:url(\'' . esc_url( $slide_bg_url ) . '\');' : ''; ?>">
+			<div class="<?php echo esc_attr( $slide_class ); ?>"<?php echo 0 === $slide_index ? '' : ' aria-hidden="true"'; ?> data-headline="<?php echo esc_attr( $slide['headline'] ); ?>" data-headline-scale="<?php echo esc_attr( (string) ( isset( $slide['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $slide['headline_scale'] ) : 100 ) ); ?>" data-headline-color="<?php echo esc_attr( isset( $slide['headline_color'] ) ? pfoa_sanitize_hero_headline_color( $slide['headline_color'] ) : 'white' ); ?>" data-zoom="<?php echo esc_attr( (string) $slide_zoom ); ?>" data-position="<?php echo esc_attr( $slide_position ); ?>" style="--pfoa-hero-brightness:<?php echo esc_attr( $brightness_factor ); ?>;--pfoa-hero-zoom:<?php echo esc_attr( $zoom_factor ); ?>;--pfoa-hero-position:<?php echo esc_attr( $slide_position ); ?>;<?php echo $slide_bg_url ? '--pfoa-hero-bg:url(\'' . esc_url( $slide_bg_url ) . '\');' : ''; ?>">
 					<?php
 					echo wp_get_attachment_image(
 						$slide_id,
@@ -243,7 +248,7 @@ if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fa
 	<div class="wide-container homepage-hero__inner">
 		<div class="homepage-hero__content">
 			<p class="homepage-hero__site-name"><?php echo esc_html( get_bloginfo( 'name' ) ); ?></p>
-			<h1 id="homepage-hero-title" class="homepage-hero__title<?php echo $is_carousel ? ' scale-' . esc_attr( (string) $hero_title_scale ) : ''; ?>"><?php echo esc_html( $hero_title ); ?></h1>
+			<h1 id="homepage-hero-title" class="homepage-hero__title<?php echo $is_carousel ? ' scale-' . esc_attr( (string) $hero_title_scale ) . ' headline-' . esc_attr( $hero_title_color ) : ''; ?>"><?php echo esc_html( $hero_title ); ?></h1>
 
 			<?php if ( $hero_ctas ) : ?>
 				<div class="homepage-hero__actions">

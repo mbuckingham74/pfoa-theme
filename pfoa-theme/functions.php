@@ -822,7 +822,7 @@ function pfoa_homepage_cards_page() {
  *   'image_id'           => int (attachment ID),
  *   'image_link_page_id' => int|string (published page/Cat Profile post ID, or 'pair:<lower-id>:<upper-id>' bonded-pair token; 0 = not clickable),
  *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
- *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int|string (page/Cat Profile post ID or 'pair:<a>:<b>' bonded-pair token), 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 50|60|70|80|90|100|110|120, 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
+ *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int|string (page/Cat Profile post ID or 'pair:<a>:<b>' bonded-pair token), 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 50|60|70|80|90|100|110|120, 'headline_color' => 'white'|'black', 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
  *   'carousel_interval_ms' => 3500|5000|7000 (ms each carousel image stays visible; missing/invalid resolves to 5000),
  *   'ctas'               => array[] of array( 'label' => string, 'url' => string ),
  * ).
@@ -1799,6 +1799,33 @@ function pfoa_sanitize_hero_headline_scale( $value ) {
 }
 
 /**
+ * Sanitize a per-image hero carousel headline color value.
+ *
+ * Only 'white' (#FFFFFF, default) and 'black' (#000000) are accepted;
+ * anything else becomes 'white'.
+ *
+ * @param mixed $value Raw submitted value.
+ * @return string
+ */
+function pfoa_sanitize_hero_headline_color( $value ) {
+	if ( ! isset( $value ) ) {
+		return 'white';
+	}
+
+	$color = strtolower( trim( (string) $value ) );
+
+	if ( 'black' === $color || '#000000' === $color ) {
+		return 'black';
+	}
+
+	if ( 'white' === $color || '#ffffff' === $color ) {
+		return 'white';
+	}
+
+	return 'white';
+}
+
+/**
  * Sanitize the homepage hero carousel auto-advance interval.
  *
  * Only 3500, 5000, 7000 are accepted; anything else becomes 5000 (5 seconds).
@@ -1904,6 +1931,7 @@ function pfoa_sanitize_hero( $value ) {
 				'headline'       => isset( $carousel_item['headline'] ) ? sanitize_text_field( $carousel_item['headline'] ) : '',
 				'brightness'     => isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100,
 				'headline_scale' => isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100,
+				'headline_color' => isset( $carousel_item['headline_color'] ) ? pfoa_sanitize_hero_headline_color( $carousel_item['headline_color'] ) : 'white',
 				'zoom'           => isset( $carousel_item['zoom'] ) ? pfoa_sanitize_hero_zoom( $carousel_item['zoom'] ) : 100,
 				'position'       => isset( $carousel_item['position'] ) ? pfoa_sanitize_hero_position( $carousel_item['position'] ) : 'center center',
 			);
@@ -1937,6 +1965,7 @@ function pfoa_sanitize_hero( $value ) {
 				'headline'       => '',
 				'brightness'     => 100,
 				'headline_scale' => 100,
+				'headline_color' => 'white',
 				'zoom'           => 100,
 				'position'       => 'center center',
 			);
@@ -2855,6 +2884,7 @@ function pfoa_site_homepage_page() {
 				'headline'       => isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '',
 				'brightness'     => isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100,
 				'headline_scale' => isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100,
+				'headline_color' => isset( $carousel_item['headline_color'] ) ? pfoa_sanitize_hero_headline_color( $carousel_item['headline_color'] ) : 'white',
 				'zoom'           => isset( $carousel_item['zoom'] ) ? pfoa_sanitize_hero_zoom( $carousel_item['zoom'] ) : 100,
 				'position'       => isset( $carousel_item['position'] ) ? pfoa_sanitize_hero_position( $carousel_item['position'] ) : 'center center',
 			);
@@ -2867,6 +2897,7 @@ function pfoa_site_homepage_page() {
 				'headline'       => '',
 				'brightness'     => 100,
 				'headline_scale' => 100,
+				'headline_color' => 'white',
 				'zoom'           => 100,
 				'position'       => 'center center',
 			);
@@ -2884,6 +2915,7 @@ function pfoa_site_homepage_page() {
 			'headline'       => '',
 			'brightness'     => 100,
 			'headline_scale' => 100,
+			'headline_color' => 'white',
 			'zoom'           => 100,
 			'position'       => 'center center',
 		);
@@ -2968,6 +3000,7 @@ function pfoa_site_homepage_page() {
 					$carousel_headline  = isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '';
 				$carousel_brightness = isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100;
 				$carousel_headline_scale = isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100;
+				$carousel_headline_color = isset( $carousel_item['headline_color'] ) ? pfoa_sanitize_hero_headline_color( $carousel_item['headline_color'] ) : 'white';
 				$carousel_zoom = isset( $carousel_item['zoom'] ) ? pfoa_sanitize_hero_zoom( $carousel_item['zoom'] ) : 100;
 				$carousel_position = isset( $carousel_item['position'] ) ? pfoa_sanitize_hero_position( $carousel_item['position'] ) : 'center center';
 						$carousel_preview   = $carousel_id ? wp_get_attachment_image( $carousel_id, array( 80, 80 ) ) : '';
@@ -3007,6 +3040,13 @@ function pfoa_site_homepage_page() {
 								<option value="100"<?php selected( $carousel_headline_scale, 100 ); ?>><?php esc_html_e( 'Default (100%)', 'pfoa-theme' ); ?></option>
 								<option value="110"<?php selected( $carousel_headline_scale, 110 ); ?>><?php esc_html_e( '110%', 'pfoa-theme' ); ?></option>
 								<option value="120"<?php selected( $carousel_headline_scale, 120 ); ?>><?php esc_html_e( '120%', 'pfoa-theme' ); ?></option>
+							</select>
+						</label>
+						<label class="pfoa-hero-carousel-headline-color">
+							<?php esc_html_e( 'Headline color', 'pfoa-theme' ); ?>
+							<select name="<?php echo esc_attr( $carousel_field_base ); ?>[headline_color]">
+								<option value="white"<?php selected( $carousel_headline_color, 'white' ); ?>><?php esc_html_e( 'White', 'pfoa-theme' ); ?></option>
+								<option value="black"<?php selected( $carousel_headline_color, 'black' ); ?>><?php esc_html_e( 'Black', 'pfoa-theme' ); ?></option>
 							</select>
 						</label>
 						<label class="pfoa-hero-carousel-zoom">
@@ -3080,6 +3120,13 @@ function pfoa_site_homepage_page() {
 						<option value="100" selected="selected"><?php esc_html_e( 'Default (100%)', 'pfoa-theme' ); ?></option>
 						<option value="110"><?php esc_html_e( '110%', 'pfoa-theme' ); ?></option>
 						<option value="120"><?php esc_html_e( '120%', 'pfoa-theme' ); ?></option>
+					</select>
+				</label>
+				<label class="pfoa-hero-carousel-headline-color">
+					<?php esc_html_e( 'Headline color', 'pfoa-theme' ); ?>
+					<select name="pfoa_hero[carousel_items][__INDEX__][headline_color]">
+						<option value="white" selected="selected"><?php esc_html_e( 'White', 'pfoa-theme' ); ?></option>
+						<option value="black"><?php esc_html_e( 'Black', 'pfoa-theme' ); ?></option>
 					</select>
 				</label>
 				<label class="pfoa-hero-carousel-zoom">

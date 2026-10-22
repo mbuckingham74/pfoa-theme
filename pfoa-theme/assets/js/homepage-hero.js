@@ -31,6 +31,7 @@
 		var total = slides.length;
 		var current = ( ( index % total ) + total ) % total;
 		var allowedScales = [ '50', '60', '70', '80', '90', '100', '110', '120' ];
+		var allowedColors = [ 'white', 'black' ];
 
 		function applyHeadlineScale( title, scale ) {
 			if ( ! title ) {
@@ -46,6 +47,22 @@
 			} );
 
 			title.classList.add( 'scale-' + scale );
+		}
+
+		function applyHeadlineColor( title, color ) {
+			if ( ! title ) {
+				return;
+			}
+
+			if ( allowedColors.indexOf( color ) === -1 ) {
+				color = 'white';
+			}
+
+			allowedColors.forEach( function ( allowed ) {
+				title.classList.remove( 'headline-' + allowed );
+			} );
+
+			title.classList.add( 'headline-' + color );
 		}
 
 		var allowedZooms = [ '50', '60', '70', '80', '90', '100', '110', '120', '130', '140', '150' ];
@@ -83,6 +100,7 @@
 					if ( title ) {
 						title.textContent = headline;
 						applyHeadlineScale( title, slide.getAttribute( 'data-headline-scale' ) );
+						applyHeadlineColor( title, slide.getAttribute( 'data-headline-color' ) );
 					}
 				}
 
