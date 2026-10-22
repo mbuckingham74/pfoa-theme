@@ -799,9 +799,9 @@ function pfoa_homepage_cards_page() {
  *   'mode'               => 'single' | 'carousel',
  *   'headline'           => string,
  *   'image_id'           => int (attachment ID),
- *   'image_link_page_id' => int (published page ID, 0 = not clickable),
+ *   'image_link_page_id' => int|string (published page/Cat Profile post ID, or 'pair:<lower-id>:<upper-id>' bonded-pair token; 0 = not clickable),
  *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
- *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int, 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 70|80|90|100|110|120, 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
+ *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int|string (page/Cat Profile post ID or 'pair:<a>:<b>' bonded-pair token), 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 70|80|90|100|110|120, 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
  *   'carousel_interval_ms' => 3500|5000|7000 (ms each carousel image stays visible; missing/invalid resolves to 5000),
  *   'ctas'               => array[] of array( 'label' => string, 'url' => string ),
  * ).
@@ -954,19 +954,362 @@ function pfoa_get_hero_link_cat_profiles() {
 }
 
 /**
+ * Build the canonical storage token for a bonded-pair hero destination.
+ *
+ * IDs normalize to ascending numeric order so 'pair:24396:24401' and
+ * 'pair:24401:24396' describe the same destination (Oliver & Isaac).
+ *
+ * @param int $a First Cat Profile post ID.
+ * @param int $b Second Cat Profile post ID.
+ * @return string Token like 'pair:24396:24401'.
+ */
+function pfoa_hero_bonded_pair_token( $a, $b ) {
+	$a = absint( $a );
+	$b = absint( $b );
+
+	if ( $a > $b ) {
+		$tmp = $a;
+		$a   = $b;
+		$b   = $tmp;
+	}
+
+	return 'pair:' . $a . ':' . $b;
+}
+
+/**
+ * Parse a bonded-pair hero destination token.
+ *
+ * @param mixed $value Raw stored value.
+ * @return int[] Two ascending post IDs, or an empty array when not a pair token.
+ */
+function pfoa_parse_hero_bonded_pair_token( $value ) {
+	if ( ! is_string( $value ) ) {
+		return array();
+	}
+
+	if ( 1 !== preg_match( '/^pair:(\d+):(\d+)$/', trim( $value ), $matches ) ) {
+		return array();
+	}
+
+	$a = absint( $matches[1] );
+	$b = absint( $matches[2] );
+
+	if ( ! $a || ! $b || $a === $b ) {
+		return array();
+	}
+
+	if ( $a > $b ) {
+		$tmp = $a;
+		$a   = $b;
+		$b   = $tmp;
+	}
+
+	return array( $a, $b );
+}
+
+/**
+ * Whether two Cat Profiles form an eligible bonded-pair hero destination.
+ *
+ * Both profiles must be published, complete Cat Profiles whose canonical
+ * bonded relationship (pfoa_cat_get_bonded_pair, both directions) resolves
+ * to exactly this pair, and both must be publicly available for the
+ * Adoptable Cats listing.
+ *
+ * @param int $a First Cat Profile post ID.
+ * @param int $b Second Cat Profile post ID.
+ * @return bool
+ */
+function pfoa_is_hero_bonded_pair_eligible( $a, $b ) {
+	$a = absint( $a );
+	$b = absint( $b );
+
+	if ( ! $a || ! $b || $a === $b ) {
+		return false;
+	}
+
+	foreach ( array( $a, $b ) as $member_id ) {
+		if ( 'publish' !== get_post_status( $member_id ) || 'pfoa_cat' !== get_post_type( $member_id ) ) {
+			return false;
+		}
+
+		if ( ! pfoa_is_hero_link_cat_complete( $member_id ) ) {
+			return false;
+		}
+	}
+
+	if ( ! function_exists( 'pfoa_cat_get_bonded_pair' ) ) {
+		return false;
+	}
+
+	$want = array( $a, $b );
+	sort( $want );
+
+	foreach ( array( $a, $b ) as $member_id ) {
+		$pair = pfoa_cat_get_bonded_pair( $member_id );
+
+		if ( ! is_array( $pair ) ) {
+			return false;
+		}
+
+		$ids = array();
+
+		foreach ( $pair as $entry ) {
+			if ( $entry instanceof WP_Post ) {
+				$entry = $entry->ID;
+			}
+
+			if ( is_numeric( $entry ) && (int) $entry > 0 ) {
+				$ids[] = (int) $entry;
+			}
+		}
+
+		$ids = array_values( array_unique( $ids ) );
+		sort( $ids );
+
+		if ( $ids !== $want ) {
+			return false;
+		}
+	}
+
+	if ( function_exists( 'pfoa_cat_is_lifecycle_eligible_for_adoptable' ) ) {
+		foreach ( array( $a, $b ) as $member_id ) {
+			if ( ! pfoa_cat_is_lifecycle_eligible_for_adoptable( $member_id ) ) {
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Return adoptable bonded pairs for hero-link selectors.
+ *
+ * Each pair is enumerated from the canonical Cat Profiles bonded
+ * relationship API and filtered to publicly available pairs. Display order
+ * is alphabetical by the 'First & Second' title (lower post ID first, which
+ * matches the Adoptable Cats combined-card title order).
+ *
+ * @return array[] Each entry: array( 'a' => int, 'b' => int, 'title' => string, 'token' => string ).
+ */
+function pfoa_get_hero_bonded_pairs() {
+	if ( ! post_type_exists( 'pfoa_cat' ) || ! function_exists( 'pfoa_cat_get_bonded_pair' ) ) {
+		return array();
+	}
+
+	$cats = get_posts(
+		array(
+			'post_type'   => 'pfoa_cat',
+			'post_status' => 'publish',
+			'numberposts' => -1,
+			'orderby'     => 'title',
+			'order'       => 'ASC',
+			'fields'      => 'ids',
+		)
+	);
+
+	if ( ! is_array( $cats ) ) {
+		return array();
+	}
+
+	$seen  = array();
+	$pairs = array();
+
+	foreach ( $cats as $cat_id ) {
+		$cat_id = absint( $cat_id );
+
+		if ( ! $cat_id || isset( $seen[ $cat_id ] ) ) {
+			continue;
+		}
+
+		$raw = pfoa_cat_get_bonded_pair( $cat_id );
+
+		if ( ! is_array( $raw ) ) {
+			continue;
+		}
+
+		$ids = array();
+
+		foreach ( $raw as $entry ) {
+			if ( $entry instanceof WP_Post ) {
+				$entry = $entry->ID;
+			}
+
+			if ( is_numeric( $entry ) && (int) $entry > 0 ) {
+				$ids[] = (int) $entry;
+			}
+		}
+
+		$ids = array_values( array_unique( $ids ) );
+
+		if ( 2 !== count( $ids ) || ! in_array( $cat_id, $ids, true ) ) {
+			continue;
+		}
+
+		sort( $ids );
+
+		$seen[ $ids[0] ] = true;
+		$seen[ $ids[1] ] = true;
+
+		if ( ! pfoa_is_hero_bonded_pair_eligible( $ids[0], $ids[1] ) ) {
+			continue;
+		}
+
+		$pairs[] = array(
+			'a'     => $ids[0],
+			'b'     => $ids[1],
+			'title' => get_the_title( $ids[0] ) . ' & ' . get_the_title( $ids[1] ),
+			'token' => pfoa_hero_bonded_pair_token( $ids[0], $ids[1] ),
+		);
+	}
+
+	usort(
+		$pairs,
+		function ( $x, $y ) {
+			return strcasecmp( (string) $x['title'], (string) $y['title'] );
+		}
+	);
+
+	return $pairs;
+}
+
+/**
+ * Return the Adoptable Cats listing page, if published.
+ *
+ * Resolves by slug with a legacy ID fallback so bonded-pair hero links keep
+ * working if the page is ever re-created under a different ID.
+ *
+ * @return WP_Post|null
+ */
+function pfoa_get_adoptable_cats_page() {
+	$page = pfoa_get_page_by_paths( array( 'adoptablecats2' ) );
+
+	if ( $page instanceof WP_Post ) {
+		return $page;
+	}
+
+	$fallback = get_post( 20323 );
+
+	if ( $fallback instanceof WP_Post && 'page' === $fallback->post_type && 'publish' === $fallback->post_status ) {
+		return $fallback;
+	}
+
+	return null;
+}
+
+/**
+ * Return the stable fragment anchor for a bonded-pair combined card.
+ *
+ * Matches the id attribute added to each rendered bonded-pair card on the
+ * Adoptable Cats page ('bonded-pair-<lower>-<upper>').
+ *
+ * @param int $a First Cat Profile post ID.
+ * @param int $b Second Cat Profile post ID.
+ * @return string Anchor without '#', or an empty string when invalid.
+ */
+function pfoa_get_hero_bonded_pair_anchor( $a, $b ) {
+	$a = absint( $a );
+	$b = absint( $b );
+
+	if ( ! $a || ! $b || $a === $b ) {
+		return '';
+	}
+
+	if ( $a > $b ) {
+		$tmp = $a;
+		$a   = $b;
+		$b   = $tmp;
+	}
+
+	return 'bonded-pair-' . $a . '-' . $b;
+}
+
+/**
+ * Return the clickable destination for a bonded-pair hero image.
+ *
+ * Re-validated at render time: a pair that is still bonded and publicly
+ * available deep-links to its combined card on the Adoptable Cats page; a
+ * changed or unavailable pair falls back to the Adoptable Cats listing
+ * rather than linking to an invalid target.
+ *
+ * @param int $a First Cat Profile post ID.
+ * @param int $b Second Cat Profile post ID.
+ * @return array Array with 'url' and 'title' keys (empty strings when none).
+ */
+function pfoa_get_hero_bonded_pair_link( $a, $b ) {
+	$empty = array(
+		'url'   => '',
+		'title' => '',
+	);
+
+	$adoptables = pfoa_get_adoptable_cats_page();
+
+	if ( ! $adoptables ) {
+		return $empty;
+	}
+
+	$listing_url = get_permalink( $adoptables );
+
+	if ( ! $listing_url ) {
+		return $empty;
+	}
+
+	if ( ! pfoa_is_hero_bonded_pair_eligible( $a, $b ) ) {
+		return array(
+			'url'   => $listing_url,
+			'title' => get_the_title( $adoptables ),
+		);
+	}
+
+	$a = absint( $a );
+	$b = absint( $b );
+
+	if ( $a > $b ) {
+		$tmp = $a;
+		$a   = $b;
+		$b   = $tmp;
+	}
+
+	$title = get_the_title( $a ) . ' & ' . get_the_title( $b );
+
+	return array(
+		'url'   => $listing_url . '#' . pfoa_get_hero_bonded_pair_anchor( $a, $b ),
+		// translators: %s: bonded-pair display title, e.g. 'Oliver & Isaac'.
+		'title' => sprintf( __( '%s — Bonded Pair', 'pfoa-theme' ), $title ),
+	);
+}
+
+/**
  * Render the hero image destination selector (HP-02).
  *
  * Reusable Pages + Cat Profiles grouped selector replacing the previous
- * page-only wp_dropdown_pages() calls. Field names and the integer
- * _pfoa_hero storage format are unchanged.
+ * page-only wp_dropdown_pages() calls. Field names and the _pfoa_hero
+ * storage format are unchanged.
  *
  * @param string $name     Select field name (may contain __INDEX__ for the JS template).
  * @param int    $selected Currently selected destination post ID (0 = no link).
  * @param string $id       Optional select element ID (empty omits the attribute).
  * @return void
  */
+/**
+ * Render the hero image destination selector.
+ *
+ * Reusable Pages + Cat Profiles + Bonded Pairs grouped selector replacing
+ * the previous page-only wp_dropdown_pages() calls. Pages and individual
+ * Cat Profiles store as integer post IDs; bonded pairs store as
+ * 'pair:<lower-id>:<upper-id>' tokens. Field names are unchanged.
+ *
+ * @param string     $name     Select field name (may contain __INDEX__ for the JS template).
+ * @param int|string $selected Currently selected destination (post ID, pair token, or 0 = no link).
+ * @param string     $id       Optional select element ID (empty omits the attribute).
+ * @return void
+ */
 function pfoa_render_hero_link_selector( $name, $selected = 0, $id = '' ) {
-	$selected = absint( $selected );
+	$selected = is_string( $selected ) ? trim( $selected ) : absint( $selected );
+
+	if ( '' === $selected ) {
+		$selected = 0;
+	}
 
 	$pages = get_pages(
 		array(
@@ -978,7 +1321,8 @@ function pfoa_render_hero_link_selector( $name, $selected = 0, $id = '' ) {
 		$pages = array();
 	}
 
-	$cats = pfoa_get_hero_link_cat_profiles();
+	$cats  = pfoa_get_hero_link_cat_profiles();
+	$pairs = pfoa_get_hero_bonded_pairs();
 	?>
 	<select name="<?php echo esc_attr( $name ); ?>"<?php echo '' !== $id ? ' id="' . esc_attr( $id ) . '"' : ''; ?>>
 		<option value="0"<?php selected( $selected, 0 ); ?>><?php echo esc_html__( '— No link —', 'pfoa-theme' ); ?></option>
@@ -997,20 +1341,39 @@ function pfoa_render_hero_link_selector( $name, $selected = 0, $id = '' ) {
 				<?php endforeach; ?>
 			</optgroup>
 		<?php endif; ?>
+		<?php if ( array() !== $pairs ) : ?>
+			<optgroup label="<?php esc_attr_e( 'Bonded Pairs', 'pfoa-theme' ); ?>">
+				<?php foreach ( $pairs as $pair ) : ?>
+					<option value="<?php echo esc_attr( $pair['token'] ); ?>"<?php selected( $selected, $pair['token'] ); ?>><?php echo esc_html( sprintf( '%s — Bonded Pair', $pair['title'] ) ); ?></option>
+				<?php endforeach; ?>
+			</optgroup>
+		<?php endif; ?>
 	</select>
 	<?php
 }
 
 /**
- * Sanitize an optional hero image destination post ID (HP-02).
+ * Sanitize an optional hero image destination (pages, Cat Profiles, bonded pairs).
  *
- * A published page or a published, complete pfoa_cat profile is accepted;
- * anything else becomes 0 (not clickable).
+ * A published page or a published, complete pfoa_cat profile is accepted as
+ * an integer post ID; a currently bonded and publicly available pair is
+ * accepted as a normalized 'pair:<lower-id>:<upper-id>' token. Anything
+ * else becomes 0 (not clickable).
  *
  * @param mixed $value Raw submitted value.
- * @return int
+ * @return int|string Post ID, pair token, or 0.
  */
 function pfoa_sanitize_hero_link_page_id( $value ) {
+	$pair = pfoa_parse_hero_bonded_pair_token( is_string( $value ) ? $value : '' );
+
+	if ( array() !== $pair ) {
+		if ( ! pfoa_is_hero_bonded_pair_eligible( $pair[0], $pair[1] ) ) {
+			return 0;
+		}
+
+		return pfoa_hero_bonded_pair_token( $pair[0], $pair[1] );
+	}
+
 	$page_id = absint( $value );
 
 	if ( ! pfoa_is_hero_link_destination_eligible( $page_id ) ) {
@@ -1021,16 +1384,24 @@ function pfoa_sanitize_hero_link_page_id( $value ) {
 }
 
 /**
- * Return the clickable destination for a hero image, if valid (HP-02).
+ * Return the clickable destination for a hero image, if valid.
  *
  * Re-validated at render time so a destination that was unpublished,
  * trashed, or marked incomplete after saving stops being clickable
- * without any re-save.
+ * without any re-save. Bonded-pair tokens resolve to the pair's combined
+ * card on the Adoptable Cats page, falling back to the listing itself when
+ * the pair is no longer bonded or publicly available.
  *
- * @param int $page_id Destination post ID (page or complete Cat Profile).
+ * @param int|string $page_id Destination post ID, pair token, or 0.
  * @return array Array with 'url' and 'title' keys (empty strings when none).
  */
 function pfoa_get_hero_link( $page_id ) {
+	$pair = pfoa_parse_hero_bonded_pair_token( is_string( $page_id ) ? $page_id : '' );
+
+	if ( array() !== $pair ) {
+		return pfoa_get_hero_bonded_pair_link( $pair[0], $pair[1] );
+	}
+
 	$page_id = absint( $page_id );
 
 	if ( ! pfoa_is_hero_link_destination_eligible( $page_id ) ) {
@@ -2202,7 +2573,11 @@ function pfoa_site_homepage_page() {
 	$mode         = in_array( $hero['mode'], array( 'single', 'carousel' ), true ) ? $hero['mode'] : 'single';
 	$headline     = isset( $hero['headline'] ) ? $hero['headline'] : '';
 	$image_id     = isset( $hero['image_id'] ) ? absint( $hero['image_id'] ) : 0;
-	$image_link_page_id = isset( $hero['image_link_page_id'] ) ? absint( $hero['image_link_page_id'] ) : 0;
+	$image_link_page_id = isset( $hero['image_link_page_id'] ) ? $hero['image_link_page_id'] : 0;
+
+	if ( ! is_string( $image_link_page_id ) ) {
+		$image_link_page_id = absint( $image_link_page_id );
+	}
 	$carousel_ids = ( isset( $hero['carousel_ids'] ) && is_array( $hero['carousel_ids'] ) ) ? $hero['carousel_ids'] : array();
 	$carousel_interval_ms = isset( $hero['carousel_interval_ms'] ) ? pfoa_sanitize_hero_carousel_interval_ms( $hero['carousel_interval_ms'] ) : 5000;
 	$carousel_slide_count = isset( $hero['carousel_slide_count'] ) ? pfoa_sanitize_hero_carousel_slide_count( $hero['carousel_slide_count'] ) : 3;
@@ -2216,7 +2591,7 @@ function pfoa_site_homepage_page() {
 
 			$carousel_items[] = array(
 				'id'             => isset( $carousel_item['id'] ) ? absint( $carousel_item['id'] ) : 0,
-				'link_page_id'   => isset( $carousel_item['link_page_id'] ) ? absint( $carousel_item['link_page_id'] ) : 0,
+				'link_page_id'   => isset( $carousel_item['link_page_id'] ) ? ( is_string( $carousel_item['link_page_id'] ) ? trim( $carousel_item['link_page_id'] ) : absint( $carousel_item['link_page_id'] ) ) : 0,
 				'headline'       => isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '',
 				'brightness'     => isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100,
 				'headline_scale' => isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100,
@@ -2302,7 +2677,7 @@ function pfoa_site_homepage_page() {
 					<label for="pfoa-hero-image-link"><?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?></label><br />
 					<?php pfoa_render_hero_link_selector( 'pfoa_hero[image_link_page_id]', $image_link_page_id, 'pfoa-hero-image-link' ); ?>
 				</p>
-				<p class="description"><?php esc_html_e( 'Optional. Clicking the hero image opens this page.', 'pfoa-theme' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Optional. Clicking the hero image opens the selected page, Cat Profile, or bonded pair.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
 		<tr>
@@ -2325,7 +2700,11 @@ function pfoa_site_homepage_page() {
 					<?php foreach ( $carousel_items as $carousel_index => $carousel_item ) : ?>
 						<?php
 					$carousel_id        = absint( $carousel_item['id'] );
-					$carousel_link      = absint( $carousel_item['link_page_id'] );
+					$carousel_link      = isset( $carousel_item['link_page_id'] ) ? $carousel_item['link_page_id'] : 0;
+
+					if ( ! is_string( $carousel_link ) ) {
+						$carousel_link = absint( $carousel_link );
+					}
 					$carousel_headline  = isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '';
 				$carousel_brightness = isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100;
 				$carousel_headline_scale = isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100;
@@ -3050,6 +3429,18 @@ function pfoa_present_bonded_pairs( $content ) {
 			$shared_profile_id = trim( (string) $right_media->getAttribute( 'data-pfoa-profile-id' ) );
 		}
 
+		// Stable fragment anchor for hero bonded-pair deep links. Both halves
+		// carry their member's profile ID on the media link; the anchor uses
+		// the normalized ascending pair so it matches the hero resolution.
+		$bonded_anchor = '';
+
+		$left_profile_id  = trim( (string) $left_media->getAttribute( 'data-pfoa-profile-id' ) );
+		$right_profile_id = trim( (string) $right_media->getAttribute( 'data-pfoa-profile-id' ) );
+
+		if ( '' !== $left_profile_id && '' !== $right_profile_id && $left_profile_id !== $right_profile_id && ctype_digit( $left_profile_id ) && ctype_digit( $right_profile_id ) ) {
+			$bonded_anchor = pfoa_get_hero_bonded_pair_anchor( (int) $left_profile_id, (int) $right_profile_id );
+		}
+
 		// Build replacement via DOM methods so text/attributes stay escaped.
 		$bonded = $dom->createElement( 'article' );
 		$bonded->setAttribute( 'class', 'pfoa-cat-card pfoa-cat-bonded-card pfoa-cat-bonded-card--bonded' );
@@ -3057,6 +3448,13 @@ function pfoa_present_bonded_pairs( $content ) {
 
 		if ( '' !== $shared_profile_id ) {
 			$bonded->setAttribute( 'data-pfoa-profile-id', $shared_profile_id );
+		}
+
+		if ( '' !== $bonded_anchor ) {
+			// tabindex -1 keeps the fragment target out of the tab order while
+			// letting keyboard and assistive-tech users land on the card.
+			$bonded->setAttribute( 'id', $bonded_anchor );
+			$bonded->setAttribute( 'tabindex', '-1' );
 		}
 
 		$photos = $dom->createElement( 'div' );
@@ -3420,15 +3818,26 @@ function pfoa_present_bonded_pairs( $content ) {
 				continue;
 			}
 
-			// Build replacement via DOM methods so text/attributes stay escaped.
-			$structured_bonded = $dom->createElement( 'article' );
-			$structured_bonded->setAttribute( 'class', 'pfoa-cat-card pfoa-cat-bonded-card pfoa-cat-bonded-card--bonded' );
+		// Build replacement via DOM methods so text/attributes stay escaped.
+		$structured_bonded = $dom->createElement( 'article' );
+		$structured_bonded->setAttribute( 'class', 'pfoa-cat-card pfoa-cat-bonded-card pfoa-cat-bonded-card--bonded' );
 
-			if ( '' !== $first_dialog ) {
-				$structured_bonded->setAttribute( 'data-pfoa-cat-dialog', $first_dialog );
-			}
+		if ( '' !== $first_dialog ) {
+			$structured_bonded->setAttribute( 'data-pfoa-cat-dialog', $first_dialog );
+		}
 
-			$structured_bonded->setAttribute( 'data-pfoa-profile-id', $first_profile_attr );
+		$structured_bonded->setAttribute( 'data-pfoa-profile-id', $first_profile_attr );
+
+		// Stable fragment anchor for hero bonded-pair deep links, matching the
+		// hero resolution ('bonded-pair-<lower>-<upper>'). tabindex -1 keeps
+		// the target out of the tab order while remaining focusable on
+		// fragment navigation.
+		$structured_anchor = pfoa_get_hero_bonded_pair_anchor( $first_id, $second_id );
+
+		if ( '' !== $structured_anchor ) {
+			$structured_bonded->setAttribute( 'id', $structured_anchor );
+			$structured_bonded->setAttribute( 'tabindex', '-1' );
+		}
 
 			$structured_photos = $dom->createElement( 'div' );
 			$structured_photos->setAttribute( 'class', 'pfoa-cat-bonded-photos' );
