@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-    Version: 0.1.188
+    Version: 0.1.189
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -5659,7 +5659,7 @@ body.page-id-20323 .pfoa-adoptable-text p:last-child {
 		font-size: 1rem;
 	}
 }
-/* Pet Tidings Concept A (page 4799 only, theme 0.1.188) — five expandable
+/* Pet Tidings Concept A (page 4799 only, theme 0.1.189) — five expandable
  * date-range sections.
  * Supports markup contract: div.wp-block-group.pfoa-pt-page >
  * div.pfoa-pt-intro (Wills photo + one-sentence intro) +
@@ -5960,10 +5960,16 @@ body.page-id-4799 .entry-content div.pfoa-pt-about.is-layout-flow > :first-child
 		padding-inline: 1rem;
 	}
 }
-/* Print exposes the complete historical archive. */
+/* Print exposes the complete historical archive. Blink hides closed-details
+ * content inside an internal wrapper that author display rules on the light
+ * DOM cannot reach, so force it visible via ::details-content (supported by
+ * modern Chromium/Safari/Firefox); the display fallback covers engines that
+ * hide closed content with a plain UA display rule. */
 @media print {
-	body.page-id-4799 .entry-content details.pfoa-pt-range:not([open]) > div.pfoa-pt-range__content,
-	body.page-id-4799 .entry-content details.pfoa-pt-disclosure:not([open]) > div.pfoa-pt-disclosure__content {
+	body.page-id-4799 .entry-content details.pfoa-pt-range::details-content {
+		content-visibility: visible !important;
+	}
+	body.page-id-4799 .entry-content details.pfoa-pt-range:not([open]) > div.pfoa-pt-range__content {
 		display: block;
 	}
 	body.page-id-4799 .entry-content details.pfoa-pt-range:not([open]) > summary::after {
