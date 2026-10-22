@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-     Version: 0.1.202
+     Version: 0.1.203
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -4352,6 +4352,102 @@ body.page-id-22514 .pfoa-adopted-bonded-relationship {
 
 .front-page-content .homepage-hero--carousel .homepage-hero__slide.is-active .homepage-hero__media-link {
 	pointer-events: auto;
+}
+
+/* PFOA 0.1.203 — bonded-pair spotlight.
+ * Focused destination for bonded-pair hero slides at the top of the
+ * Adoptable Cats listing (?bonded-pair=<a>-<b>#bonded-pair-spotlight).
+ * Card-like container with both members side by side; server-rendered so it
+ * works with JS disabled (the companion script only moves keyboard focus).
+ * Reuses existing .pfoa-button styles for the action link.
+ */
+.pfoa-bonded-spotlight {
+	max-width: 880px;
+	margin: 0 auto 2rem;
+	padding: 1.5rem clamp(1rem, 3vw, 2rem);
+	background: #ffffff;
+	border: 1px solid var(--pfoa-color-border, #c8c0b5);
+	border-radius: 12px;
+	text-align: center;
+}
+
+.pfoa-bonded-spotlight:focus {
+	outline: none;
+}
+
+.pfoa-bonded-spotlight:focus-visible {
+	outline: 3px solid var(--pfoa-color-focus, #005fcc);
+	outline-offset: 3px;
+}
+
+.pfoa-bonded-spotlight__kicker {
+	margin: 0 0 0.5rem;
+	font-size: 0.8rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--pfoa-color-muted, #6f6963);
+}
+
+.pfoa-bonded-spotlight__title {
+	margin: 0 0 1.25rem;
+	font-size: clamp(1.4rem, 3.5vw, 2rem);
+	line-height: 1.2;
+}
+
+.pfoa-bonded-spotlight__members {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 1.5rem;
+	margin: 0 0 1.5rem;
+	padding: 0;
+	list-style: none;
+}
+
+@media (min-width: 640px) {
+	.pfoa-bonded-spotlight__members {
+		grid-template-columns: 1fr 1fr;
+	}
+}
+
+.pfoa-bonded-spotlight__member {
+	margin: 0;
+	padding: 0;
+}
+
+.pfoa-bonded-spotlight__photo-link {
+	display: block;
+	border-radius: 8px;
+}
+
+.pfoa-bonded-spotlight__photo-link:focus-visible,
+.pfoa-bonded-spotlight__profile-link:focus-visible,
+.pfoa-bonded-spotlight__actions .pfoa-button:focus-visible {
+	outline: 3px solid var(--pfoa-color-focus, #005fcc);
+	outline-offset: 2px;
+}
+
+.pfoa-bonded-spotlight__photo {
+	width: 100%;
+	max-width: 320px;
+	height: auto;
+	border-radius: 8px;
+}
+
+.pfoa-bonded-spotlight__name {
+	margin: 0.75rem 0 0.25rem;
+	font-size: 1.15rem;
+	font-weight: 700;
+}
+
+.pfoa-bonded-spotlight__profile-link {
+	display: inline-block;
+	padding: 0.25rem 0.25rem;
+	font-weight: 600;
+}
+
+.pfoa-bonded-spotlight__actions {
+	margin: 0;
 }
 
 /* PFOA 0.1.64 — Homepage pathway card polish (CSS-only, DEV scope).

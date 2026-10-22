@@ -125,6 +125,27 @@ function pfoa_enqueue_assets() {
 		}
 	}
 
+	// PFOA 0.1.203 — presentation only: bonded-pair spotlight focus
+	// (adoptablecats2 page only, and only when ?bonded-pair=<a>-<b> parses).
+	// Server HTML already shows the spotlight at the top; the script only
+	// moves keyboard focus to it and ensures the anchor. No-ops otherwise,
+	// and safe with JS disabled.
+	if ( function_exists( 'is_page' ) && ( is_page( 20323 ) || is_page( 'adoptablecats2' ) ) ) {
+		if ( function_exists( 'pfoa_is_bonded_pair_spotlight_requested' ) && array() !== pfoa_is_bonded_pair_spotlight_requested() ) {
+			$spotlight_script = get_template_directory() . '/assets/js/pfoa-bonded-pair-spotlight.js';
+
+			if ( file_exists( $spotlight_script ) ) {
+				wp_enqueue_script(
+					'pfoa-bonded-pair-spotlight',
+					get_template_directory_uri() . '/assets/js/pfoa-bonded-pair-spotlight.js',
+					array(),
+					(string) filemtime( $spotlight_script ),
+					array( 'strategy' => 'defer' )
+				);
+			}
+		}
+	}
+
 	if ( is_front_page() ) {
 		$front_page_id = (int) get_option( 'page_on_front' );
 
@@ -1228,9 +1249,9 @@ function pfoa_get_hero_bonded_pair_anchor( $a, $b ) {
  * Return the clickable destination for a bonded-pair hero image.
  *
  * Re-validated at render time: a pair that is still bonded and publicly
- * available deep-links to its combined card on the Adoptable Cats page; a
- * changed or unavailable pair falls back to the Adoptable Cats listing
- * rather than linking to an invalid target.
+ * available deep-links to its focused spotlight at the top of the Adoptable
+ * Cats page; a changed or unavailable pair falls back to the Adoptable Cats
+ * listing rather than linking to an invalid target.
  *
  * @param int $a First Cat Profile post ID.
  * @param int $b Second Cat Profile post ID.
@@ -1273,10 +1294,249 @@ function pfoa_get_hero_bonded_pair_link( $a, $b ) {
 	$title = get_the_title( $a ) . ' & ' . get_the_title( $b );
 
 	return array(
-		'url'   => $listing_url . '#' . pfoa_get_hero_bonded_pair_anchor( $a, $b ),
+		'url'   => $listing_url . '?bonded-pair=' . $a . '-' . $b . '#bonded-pair-spotlight',
 		// translators: %s: bonded-pair display title, e.g. 'Oliver & Isaac'.
-		'title' => sprintf( __( '%s — Bonded Pair', 'pfoa-theme' ), $title ),
+		'title' => sprintf( __( '%s — Adoptable Bonded Pair', 'pfoa-theme' ), $title ),
 	);
+}
+
+/**
+ * Parse the bonded-pair spotlight query for the Adoptable Cats listing.
+ *
+ * Accepts only '?bonded-pair=<lower>-<upper>' with two distinct positive
+ * IDs, normalized to ascending order. Anything else (missing, malformed,
+ * equal, or zero IDs) returns an empty array so the listing renders
+ * unchanged.
+ *
+ * @return int[] Two ascending post IDs, or an empty array when not requested.
+ */
+function pfoa_get_bonded_pair_spotlight_ids() {
+	if ( ! isset( $_GET['bonded-pair'] ) || ! is_string( $_GET['bonded-pair'] ) ) {
+		return array();
+	}
+
+	if ( 1 !== preg_match( '/^(\d+)-(\d+)$/', trim( $_GET['bonded-pair'] ), $matches ) ) {
+		return array();
+	}
+
+	$a = absint( $matches[1] );
+	$b = absint( $matches[2] );
+
+	if ( ! $a || ! $b || $a === $b ) {
+		return array();
+	}
+
+	if ( $a > $b ) {
+		$tmp = $a;
+		$a   = $b;
+		$b   = $tmp;
+	}
+
+	return array( $a, $b );
+}
+
+/**
+ * Whether the current request asks for a bonded-pair spotlight.
+ *
+ * Thin wrapper around pfoa_get_bonded_pair_spotlight_ids() for call sites
+ * that only need the parsed IDs (empty array when not requested).
+ *
+ * @return int[] Two ascending post IDs, or an empty array when not requested.
+ */
+function pfoa_is_bonded_pair_spotlight_requested() {
+	return pfoa_get_bonded_pair_spotlight_ids();
+}
+
+/**
+ * Render the bonded-pair spotlight for the top of the Adoptable Cats page.
+ *
+ * Membership is resolved dynamically from the canonical bonded relationship
+ * and re-validated on every render via
+ * pfoa_is_hero_bonded_pair_eligible(): ineligible or no-longer-adoptable
+ * pairs return an empty string so the listing renders unchanged. Server-
+ * rendered HTML works with JS disabled; the companion script only moves
+ * keyboard focus to the section.
+ *
+ * @param int $a First Cat Profile post ID.
+ * @param int $b Second Cat Profile post ID.
+ * @return string Spotlight HTML, or an empty string when ineligible.
+ */
+function pfoa_render_bonded_pair_spotlight( $a, $b ) {
+	$a = absint( $a );
+	$b = absint( $b );
+
+	if ( ! $a || ! $b || $a === $b ) {
+		return '';
+	}
+
+	if ( $a > $b ) {
+		$tmp = $a;
+		$a   = $b;
+		$b   = $tmp;
+	}
+
+	if ( ! pfoa_is_hero_bonded_pair_eligible( $a, $b ) ) {
+		return '';
+	}
+
+	$adoptables = pfoa_get_adoptable_cats_page();
+
+	if ( ! $adoptables ) {
+		return '';
+	}
+
+	$listing_url = get_permalink( $adoptables );
+
+	if ( ! $listing_url ) {
+		return '';
+	}
+
+	$name_a = get_the_title( $a );
+	$name_b = get_the_title( $b );
+
+	/* translators: %s: bonded-pair display title, e.g. 'Oliver & Isaac'. */
+	$heading = sprintf( __( '%s — Adoptable Bonded Pair', 'pfoa-theme' ), $name_a . ' & ' . $name_b );
+
+	$members_html = '';
+
+	foreach ( array( $a, $b ) as $member_id ) {
+		$member_name    = get_the_title( $member_id );
+		$profile_url   = get_permalink( $member_id );
+		$photo_html    = '';
+		$photo_fallback = '';
+
+		if ( function_exists( 'get_the_post_thumbnail' ) ) {
+			$photo_html = (string) get_the_post_thumbnail(
+				$member_id,
+				'medium',
+				array(
+					'class' => 'pfoa-bonded-spotlight__photo',
+					/* translators: %s: cat name. */
+					'alt'   => sprintf( __( '%s photo', 'pfoa-theme' ), $member_name ),
+				)
+			);
+		}
+
+		if ( '' === $photo_html && function_exists( 'pfoa_cat_single_card_image_id' ) && function_exists( 'wp_get_attachment_image' ) ) {
+			$fallback_id = (int) pfoa_cat_single_card_image_id( $member_id );
+
+			if ( $fallback_id > 0 ) {
+				$photo_fallback = (string) wp_get_attachment_image(
+					$fallback_id,
+					'medium',
+					false,
+					array(
+						'class' => 'pfoa-bonded-spotlight__photo',
+						/* translators: %s: cat name. */
+						'alt'   => sprintf( __( '%s photo', 'pfoa-theme' ), $member_name ),
+					)
+				);
+			}
+		}
+
+		$photo = '' !== $photo_html ? $photo_html : $photo_fallback;
+
+		$members_html .= '<li class="pfoa-bonded-spotlight__member">';
+
+		if ( $profile_url && '' !== $photo ) {
+			/* translators: %s: cat name. */
+			$members_html .= '<a class="pfoa-bonded-spotlight__photo-link" href="' . esc_url( $profile_url ) . '" aria-label="' . esc_attr( sprintf( __( "View %s's full profile", 'pfoa-theme' ), $member_name ) ) . '">' . $photo . '</a>';
+		} elseif ( '' !== $photo ) {
+			$members_html .= $photo;
+		}
+
+		$members_html .= '<p class="pfoa-bonded-spotlight__name">' . esc_html( $member_name ) . '</p>';
+
+		if ( $profile_url ) {
+			/* translators: %s: cat name. */
+			$members_html .= '<a class="pfoa-bonded-spotlight__profile-link" href="' . esc_url( $profile_url ) . '">' . esc_html( sprintf( __( "View %s's full profile", 'pfoa-theme' ), $member_name ) ) . '</a>';
+		}
+
+		$members_html .= '</li>';
+	}
+
+	$html  = '<section id="bonded-pair-spotlight" class="pfoa-bonded-spotlight" aria-labelledby="bonded-pair-spotlight-title" tabindex="-1">';
+	$html .= '<p class="pfoa-bonded-spotlight__kicker">' . esc_html__( 'Adoptable Bonded Pair', 'pfoa-theme' ) . '</p>';
+	$html .= '<h2 id="bonded-pair-spotlight-title" class="pfoa-bonded-spotlight__title">' . esc_html( $heading ) . '</h2>';
+	$html .= '<ul class="pfoa-bonded-spotlight__members">' . $members_html . '</ul>';
+	$html .= '<p class="pfoa-bonded-spotlight__actions"><a class="pfoa-button" href="' . esc_url( $listing_url ) . '">' . esc_html__( 'View All Adoptable Cats', 'pfoa-theme' ) . '</a></p>';
+	$html .= '</section>';
+
+	return $html;
+}
+
+/**
+ * Prepend the bonded-pair spotlight to the Adoptable Cats listing content.
+ *
+ * Runs early on the_content (priority 5, before the combined-card merger at
+ * 999) and only on the adoptable-cats page main loop. Invalid, ineligible,
+ * or absent query pairs leave $content untouched.
+ *
+ * @param string $content Filtered post content.
+ * @return string Spotlight-prepended content, or unchanged content.
+ */
+function pfoa_prepend_bonded_pair_spotlight( $content ) {
+	if ( function_exists( 'is_admin' ) && is_admin() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_feed' ) && is_feed() ) {
+		return $content;
+	}
+
+	if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+		return $content;
+	}
+
+	if ( ! is_string( $content ) ) {
+		return $content;
+	}
+
+	if ( function_exists( 'in_the_loop' ) && ! in_the_loop() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_main_query' ) && ! is_main_query() ) {
+		return $content;
+	}
+
+	$is_target_page = false;
+
+	if ( function_exists( 'is_page' ) && ( is_page( 20323 ) || is_page( 'adoptablecats2' ) ) ) {
+		$is_target_page = true;
+	} else {
+		$post = get_post();
+
+		if ( $post instanceof WP_Post ) {
+			if ( 20323 === (int) $post->ID ) {
+				$is_target_page = true;
+			} elseif ( isset( $post->post_name ) && 'adoptablecats2' === $post->post_name ) {
+				$is_target_page = true;
+			}
+		}
+	}
+
+	if ( ! $is_target_page ) {
+		return $content;
+	}
+
+	$ids = pfoa_get_bonded_pair_spotlight_ids();
+
+	if ( 2 !== count( $ids ) ) {
+		return $content;
+	}
+
+	$spotlight = pfoa_render_bonded_pair_spotlight( $ids[0], $ids[1] );
+
+	if ( '' === $spotlight ) {
+		return $content;
+	}
+
+	return $spotlight . $content;
+}
+
+if ( function_exists( 'add_filter' ) ) {
+	add_filter( 'the_content', 'pfoa_prepend_bonded_pair_spotlight', 5 );
 }
 
 /**
