@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-     Version: 0.1.195
+     Version: 0.1.196
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6607,6 +6607,162 @@ body.page-id-4799 .entry-content span.pfoa-pt-archive__sep {
 @media (max-width: 600px) {
 	body.page-id-4799 .entry-content p.pfoa-pt-archive__list {
 		gap: 0.1rem 0.5rem;
+	}
+}
+
+/* PFOA 0.1.196 — From The Home Front Pet-Tidings alignment (page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
+ * Pairs with the one-time content edit replacing the legacy columns-based
+ * intro (0.1.183 .pfoa-homefront-intro) and the 3x wp:columns weekly-grid
+ * with Pet-Tidings-aligned .pfoa-hf-* hooks (flex intro, centered latest
+ * button, pale-blue archive bar with wrapping link list, centered caption,
+ * 16/9 video). Legacy 0.1.183 selectors are left in place above (inert for
+ * the new markup); the rules below win for the new classes by later order
+ * and equal-or-higher specificity. H1/gold divider, global rules, and PT
+ * 4799 rules are untouched. Every selector below starts with
+ * body.page-id-11290. */
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-page {
+	max-width: min(60rem, 100%);
+	margin-inline: auto;
+	box-sizing: border-box;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-intro {
+	display: flex;
+	gap: 2rem;
+	align-items: flex-start;
+	margin-block: 1.5rem 1rem;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-intro__copy {
+	flex: 1;
+	min-width: 0;
+	text-align: left;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-intro__copy p {
+	margin-block: 0 0.75rem;
+}
+
+body.page-id-11290 .page-content .entry-content figure.pfoa-hf-intro__photo {
+	flex: 0 0 180px;
+	width: 180px;
+	margin: 0;
+}
+
+body.page-id-11290 .page-content .entry-content figure.pfoa-hf-intro__photo img {
+	width: 100%;
+	height: auto;
+	display: block;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-latest {
+	display: flex;
+	justify-content: center;
+	margin-block: 1rem 1.5rem;
+}
+
+/* Higher specificity than the legacy 0.1.183 div.wp-block-buttons rule
+ * above (extra .pfoa-hf-latest class) plus later order, so the new
+ * markup's symmetric margin wins. */
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-latest div.wp-block-buttons {
+	margin-block: 1rem 1.5rem;
+	justify-content: center;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-latest .wp-block-button__link {
+	display: inline-block;
+	width: min(30rem, 100%);
+	box-sizing: border-box;
+	border-radius: 2px;
+	font-family: Georgia, serif;
+	font-weight: 700;
+	font-size: 1.25rem;
+	line-height: 1.3;
+	padding: 0.8rem 1.5rem;
+	text-align: center;
+}
+
+body.page-id-11290 .page-content .entry-content h2.pfoa-hf-archive__heading {
+	text-align: center;
+	background: #e8f0fa;
+	padding: 0.65rem 1rem;
+	margin-block: 1.5rem 0.75rem;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-archive {
+	max-width: min(28rem, 100%);
+	margin-inline: auto;
+	text-align: center;
+}
+
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.15rem 0.6rem;
+	margin-block: 0 1rem;
+}
+
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a {
+	text-decoration: underline;
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+}
+
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list span[aria-hidden="true"] {
+	display: inline-flex;
+	align-items: center;
+}
+
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-caption {
+	text-align: center;
+	margin: 0.75rem;
+}
+
+/* Defensive: neutralize legacy weekly-grid column gaps if old 3x
+ * wp:columns markup is ever reintroduced (new markup has no columns). */
+body.page-id-11290 .page-content .entry-content .wp-block-columns:not(.pfoa-homefront-intro) {
+	margin-bottom: 0;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-video {
+	max-width: min(40rem, 100%);
+	margin-inline: auto;
+	aspect-ratio: 16 / 9;
+	margin-block: 0 1.5rem;
+}
+
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-video iframe {
+	width: 100%;
+	height: 100%;
+	border: 0;
+	display: block;
+}
+
+@media (max-width: 720px) {
+	body.page-id-11290 .page-content .entry-content div.pfoa-hf-intro {
+		flex-direction: column;
+	}
+
+	body.page-id-11290 .page-content .entry-content figure.pfoa-hf-intro__photo {
+		flex: 0 0 auto;
+		width: 160px;
+		margin-inline: auto;
+	}
+}
+
+@media (max-width: 600px) {
+	body.page-id-11290 .page-content .entry-content div.pfoa-hf-latest .wp-block-button__link {
+		font-size: 1.125rem;
+	}
+
+	body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list {
+		gap: 0.15rem 0.5rem;
+	}
+
+	body.page-id-11290 .page-content .entry-content div.pfoa-hf-video {
+		max-width: 100%;
 	}
 }
 
