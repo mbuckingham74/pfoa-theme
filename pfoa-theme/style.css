@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-     Version: 0.1.192
+     Version: 0.1.193
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6119,6 +6119,87 @@ body.page-id-4799 .entry-content div.pfoa-pt-prefs {
 		flex: none;
 		width: 160px;
 		margin-inline: auto;
+	}
+}
+/* Pet Tidings PT-01 Marilyn mockup alignment (page 4799 only, theme 0.1.193)
+ * — match the supplied mockup: wide flat serif current-issue button; pale
+ * blue centered range bars without +/- indicators; plain divider-free year
+ * rows; hyphenated ranges; wide left-aligned Delivery Preferences explainer;
+ * pale-blue centered preferences bar without indicator.
+ * Copy (intro paragraph, archive helper, prefs explainer) is Marilyn's
+ * verbatim mockup text in page 4799 content. Preserves: centered Georgia H1
+ * + gold divider, Wills photo, verified PDF URLs/labels (71 + current), 23
+ * years newest-first, native disclosures, shortcode/form behavior, print
+ * full-archive exposure. Every selector stays scoped to body.page-id-4799.
+ */
+body.page-id-4799 .entry-content div.pfoa-pt-current div.wp-block-button {
+	width: min(30rem, 100%);
+}
+body.page-id-4799 .entry-content div.pfoa-pt-current .wp-block-button__link {
+	display: block;
+	width: 100%;
+	border-radius: 2px;
+	font-family: Georgia, "Times New Roman", serif;
+	font-weight: 700;
+	font-size: 1.25rem;
+	line-height: 1.3;
+	padding: 0.8rem 1.5rem;
+}
+/* Pale-blue centered range bars; dates bold, counts regular, same ink. */
+body.page-id-4799 .entry-content details.pfoa-pt-range > summary {
+	display: block;
+	text-align: center;
+	min-height: 0;
+	padding: 0.65rem 1rem;
+	background: #e8f0fa;
+}
+body.page-id-4799 .entry-content span.pfoa-pt-range__count {
+	color: inherit;
+}
+/* No disclosure indicators anywhere on this page (mockup shows none);
+ * native disclosure semantics and keyboard focus are unchanged. */
+body.page-id-4799 .entry-content details.pfoa-pt-range > summary::after,
+body.page-id-4799 .entry-content details.pfoa-pt-disclosure > summary::after {
+	content: "";
+	margin: 0;
+}
+/* Plain year rows without dividers. */
+body.page-id-4799 .entry-content div.pfoa-pt-archive__row {
+	border-bottom: 0;
+	padding: 0.3rem 0;
+}
+/* Delivery preferences: full-width readable explainer + centered bar. */
+body.page-id-4799 .entry-content div.pfoa-pt-prefs {
+	max-width: min(60rem, 100%);
+}
+body.page-id-4799 .entry-content div.pfoa-pt-prefs p.pfoa-pt-prefs-explainer {
+	max-width: none;
+	text-align: left;
+	line-height: 1.6;
+}
+body.page-id-4799 .entry-content details.pfoa-pt-disclosure {
+	max-width: min(22rem, 100%);
+	margin-inline: auto;
+	border: 0;
+	background: transparent;
+}
+body.page-id-4799 .entry-content details.pfoa-pt-disclosure > summary {
+	display: block;
+	text-align: center;
+	min-height: 0;
+	padding: 0.8rem 1.5rem;
+	border-radius: 2px;
+	background: #e8f0fa;
+	color: inherit;
+}
+@media print {
+	body.page-id-4799 .entry-content details.pfoa-pt-range:not([open]) > summary::after {
+		content: "";
+	}
+}
+@media (max-width: 600px) {
+	body.page-id-4799 .entry-content div.pfoa-pt-current .wp-block-button__link {
+		font-size: 1.125rem;
 	}
 }
 /* PFOA 0.1.158 — In Memoriam float containment + Spatzi video.
