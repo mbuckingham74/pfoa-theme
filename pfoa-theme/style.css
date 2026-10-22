@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-    Version: 0.1.183
+    Version: 0.1.184
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -5814,14 +5814,23 @@ body.page-id-4799 .entry-content details.pfoa-pt-disclosure > div.pfoa-pt-disclo
 body.page-id-4799 .entry-content div.pfoa-pt-archive {
 	overflow-x: clip;
 }
+/* PFOA 0.1.184 — PT-01: tighten past-issues vertical rhythm. WordPress
+ * layout-flow adds a 24px block-gap margin above every archive row; with
+ * 23 year rows that margin alone added ~530px of scrolling. Override it to
+ * 4px and trim row padding (8px -> 5.6px desktop, 12px -> 8px mobile) while
+ * keeping the year/link borders for separation and tap targets intact. */
+body.page-id-4799 .entry-content div.pfoa-pt-archive.is-layout-flow > div.pfoa-pt-archive__row {
+	margin-block-start: 0.25rem;
+}
 body.page-id-4799 .entry-content div.pfoa-pt-archive__row {
 	display: flex;
 	align-items: baseline;
 	gap: 1rem;
-	padding: 0.5rem 0;
+	padding: 0.35rem 0;
 	border-bottom: 1px solid var(--pfoa-border-default);
 }
-body.page-id-4799 .entry-content div.pfoa-pt-archive__row:first-child {
+body.page-id-4799 .entry-content div.pfoa-pt-archive.is-layout-flow > div.pfoa-pt-archive__row:first-child {
+	margin-block-start: 0;
 	border-top: 1px solid var(--pfoa-border-default);
 }
 body.page-id-4799 .entry-content span.pfoa-pt-archive__year {
@@ -5859,7 +5868,7 @@ body.page-id-4799 .entry-content span.pfoa-pt-archive__links a {
 	body.page-id-4799 .entry-content div.pfoa-pt-archive__row {
 		flex-wrap: wrap;
 		gap: 0.5rem;
-		padding: 0.75rem 0;
+		padding: 0.5rem 0;
 	}
 	body.page-id-4799 .entry-content span.pfoa-pt-archive__year {
 		flex-basis: 100%;
