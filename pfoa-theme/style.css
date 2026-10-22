@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-     Version: 0.1.194
+     Version: 0.1.195
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6537,6 +6537,76 @@ body.page-id-11290 .page-content .entry-content .wp-block-columns.pfoa-homefront
 	body.page-id-11290 .page-content .entry-content .wp-block-columns.pfoa-homefront-intro > .wp-block-column {
 		min-width: 0;
 		max-width: 100%;
+	}
+}
+
+/* PFOA 0.1.195 — PT-01 compact archive disclosure (page-id-4799 only,
+ * https://dev.safehavenpfoa.org/pettidings/).
+ * Replaces the oversized individual year rows with a compact wrapping link
+ * list while preserving Marilyn's approved layout (centered Georgia H1 +
+ * gold divider, Wills photo, single green current-issue button, pale-blue
+ * centered range bars, wide left-aligned Delivery Preferences explainer and
+ * centered preferences bar, native disclosures, prefs shortcode/form
+ * behavior, print full-archive exposure).
+ * Markup contract: 5 x details.pfoa-pt-range, ALL COLLAPSED (no open
+ * attribute) — summary = date range + accurate issue count + visible
+ * expand/collapse indicator; content = p.pfoa-pt-archive__list of
+ * independent PDF links whose visible text identifies both year and season
+ * (e.g. "2025 Summer"), separated by aria-hidden middots, newest first
+ * (71 links / 23 years total, verified PDF URLs unchanged).
+ * Supersedes the 0.1.189–0.1.194 __row/__year/__links year-row rules below
+ * only via later equal-specificity overrides; legacy row selectors are left
+ * in place (inert) for backward compatibility. Every selector stays scoped
+ * to body.page-id-4799.
+ */
+/* Visible expand/collapse indicator on range summaries (restores the
+ * 0.1.189 +/– treatment that 0.1.193–0.1.194 suppressed for the mockup):
+ * collapsed shows "+", open shows "–", inline after the issue count. */
+body.page-id-4799 .entry-content details.pfoa-pt-range > summary::after {
+	content: "+";
+	margin-inline-start: 0.5rem;
+	font-weight: 700;
+	font-size: 1.125rem;
+	line-height: 1;
+}
+body.page-id-4799 .entry-content details.pfoa-pt-range[open] > summary::after {
+	content: "–";
+	margin-inline-start: 0.5rem;
+}
+/* Compact wrapping issue list: modest gaps, natural line wrapping, no
+ * large row heights, no empty slots, no nested scrolling. */
+body.page-id-4799 .entry-content p.pfoa-pt-archive__list {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.15rem 0.6rem;
+	margin: 0;
+	padding: 0.5rem 0 0.25rem;
+	font-size: 1rem;
+	line-height: 1.5;
+}
+body.page-id-4799 .entry-content p.pfoa-pt-archive__list a {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+	overflow-wrap: break-word;
+}
+body.page-id-4799 .entry-content p.pfoa-pt-archive__list a:hover {
+	text-underline-offset: 0.25em;
+}
+body.page-id-4799 .entry-content p.pfoa-pt-archive__list a:focus-visible {
+	outline: 2px solid var(--pfoa-color-brand);
+	outline-offset: 2px;
+}
+body.page-id-4799 .entry-content span.pfoa-pt-archive__sep {
+	color: var(--pfoa-color-muted);
+	user-select: none;
+}
+@media (max-width: 600px) {
+	body.page-id-4799 .entry-content p.pfoa-pt-archive__list {
+		gap: 0.1rem 0.5rem;
 	}
 }
 
