@@ -13,6 +13,8 @@
 	var singleFrame = null;
 	var singleCell = null;
 	var carouselFrame = null;
+	var rowFrame = null;
+	var rowItem = null;
 	var labels = window.pfoaHeroAdmin || {};
 
 	function moveUpLabel() {
@@ -138,9 +140,13 @@
 		} );
 	}
 
-	$( document ).on( 'change', '#pfoa-hero-carousel-slide-count', refreshInactiveSlots );
+	$( document ).on( 'change', '#pfoa-hero-carousel-slide-count', function () {
+		ensureRowCount( getSlideCount() );
+		refreshInactiveSlots();
+	} );
 
 	$( function () {
+		ensureRowCount( getSlideCount() );
 		refreshInactiveSlots();
 	} );
 
@@ -154,6 +160,60 @@
 		list.data( 'next-index', next + 1 );
 
 		return next;
+	}
+
+	function appendEmptyRow( list ) {
+		var index = nextCarouselIndex( list );
+		var template = document.getElementById( 'pfoa-hero-carousel-template' );
+
+		if ( template && template.innerHTML ) {
+			var item = $( template.innerHTML.replace( /__INDEX__/g, String( index ) ) );
+
+			list.append( item );
+			return item;
+		}
+
+		var fallback = $(
+			'<li class="pfoa-hero-carousel-item">' +
+			'<strong class="pfoa-hero-carousel-slot"></strong> ' +
+			'<span class="pfoa-hero-carousel-preview"></span> ' +
+			'<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][' + index + '][id]" value="0" /> ' +
+			'<button type="button" class="button pfoa-hero-carousel-select">Select Image</button> ' +
+			'<label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">— No link —</option></select></label> ' +
+			'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
+			'<label class="pfoa-hero-carousel-brightness">Image brightness <select name="pfoa_hero[carousel_items][' + index + '][brightness]"><option value="100" selected="selected">Original (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option></select></label> ' +
+			'<label class="pfoa-hero-carousel-headline-size">Headline size <select name="pfoa_hero[carousel_items][' + index + '][headline_scale]"><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option></select></label> ' +
+			'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
+			'<button type="button" class="button pfoa-hero-carousel-down">' + moveDownLabel() + '</button> ' +
+			'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +
+			'</li>'
+		);
+
+		list.append( fallback );
+
+		return fallback;
+	}
+
+	// Add empty rows (from the template) until the list holds N rows.
+	// Never removes rows: lowering N only dims extras via refreshInactiveSlots.
+	function ensureRowCount( count ) {
+		var list = $( '.pfoa-hero-carousel-list' );
+
+		if ( ! list.length ) {
+			return;
+		}
+
+		if ( isNaN( count ) || count < 2 ) {
+			count = 2;
+		}
+
+		if ( count > PFOA_HERO_MAX_SLIDES ) {
+			count = PFOA_HERO_MAX_SLIDES;
+		}
+
+		while ( list.children( '.pfoa-hero-carousel-item' ).length < count ) {
+			appendEmptyRow( list );
+		}
 	}
 
 	function addCarouselItem( attachment ) {
@@ -191,6 +251,7 @@
 
 			item.find( '.pfoa-hero-carousel-id' ).val( id );
 			item.find( '.pfoa-hero-carousel-preview' ).html( thumb );
+			item.find( '.pfoa-hero-carousel-select' ).text( 'Replace Image' );
 			list.append( item );
 			refreshInactiveSlots();
 			return;
@@ -201,6 +262,7 @@
 		'<strong class="pfoa-hero-carousel-slot"></strong> ' +
 		'<span class="pfoa-hero-carousel-preview">' + thumb + '</span> ' +
 		'<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][' + index + '][id]" value="' + id + '" /> ' +
+		'<button type="button" class="button pfoa-hero-carousel-select">Replace Image</button> ' +
 		'<label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">— No link —</option></select></label> ' +
 		'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
 		'<label class="pfoa-hero-carousel-brightness">Image brightness <select name="pfoa_hero[carousel_items][' + index + '][brightness]"><option value="100" selected="selected">Original (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option></select></label> ' +
@@ -212,6 +274,76 @@
 	);
 		refreshInactiveSlots();
 	}
+
+	function setCarouselRowImage( item, attachment ) {
+		if ( ! item || ! item.length || ! attachment || ! attachment.id ) {
+			return;
+		}
+
+		var id = parseInt( attachment.id, 10 );
+
+		if ( isNaN( id ) || ! id ) {
+			return;
+		}
+
+		var list = item.closest( '.pfoa-hero-carousel-list' );
+
+		// Dedupe by attachment ID (ignore the row being filled).
+		if ( list.length ) {
+			var dupe = false;
+
+			list.find( '.pfoa-hero-carousel-id' ).each( function () {
+				if ( this !== item.find( '.pfoa-hero-carousel-id' ).get( 0 ) && $( this ).val() === String( id ) ) {
+					dupe = true;
+					return false;
+				}
+			} );
+
+			if ( dupe ) {
+				return;
+			}
+		}
+
+		var thumb = '';
+
+		if ( attachment.sizes && attachment.sizes.thumbnail && attachment.sizes.thumbnail.url ) {
+			thumb = '<img src="' + attachment.sizes.thumbnail.url + '" width="80" height="80" alt="" />';
+		} else if ( attachment.url ) {
+			thumb = '<img src="' + attachment.url + '" width="80" height="80" alt="" />';
+		}
+
+		item.find( '.pfoa-hero-carousel-id' ).val( id );
+		item.find( '.pfoa-hero-carousel-preview' ).html( thumb );
+		item.find( '.pfoa-hero-carousel-select' ).text( 'Replace Image' );
+	}
+
+	$( document ).on( 'click', '.pfoa-hero-carousel-select', function ( event ) {
+		event.preventDefault();
+
+		rowItem = $( this ).closest( '.pfoa-hero-carousel-item' );
+
+		if ( rowFrame ) {
+			rowFrame.open();
+			return;
+		}
+
+		rowFrame = wp.media( {
+			title: 'Select Carousel Slide Image',
+			button: { text: 'Use Image' },
+			library: { type: 'image' },
+			multiple: false
+		} );
+
+		rowFrame.on( 'select', function () {
+			var attachment = rowFrame.state().get( 'selection' ).first();
+			if ( attachment && rowItem && rowItem.length ) {
+				setCarouselRowImage( rowItem, attachment.toJSON() );
+				refreshInactiveSlots();
+			}
+		} );
+
+		rowFrame.open();
+	} );
 
 	$( document ).on( 'click', '.pfoa-hero-carousel-add', function ( event ) {
 		event.preventDefault();

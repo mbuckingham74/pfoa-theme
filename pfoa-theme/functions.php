@@ -2154,6 +2154,20 @@ function pfoa_site_homepage_page() {
 		}
 	}
 
+	// Always show max(N, stored) editable rows (capped at 5): empty slots
+	// render as image-less rows with their own picker. Imageless rows submit
+	// id=0, which the sanitizer drops, so storage keeps only valid slides
+	// while the form re-expands to N on every load.
+	while ( count( $carousel_items ) < $carousel_slide_count && count( $carousel_items ) < 5 ) {
+		$carousel_items[] = array(
+			'id'             => 0,
+			'link_page_id'   => 0,
+			'headline'       => '',
+			'brightness'     => 100,
+			'headline_scale' => 100,
+		);
+	}
+
 	$ctas         = ( isset( $hero['ctas'] ) && is_array( $hero['ctas'] ) ) ? $hero['ctas'] : array();
 	$preview      = $image_id ? wp_get_attachment_image( $image_id, array( 80, 80 ) ) : '';
 
@@ -2233,11 +2247,11 @@ function pfoa_site_homepage_page() {
 						$carousel_field_base = 'pfoa_hero[carousel_items][' . $carousel_index . ']';
 						$is_inactive_slot = $carousel_index >= $carousel_slide_count;
 						?>
-						<?php if ( $carousel_preview ) : ?>
-							<li class="pfoa-hero-carousel-item<?php echo $is_inactive_slot ? ' is-inactive' : ''; ?>">
-								<strong class="pfoa-hero-carousel-slot"><?php printf( esc_html__( 'Slide %d', 'pfoa-theme' ), $carousel_index + 1 ); ?><?php echo $is_inactive_slot ? ' — ' . esc_html__( 'Inactive — will show if count increased', 'pfoa-theme' ) : ''; ?></strong>
-								<span class="pfoa-hero-carousel-preview"><?php echo $carousel_preview; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
-								<input type="hidden" class="pfoa-hero-carousel-id" name="<?php echo esc_attr( $carousel_field_base ); ?>[id]" value="<?php echo esc_attr( (string) $carousel_id ); ?>" />
+						<li class="pfoa-hero-carousel-item<?php echo $is_inactive_slot ? ' is-inactive' : ''; ?>">
+							<strong class="pfoa-hero-carousel-slot"><?php printf( esc_html__( 'Slide %d', 'pfoa-theme' ), $carousel_index + 1 ); ?><?php echo $is_inactive_slot ? ' — ' . esc_html__( 'Inactive — will show if count increased', 'pfoa-theme' ) : ''; ?></strong>
+							<span class="pfoa-hero-carousel-preview"><?php echo $carousel_preview ? $carousel_preview : esc_html__( 'No image selected yet.', 'pfoa-theme' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
+							<input type="hidden" class="pfoa-hero-carousel-id" name="<?php echo esc_attr( $carousel_field_base ); ?>[id]" value="<?php echo esc_attr( (string) $carousel_id ); ?>" />
+							<button type="button" class="button pfoa-hero-carousel-select"><?php echo $carousel_preview ? esc_html__( 'Replace Image', 'pfoa-theme' ) : esc_html__( 'Select Image', 'pfoa-theme' ); ?></button>
 								<label class="pfoa-hero-carousel-link">
 									<?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?>
 									<?php pfoa_render_hero_link_selector( $carousel_field_base . '[link_page_id]', $carousel_link ); ?>
@@ -2267,11 +2281,10 @@ function pfoa_site_homepage_page() {
 								</select>
 							</label>
 								<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
-								<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
-								<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
-								<button type="button" class="button pfoa-hero-carousel-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
-							</li>
-						<?php endif; ?>
+							<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
+							<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
+							<button type="button" class="button pfoa-hero-carousel-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+						</li>
 					<?php endforeach; ?>
 				</ul>
 				<template id="pfoa-hero-carousel-template">
@@ -2279,6 +2292,7 @@ function pfoa_site_homepage_page() {
 						<strong class="pfoa-hero-carousel-slot"></strong>
 						<span class="pfoa-hero-carousel-preview"></span>
 						<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][__INDEX__][id]" value="0" />
+						<button type="button" class="button pfoa-hero-carousel-select"><?php esc_html_e( 'Select Image', 'pfoa-theme' ); ?></button>
 						<label class="pfoa-hero-carousel-link">
 							<?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?>
 							<?php pfoa_render_hero_link_selector( 'pfoa_hero[carousel_items][__INDEX__][link_page_id]', 0 ); ?>
@@ -2314,7 +2328,7 @@ function pfoa_site_homepage_page() {
 					</li>
 				</template>
 				<button type="button" class="button pfoa-hero-carousel-add"><?php esc_html_e( 'Add Images', 'pfoa-theme' ); ?></button>
-				<p class="description"><?php esc_html_e( 'Shown in order when Carousel mode is selected, up to the Number of Carousel Slides above (max 5 slots). Use Move Up and Move Down to reorder; the buttons stay the same on every image. Lowering the slide count keeps the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Shown in order when Carousel mode is selected, up to the Number of Carousel Slides above (max 5 slots). Empty slots have their own Select Image button. Use Move Up and Move Down to reorder; the buttons stay the same on every image. Lowering the slide count only dims the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
 				<p class="pfoa-hero-carousel-limit-notice" style="display:none;color:#b32d2e;" role="status"><?php esc_html_e( 'Maximum 5 carousel slots. Remove a slot before adding another.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
