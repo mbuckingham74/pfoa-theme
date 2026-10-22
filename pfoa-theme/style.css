@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-    Version: 0.1.187
+    Version: 0.1.188
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -5659,210 +5659,251 @@ body.page-id-20323 .pfoa-adoptable-text p:last-child {
 		font-size: 1rem;
 	}
 }
-/* Pet Tidings (page 4799 only, theme 0.1.186) — redesigned hierarchy + compact
- * two-column archive.
+/* Pet Tidings Concept A (page 4799 only, theme 0.1.188) — five expandable
+ * date-range sections.
  * Supports markup contract: div.wp-block-group.pfoa-pt-page >
- * div.pfoa-pt-lead (one-sentence intro) +
- * div.pfoa-pt-current (div.wp-block-buttons > div.wp-block-button > a, same
- * Fall/Winter 2026 PDF URL, label "Read Current Edition", no heading/paragraph)
- * + h2.pfoa-pt-title "Past Issues" +
- * div.pfoa-pt-archive-intro (single helper paragraph, PT-02 sentence absent) +
- * div.pfoa-pt-archive (23 unchanged __row/__year/__links rows, newest first) +
- * div.pfoa-pt-about (h2.pfoa-pt-section "About Pet Tidings" +
- * div.pfoa-pt-about__grid > div.pfoa-pt-about__media (Wills image) +
- * div.pfoa-pt-about__text (two full descriptive paragraphs, verbatim)) +
- * div.pfoa-pt-prefs (h2.pfoa-pt-section "Newsletter Delivery Preferences" +
- * p.pfoa-pt-prefs-explainer + details.pfoa-pt-disclosure >
- * summary "Manage newsletter preferences" +
- * div.pfoa-pt-disclosure__content > [pfoa_pet_tidings_preferences]).
- * Details has NO open attribute by default (collapsed; auto-opened only via
- * pfoa_pt_done / form feedback, see functions.php + disclosure JS).
- * Supersedes 0.1.184 single-column rules — fixes the section-vs-div selector
- * mismatch (markup uses div.wp-block-group, never section), drops the
- * Current card + duplicate title heading, and introduces the two-column
- * archive (CSS multi-column, DOM order preserved so mobile/tablet stay
- * newest-first single column). Strict scope: every selector below starts
- * with body.page-id-4799, so other pages stay untouched.
+ * div.pfoa-pt-intro (Wills photo + one-sentence intro) +
+ * div.pfoa-pt-current (h2#current-edition "Current Edition — Fall/Winter
+ * 2026" + info paragraph + green PDF button, same Fall/Winter 2026 PDF URL) +
+ * p.pfoa-pt-nav (secondary links to #past-issues + #newsletter-preferences) +
+ * h2#past-issues.pfoa-pt-title "Past Issues" +
+ * p.pfoa-pt-archive-intro ("Available issues ...", PT-02 sentence absent) +
+ * 5 × details.pfoa-pt-range (first open; summary = date range + issue count
+ * + indicator; content = unchanged __row/__year/__links rows, newest first,
+ * year + PDF format in accessible link names) +
+ * div.pfoa-pt-prefs (h2#newsletter-preferences "Newsletter Delivery
+ * Preferences" + explainer + details.pfoa-pt-disclosure > shortcode,
+ * behavior unchanged, auto-open on feedback preserved) +
+ * div.pfoa-pt-about (h2 "About Pet Tidings" + two verbatim paragraphs,
+ * no photo — the photo lives with the intro).
+ * Native disclosure only: no archive JS, no tabs, no nested scrolling, no
+ * fixed heights. Supersedes the 0.1.185–0.1.187 two-column archive rules.
+ * Strict scope: every selector below starts with body.page-id-4799, so other
+ * pages stay untouched.
  */
 body.page-id-4799 .entry-content div.wp-block-group.pfoa-pt-page {
-	max-width: min(46rem, 100%);
+	max-width: min(60rem, 100%);
 	margin-inline: auto;
 	overflow-wrap: break-word;
 }
 body.page-id-4799 .entry-content div.pfoa-pt-page {
-	max-width: min(46rem, 100%);
+	max-width: min(60rem, 100%);
 	margin-inline: auto;
 }
-/* Compact top-level rhythm: neutralize the 24px WP block-gap between the
- * page groups so Past Issues lands near the top. */
+/* Page rhythm: neutralize the 24px WP block-gap between top-level groups. */
 body.page-id-4799 .entry-content div.pfoa-pt-page.is-layout-flow > * {
-	margin-block-start: 1rem;
+	margin-block-start: 1.5rem;
 	margin-block-end: 0;
 }
 body.page-id-4799 .entry-content div.pfoa-pt-page.is-layout-flow > :first-child {
 	margin-block-start: 0;
 }
-body.page-id-4799 .entry-content .pfoa-pt-wrap {
-	max-width: 100%;
-	margin-inline: auto;
-}
+/* Section headings: Georgia, ~28px desktop / 24px mobile. */
 body.page-id-4799 .entry-content h2.pfoa-pt-title,
 body.page-id-4799 .entry-content h2.pfoa-pt-section {
+	font-family: Georgia, "Times New Roman", serif;
+	font-size: 1.75rem;
+	line-height: 1.2;
 	text-align: center;
 	text-wrap: balance;
+	scroll-margin-top: 5rem;
 	margin-block: 0 0.75rem;
 }
-/* Short intro statement: centered, tight. */
-body.page-id-4799 .entry-content div.pfoa-pt-lead {
-	margin-block-start: 0.5rem;
+/* Intro: Wills' photograph alongside the one-sentence intro. */
+body.page-id-4799 .entry-content div.pfoa-pt-intro {
+	display: flex;
+	align-items: center;
+	gap: 1.25rem;
 }
-body.page-id-4799 .entry-content div.pfoa-pt-lead p {
-	text-align: center;
+body.page-id-4799 .entry-content div.pfoa-pt-intro.is-layout-flow > figure,
+body.page-id-4799 .entry-content div.pfoa-pt-intro.is-layout-flow > p {
+	margin-block-start: 0;
+}
+body.page-id-4799 .entry-content figure.pfoa-pt-intro__photo {
+	flex: 0 0 120px;
+	width: 120px;
+	margin: 0;
+}
+body.page-id-4799 .entry-content figure.pfoa-pt-intro__photo img {
+	display: block;
+	width: 100%;
+	height: auto;
+	border-radius: var(--pfoa-radius);
+}
+body.page-id-4799 .entry-content p.pfoa-pt-intro__text {
 	margin-block: 0;
+	min-width: 0;
+	font-size: 1.0625rem;
 }
-/* Current Edition action: prominent centered button, no card. */
+/* Current Edition: centered info + prominent green PDF button. */
 body.page-id-4799 .entry-content div.pfoa-pt-current {
-	margin-block: 1.25rem 1.5rem;
+	text-align: center;
+}
+body.page-id-4799 .entry-content p.pfoa-pt-current__info {
+	margin-block: 0 1rem;
+	font-size: 1rem;
 }
 body.page-id-4799 .entry-content div.pfoa-pt-current div.wp-block-buttons {
 	justify-content: center;
 	margin-block: 0;
 }
-body.page-id-4799 .entry-content div.pfoa-pt-current div.wp-block-buttons .wp-block-button__link {
+body.page-id-4799 .entry-content div.pfoa-pt-current .wp-block-button__link {
 	font-size: 1.125rem;
 	padding: 0.9rem 2rem;
 }
-body.page-id-4799 .entry-content div.wp-block-group.pfoa-pt-page > div.wp-block-buttons,
-body.page-id-4799 .entry-content div.pfoa-pt-page .wp-block-buttons {
-	justify-content: center;
-}
-/* Past Issues heading + helper copy stay centered and compact. */
-body.page-id-4799 .entry-content div.pfoa-pt-archive-intro p {
+/* Secondary navigation to Past Issues + Newsletter Preferences. */
+body.page-id-4799 .entry-content p.pfoa-pt-nav {
 	text-align: center;
-	max-width: 36rem;
+	margin-block: 0;
+	font-size: 1rem;
+}
+body.page-id-4799 .entry-content p.pfoa-pt-nav a {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+}
+/* Archive helper copy: available issues, not every historical issue. */
+body.page-id-4799 .entry-content p.pfoa-pt-archive-intro {
+	text-align: center;
+	max-width: 40rem;
 	margin-inline: auto;
-	margin-block: 0 0.5rem;
+	margin-block: 0;
+	font-size: 1rem;
 }
-/* Archive: single column by default (tablet/mobile), two balanced columns
- * on desktop. Multi-column keeps DOM order newest-to-oldest: newer years
- * fill the left column, older years the right, while screen readers and
- * narrow viewports read a single newest-first column. */
-body.page-id-4799 .entry-content div.pfoa-pt-archive {
-	overflow-x: clip;
+/* Date-range disclosures: subtle border, pale-tinted summaries. */
+body.page-id-4799 .entry-content details.pfoa-pt-range {
+	border: 1px solid var(--pfoa-border-default);
+	border-radius: var(--pfoa-radius);
+	background: var(--pfoa-color-background);
+	margin-block: 0.75rem 0;
 }
-body.page-id-4799 .entry-content div.pfoa-pt-archive.is-layout-flow > div.pfoa-pt-archive__row {
-	margin-block-start: 0;
+body.page-id-4799 .entry-content details.pfoa-pt-range > summary {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.25rem 0.75rem;
+	min-height: 48px;
+	list-style: none;
+	cursor: pointer;
+	font-size: 1rem;
+	font-weight: 700;
+	padding: 0.75rem 1.25rem;
+	border-radius: var(--pfoa-radius);
+	background: var(--pfoa-surface-subtle);
 }
+body.page-id-4799 .entry-content details.pfoa-pt-range > summary::-webkit-details-marker {
+	display: none;
+}
+body.page-id-4799 .entry-content details.pfoa-pt-range > summary::marker {
+	content: "";
+}
+body.page-id-4799 .entry-content span.pfoa-pt-range__count {
+	font-weight: 400;
+	color: var(--pfoa-color-muted);
+}
+body.page-id-4799 .entry-content details.pfoa-pt-range > summary::after {
+	content: "+";
+	margin-inline-start: auto;
+	font-weight: 700;
+	font-size: 1.25rem;
+	line-height: 1;
+}
+body.page-id-4799 .entry-content details.pfoa-pt-range[open] > summary::after {
+	content: "–";
+}
+body.page-id-4799 .entry-content details.pfoa-pt-range > summary:hover {
+	text-decoration: underline;
+}
+body.page-id-4799 .entry-content details.pfoa-pt-range > summary:focus-visible {
+	outline: 2px solid var(--pfoa-color-brand);
+	outline-offset: 2px;
+}
+body.page-id-4799 .entry-content div.pfoa-pt-range__content {
+	padding: 0.5rem 1.25rem 1rem;
+}
+/* Year rows: 64px year column on desktop; stacked on mobile. */
 body.page-id-4799 .entry-content div.pfoa-pt-archive__row {
 	display: flex;
 	align-items: baseline;
 	gap: 1rem;
-	padding: 0.35rem 0;
+	padding: 0.5rem 0;
 	border-bottom: 1px solid var(--pfoa-border-default);
-	break-inside: avoid;
 }
-body.page-id-4799 .entry-content div.pfoa-pt-archive.is-layout-flow > div.pfoa-pt-archive__row:first-child {
-	margin-block-start: 0;
-	border-top: 1px solid var(--pfoa-border-default);
+body.page-id-4799 .entry-content div.pfoa-pt-archive__row:last-child {
+	border-bottom: 0;
 }
 body.page-id-4799 .entry-content span.pfoa-pt-archive__year {
-	flex: 0 0 4ch;
+	flex: 0 0 64px;
 	font-weight: 700;
 }
 body.page-id-4799 .entry-content span.pfoa-pt-archive__links {
 	display: inline-flex;
 	flex-wrap: wrap;
-	gap: 0.5rem 1rem;
+	gap: 0.25rem 1.25rem;
 	min-width: 0;
 }
+/* Underlined text links with 44px targets; no seasonal pills. */
 body.page-id-4799 .entry-content span.pfoa-pt-archive__links a {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	font-size: 1rem;
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
 	overflow-wrap: anywhere;
 }
-/* PFOA 0.1.186 — PT-01: zero WP block-gap on archive spans + about grid items.
- * The archive rows and the about grid are themselves is-layout-flow, so the
- * global :where(.is-layout-flow) > * rule put a 24px margin-block-start on
- * every non-first child: the __links span (inflating every desktop row to
- * ~63px) and the __text grid item (offsetting About copy). Neutralize both;
- * paragraph rhythm inside __text is unchanged. */
-body.page-id-4799 .entry-content div.pfoa-pt-archive__row > span.pfoa-pt-archive__year,
-body.page-id-4799 .entry-content div.pfoa-pt-archive__row > span.pfoa-pt-archive__links,
-body.page-id-4799 .entry-content div.pfoa-pt-about__grid > div.pfoa-pt-about__media,
-body.page-id-4799 .entry-content div.pfoa-pt-about__grid > div.pfoa-pt-about__text {
-	margin-block-start: 0;
-}
-/* Visible keyboard focus for archive links + primary action. */
-body.page-id-4799 .entry-content div.pfoa-pt-archive__links a:focus-visible,
+/* Visible keyboard focus across archive links, summaries, nav + button. */
+body.page-id-4799 .entry-content span.pfoa-pt-archive__links a:focus-visible,
+body.page-id-4799 .entry-content p.pfoa-pt-nav a:focus-visible,
 body.page-id-4799 .entry-content div.pfoa-pt-current .wp-block-button__link:focus-visible {
 	outline: 2px solid var(--pfoa-color-brand);
 	outline-offset: 2px;
 }
-/* About: Wills photo + full descriptive copy beneath the archive. */
-body.page-id-4799 .entry-content div.pfoa-pt-about {
-	margin-block: 2rem 2.25rem;
-}
-body.page-id-4799 .entry-content div.pfoa-pt-about__grid {
-	display: grid;
-	grid-template-columns: 210px minmax(0, 1fr);
-	gap: 1.5rem;
-	align-items: start;
-}
-body.page-id-4799 .entry-content div.pfoa-pt-about__media {
-	min-width: 0;
-}
-body.page-id-4799 .entry-content div.pfoa-pt-about__media figure.wp-block-image {
-	float: none;
-	margin: 0;
-	max-width: 100%;
-}
-body.page-id-4799 .entry-content div.pfoa-pt-about__media figure.wp-block-image img {
-	display: block;
-	max-width: 100%;
-	height: auto;
-	border-radius: var(--pfoa-radius);
-}
-body.page-id-4799 .entry-content div.pfoa-pt-about__text {
-	min-width: 0;
-}
-body.page-id-4799 .entry-content div.pfoa-pt-about__text > p:first-child {
-	margin-top: 0;
-}
-body.page-id-4799 .entry-content div.pfoa-pt-about__text > p:last-child {
-	margin-bottom: 0;
-}
-/* Delivery preferences (unchanged behavior, corrected div selectors). */
+/* Delivery preferences (unchanged behavior, feedback auto-open preserved). */
 body.page-id-4799 .entry-content div.pfoa-pt-prefs {
-	max-width: min(46rem, 100%);
+	max-width: min(60rem, 100%);
 	margin-inline: auto;
-	margin-block: 2.25rem 0;
 }
 body.page-id-4799 .entry-content div.pfoa-pt-prefs p.pfoa-pt-prefs-explainer {
-	max-width: 36rem;
+	max-width: 40rem;
 	margin-inline: auto;
 	text-align: center;
+	font-size: 1rem;
 }
 body.page-id-4799 .entry-content details.pfoa-pt-disclosure {
 	border: 1px solid var(--pfoa-border-default);
 	border-radius: var(--pfoa-radius);
 	background: var(--pfoa-color-background);
 	padding: 0;
-	margin-block: 1.5rem 0;
+	margin-block: 1rem 0;
 }
 body.page-id-4799 .entry-content details.pfoa-pt-disclosure > summary {
 	list-style: none;
 	cursor: pointer;
+	font-size: 1rem;
 	font-weight: 700;
 	text-align: center;
-	padding: 1rem 1.25rem;
+	min-height: 48px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	padding: 0.75rem 1.25rem;
 	border-radius: var(--pfoa-radius);
+	background: var(--pfoa-surface-subtle);
 }
 body.page-id-4799 .entry-content details.pfoa-pt-disclosure > summary::-webkit-details-marker {
 	display: none;
 }
+body.page-id-4799 .entry-content details.pfoa-pt-disclosure > summary::marker {
+	content: "";
+}
 body.page-id-4799 .entry-content details.pfoa-pt-disclosure > summary::after {
 	content: "+";
 	display: inline-block;
-	margin-inline-start: 0.5rem;
 	font-weight: 700;
+	font-size: 1.25rem;
+	line-height: 1;
 }
 body.page-id-4799 .entry-content details.pfoa-pt-disclosure[open] > summary::after {
 	content: "–";
@@ -5877,61 +5918,56 @@ body.page-id-4799 .entry-content details.pfoa-pt-disclosure > summary:focus-visi
 body.page-id-4799 .entry-content details.pfoa-pt-disclosure > div.pfoa-pt-disclosure__content {
 	padding: 0 1.25rem 1.5rem;
 }
-@media (min-width: 64rem) {
-	body.page-id-4799 .entry-content div.pfoa-pt-archive.is-layout-flow {
-		column-count: 2;
-		column-gap: 2rem;
-		column-fill: balance;
-	}
+/* About: full substantive copy below preferences, no duplicated photo. */
+body.page-id-4799 .entry-content div.pfoa-pt-about {
+	font-size: 1rem;
 }
-@media (max-width: 63.9375rem) {
-	body.page-id-4799 .entry-content div.pfoa-pt-archive__row {
-		padding: 0.3rem 0;
-	}
-	body.page-id-4799 .entry-content span.pfoa-pt-archive__links a {
-		padding-block: 0.2rem;
-	}
+body.page-id-4799 .entry-content div.pfoa-pt-about.is-layout-flow > * {
+	margin-block-start: 1rem;
+	margin-block-end: 0;
+}
+body.page-id-4799 .entry-content div.pfoa-pt-about.is-layout-flow > :first-child {
+	margin-block-start: 0;
 }
 @media (max-width: 600px) {
+	body.page-id-4799 .entry-content h2.pfoa-pt-title,
+	body.page-id-4799 .entry-content h2.pfoa-pt-section {
+		font-size: 1.5rem;
+	}
 	body.page-id-4799 .entry-content div.wp-block-group.pfoa-pt-page,
-	body.page-id-4799 .entry-content div.pfoa-pt-current,
-	body.page-id-4799 .entry-content div.pfoa-pt-prefs,
-	body.page-id-4799 .entry-content div.pfoa-pt-archive {
+	body.page-id-4799 .entry-content div.pfoa-pt-page {
 		max-width: 100%;
 		overflow-x: clip;
 	}
-	body.page-id-4799 .entry-content div.pfoa-pt-about__grid {
-		grid-template-columns: minmax(0, 1fr);
+	body.page-id-4799 .entry-content figure.pfoa-pt-intro__photo {
+		flex-basis: 80px;
+		width: 80px;
+	}
+	body.page-id-4799 .entry-content div.pfoa-pt-intro {
 		gap: 1rem;
 	}
-	body.page-id-4799 .entry-content div.pfoa-pt-about__media {
-		max-width: 240px;
-		margin-inline: auto;
-	}
-	body.page-id-4799 .entry-content div.pfoa-pt-current {
-		margin-block: 1rem 1.25rem;
-	}
 	body.page-id-4799 .entry-content div.pfoa-pt-archive__row {
-		flex-wrap: nowrap;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.5rem 0;
+		flex-direction: column;
+		gap: 0.25rem;
 	}
 	body.page-id-4799 .entry-content span.pfoa-pt-archive__year {
-		flex: 0 0 auto;
+		flex-basis: auto;
 	}
-	body.page-id-4799 .entry-content span.pfoa-pt-archive__links {
-		flex: 1 1 auto;
-		gap: 0.4rem 0.5rem;
+	body.page-id-4799 .entry-content div.pfoa-pt-range__content {
+		padding: 0.25rem 1rem 0.75rem;
 	}
-	body.page-id-4799 .entry-content span.pfoa-pt-archive__links a {
-		display: inline-flex;
-		align-items: center;
-		border: 1px solid var(--pfoa-border-default);
-		border-radius: 999px;
-		padding: 0.45rem 0.85rem;
-		background: var(--pfoa-surface-subtle);
-		text-decoration: none;
+	body.page-id-4799 .entry-content details.pfoa-pt-range > summary {
+		padding-inline: 1rem;
+	}
+}
+/* Print exposes the complete historical archive. */
+@media print {
+	body.page-id-4799 .entry-content details.pfoa-pt-range:not([open]) > div.pfoa-pt-range__content,
+	body.page-id-4799 .entry-content details.pfoa-pt-disclosure:not([open]) > div.pfoa-pt-disclosure__content {
+		display: block;
+	}
+	body.page-id-4799 .entry-content details.pfoa-pt-range:not([open]) > summary::after {
+		content: "–";
 	}
 }
 @media (min-width: 1320px) {
@@ -5940,7 +5976,6 @@ body.page-id-4799 .entry-content details.pfoa-pt-disclosure > div.pfoa-pt-disclo
 		top: auto;
 	}
 }
-
 /* PFOA 0.1.158 — In Memoriam float containment + Spatzi video.
  * (a) Ordinary .page-content entries (e.g. Spatzi page-id-25036) carry floated
  * genesis-columns-advanced columns but lack the .page-content-compatibility
