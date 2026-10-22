@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-    Version: 0.1.185
+    Version: 0.1.186
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -5659,7 +5659,7 @@ body.page-id-20323 .pfoa-adoptable-text p:last-child {
 		font-size: 1rem;
 	}
 }
-/* Pet Tidings (page 4799 only, theme 0.1.185) — redesigned hierarchy + compact
+/* Pet Tidings (page 4799 only, theme 0.1.186) — redesigned hierarchy + compact
  * two-column archive.
  * Supports markup contract: div.wp-block-group.pfoa-pt-page >
  * div.pfoa-pt-lead (one-sentence intro) +
@@ -5777,6 +5777,18 @@ body.page-id-4799 .entry-content span.pfoa-pt-archive__links {
 }
 body.page-id-4799 .entry-content span.pfoa-pt-archive__links a {
 	overflow-wrap: anywhere;
+}
+/* PFOA 0.1.186 — PT-01: zero WP block-gap on archive spans + about grid items.
+ * The archive rows and the about grid are themselves is-layout-flow, so the
+ * global :where(.is-layout-flow) > * rule put a 24px margin-block-start on
+ * every non-first child: the __links span (inflating every desktop row to
+ * ~63px) and the __text grid item (offsetting About copy). Neutralize both;
+ * paragraph rhythm inside __text is unchanged. */
+body.page-id-4799 .entry-content div.pfoa-pt-archive__row > span.pfoa-pt-archive__year,
+body.page-id-4799 .entry-content div.pfoa-pt-archive__row > span.pfoa-pt-archive__links,
+body.page-id-4799 .entry-content div.pfoa-pt-about__grid > div.pfoa-pt-about__media,
+body.page-id-4799 .entry-content div.pfoa-pt-about__grid > div.pfoa-pt-about__text {
+	margin-block-start: 0;
 }
 /* Visible keyboard focus for archive links + primary action. */
 body.page-id-4799 .entry-content div.pfoa-pt-archive__links a:focus-visible,
