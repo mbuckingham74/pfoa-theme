@@ -822,7 +822,7 @@ function pfoa_homepage_cards_page() {
  *   'image_id'           => int (attachment ID),
  *   'image_link_page_id' => int|string (published page/Cat Profile post ID, or 'pair:<lower-id>:<upper-id>' bonded-pair token; 0 = not clickable),
  *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
- *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int|string (page/Cat Profile post ID or 'pair:<a>:<b>' bonded-pair token), 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 70|80|90|100|110|120, 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
+ *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int|string (page/Cat Profile post ID or 'pair:<a>:<b>' bonded-pair token), 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 50|60|70|80|90|100|110|120, 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
  *   'carousel_interval_ms' => 3500|5000|7000 (ms each carousel image stays visible; missing/invalid resolves to 5000),
  *   'ctas'               => array[] of array( 'label' => string, 'url' => string ),
  * ).
@@ -1783,7 +1783,7 @@ function pfoa_sanitize_hero_position( $value ) {
 /**
  * Sanitize a per-image hero carousel headline size value.
  *
- * Only 70, 80, 90, 100, 110, 120 are accepted; anything else becomes 100 (Default).
+ * Only 50, 60, 70, 80, 90, 100, 110, 120 are accepted; anything else becomes 100 (Default).
  *
  * @param mixed $value Raw submitted value.
  * @return int
@@ -1791,7 +1791,7 @@ function pfoa_sanitize_hero_position( $value ) {
 function pfoa_sanitize_hero_headline_scale( $value ) {
 	$scale = absint( $value );
 
-	if ( ! in_array( $scale, array( 70, 80, 90, 100, 110, 120 ), true ) ) {
+	if ( ! in_array( $scale, array( 50, 60, 70, 80, 90, 100, 110, 120 ), true ) ) {
 		return 100;
 	}
 
@@ -2999,6 +2999,8 @@ function pfoa_site_homepage_page() {
 						<label class="pfoa-hero-carousel-headline-size">
 							<?php esc_html_e( 'Headline size', 'pfoa-theme' ); ?>
 							<select name="<?php echo esc_attr( $carousel_field_base ); ?>[headline_scale]">
+								<option value="50"<?php selected( $carousel_headline_scale, 50 ); ?>><?php esc_html_e( '50%', 'pfoa-theme' ); ?></option>
+								<option value="60"<?php selected( $carousel_headline_scale, 60 ); ?>><?php esc_html_e( '60%', 'pfoa-theme' ); ?></option>
 								<option value="70"<?php selected( $carousel_headline_scale, 70 ); ?>><?php esc_html_e( '70%', 'pfoa-theme' ); ?></option>
 								<option value="80"<?php selected( $carousel_headline_scale, 80 ); ?>><?php esc_html_e( '80%', 'pfoa-theme' ); ?></option>
 								<option value="90"<?php selected( $carousel_headline_scale, 90 ); ?>><?php esc_html_e( '90%', 'pfoa-theme' ); ?></option>
@@ -3070,6 +3072,8 @@ function pfoa_site_homepage_page() {
 				<label class="pfoa-hero-carousel-headline-size">
 					<?php esc_html_e( 'Headline size', 'pfoa-theme' ); ?>
 					<select name="pfoa_hero[carousel_items][__INDEX__][headline_scale]">
+						<option value="50"><?php esc_html_e( '50%', 'pfoa-theme' ); ?></option>
+						<option value="60"><?php esc_html_e( '60%', 'pfoa-theme' ); ?></option>
 						<option value="70"><?php esc_html_e( '70%', 'pfoa-theme' ); ?></option>
 						<option value="80"><?php esc_html_e( '80%', 'pfoa-theme' ); ?></option>
 						<option value="90"><?php esc_html_e( '90%', 'pfoa-theme' ); ?></option>

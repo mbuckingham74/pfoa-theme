@@ -30,7 +30,7 @@
 	function showSlide( slides, index ) {
 		var total = slides.length;
 		var current = ( ( index % total ) + total ) % total;
-		var allowedScales = [ '70', '80', '90', '100', '110', '120' ];
+		var allowedScales = [ '50', '60', '70', '80', '90', '100', '110', '120' ];
 
 		function applyHeadlineScale( title, scale ) {
 			if ( ! title ) {
