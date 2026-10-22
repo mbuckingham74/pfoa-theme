@@ -30,6 +30,7 @@ $fallback_hero     = trailingslashit( $uploads['baseurl'] ) . '2026/09/A1Kittens
 $has_fallback_hero = ! empty( $fallback_hero );
 
 $carousel_slides = array();
+$carousel_slide_count = isset( $hero['carousel_slide_count'] ) ? pfoa_sanitize_hero_carousel_slide_count( $hero['carousel_slide_count'] ) : 3;
 
 if ( 'carousel' === $hero_mode ) {
 	$raw_items = array();
@@ -50,6 +51,13 @@ if ( 'carousel' === $hero_mode ) {
 
 		if ( ! $slide_id || ! wp_attachment_is_image( $slide_id ) ) {
 			continue;
+		}
+
+		// Dedupe by attachment ID; skip repeats.
+		foreach ( $carousel_slides as $existing_slide ) {
+			if ( $existing_slide['id'] === $slide_id ) {
+				continue 2;
+			}
 		}
 
 		$slide_link_page_id = ( is_array( $raw_item ) && isset( $raw_item['link_page_id'] ) ) ? $raw_item['link_page_id'] : 0;
@@ -73,7 +81,14 @@ if ( 'carousel' === $hero_mode ) {
 			'brightness'     => $slide_brightness,
 			'headline_scale' => $slide_headline_scale,
 		);
+
+		// Cap at 5 stored slots, render only the first N selected.
+		if ( count( $carousel_slides ) >= 5 ) {
+			break;
+		}
 	}
+
+	$carousel_slides = array_slice( $carousel_slides, 0, $carousel_slide_count );
 }
 
 $is_carousel = array() !== $carousel_slides;

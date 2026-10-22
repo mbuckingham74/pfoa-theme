@@ -848,6 +848,7 @@ function pfoa_get_hero_defaults() {
 		'image_link_page_id' => 0,
 		'carousel_ids'       => array(),
 		'carousel_items'     => array(),
+		'carousel_slide_count' => 3,
 		'carousel_interval_ms' => 5000,
 		'ctas'               => $ctas,
 	);
@@ -1109,6 +1110,24 @@ function pfoa_sanitize_hero_carousel_interval_ms( $value ) {
 }
 
 /**
+ * Sanitize the homepage hero carousel slide count.
+ *
+ * Only 2, 3, 4, 5 are accepted; anything else becomes 3 (current default).
+ *
+ * @param mixed $value Raw submitted value.
+ * @return int
+ */
+function pfoa_sanitize_hero_carousel_slide_count( $value ) {
+	$count = absint( $value );
+
+	if ( ! in_array( $count, array( 2, 3, 4, 5 ), true ) ) {
+		return 3;
+	}
+
+	return $count;
+}
+
+/**
  * Sanitize a homepage hero value. No raw HTML is allowed.
  *
  * @param mixed $value Raw submitted value (expected unslashed).
@@ -1122,6 +1141,7 @@ function pfoa_sanitize_hero( $value ) {
 		'image_link_page_id' => 0,
 		'carousel_ids'       => array(),
 		'carousel_items'     => array(),
+		'carousel_slide_count' => 3,
 		'carousel_interval_ms' => 5000,
 		'ctas'               => array(),
 	);
@@ -1141,6 +1161,8 @@ function pfoa_sanitize_hero( $value ) {
 	$hero['image_link_page_id'] = isset( $value['image_link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $value['image_link_page_id'] ) : 0;
 
 	$hero['carousel_interval_ms'] = isset( $value['carousel_interval_ms'] ) ? pfoa_sanitize_hero_carousel_interval_ms( $value['carousel_interval_ms'] ) : 5000;
+
+	$hero['carousel_slide_count'] = isset( $value['carousel_slide_count'] ) ? pfoa_sanitize_hero_carousel_slide_count( $value['carousel_slide_count'] ) : 3;
 
 	$carousel_items = array();
 
@@ -1209,6 +1231,10 @@ function pfoa_sanitize_hero( $value ) {
 			);
 		}
 	}
+
+	// Cap at 5 slots (first 5 in submitted order). Inactive slides beyond
+	// the selected carousel_slide_count are preserved, not dropped.
+	$carousel_items = array_slice( $carousel_items, 0, 5 );
 
 	$hero['carousel_items'] = $carousel_items;
 	$hero['carousel_ids']   = array();
@@ -2099,6 +2125,7 @@ function pfoa_site_homepage_page() {
 	$image_link_page_id = isset( $hero['image_link_page_id'] ) ? absint( $hero['image_link_page_id'] ) : 0;
 	$carousel_ids = ( isset( $hero['carousel_ids'] ) && is_array( $hero['carousel_ids'] ) ) ? $hero['carousel_ids'] : array();
 	$carousel_interval_ms = isset( $hero['carousel_interval_ms'] ) ? pfoa_sanitize_hero_carousel_interval_ms( $hero['carousel_interval_ms'] ) : 5000;
+	$carousel_slide_count = isset( $hero['carousel_slide_count'] ) ? pfoa_sanitize_hero_carousel_slide_count( $hero['carousel_slide_count'] ) : 3;
 	$carousel_items = array();
 
 		if ( isset( $hero['carousel_items'] ) && is_array( $hero['carousel_items'] ) && array() !== $hero['carousel_items'] ) {
@@ -2179,9 +2206,22 @@ function pfoa_site_homepage_page() {
 			</td>
 		</tr>
 		<tr>
+			<th scope="row"><label for="pfoa-hero-carousel-slide-count"><?php esc_html_e( 'Number of Carousel Slides', 'pfoa-theme' ); ?></label></th>
+			<td>
+				<select id="pfoa-hero-carousel-slide-count" name="pfoa_hero[carousel_slide_count]">
+					<option value="2"<?php selected( $carousel_slide_count, 2 ); ?>><?php esc_html_e( '2 slides', 'pfoa-theme' ); ?></option>
+					<option value="3"<?php selected( $carousel_slide_count, 3 ); ?>><?php esc_html_e( '3 slides', 'pfoa-theme' ); ?></option>
+					<option value="4"<?php selected( $carousel_slide_count, 4 ); ?>><?php esc_html_e( '4 slides', 'pfoa-theme' ); ?></option>
+					<option value="5"<?php selected( $carousel_slide_count, 5 ); ?>><?php esc_html_e( '5 slides', 'pfoa-theme' ); ?></option>
+				</select>
+				<p class="description"><?php esc_html_e( 'How many of the carousel slots below show on the homepage (2–5). Slots beyond this count are kept — they will show if the count is increased.', 'pfoa-theme' ); ?></p>
+			</td>
+		</tr>
+		<tr>
 			<th scope="row"><?php esc_html_e( 'Carousel images', 'pfoa-theme' ); ?></th>
 			<td>
-				<ul class="pfoa-hero-carousel-list" data-next-index="<?php echo esc_attr( (string) count( $carousel_items ) ); ?>">
+				<style>.pfoa-hero-carousel-item.is-inactive{opacity:.55;background:#f6f5f2;}.pfoa-hero-carousel-inactive-note{font-style:italic;color:#6f6963;}</style>
+				<ul class="pfoa-hero-carousel-list" data-next-index="<?php echo esc_attr( (string) count( $carousel_items ) ); ?>" data-slide-count="<?php echo esc_attr( (string) $carousel_slide_count ); ?>">
 					<?php foreach ( $carousel_items as $carousel_index => $carousel_item ) : ?>
 						<?php
 					$carousel_id        = absint( $carousel_item['id'] );
@@ -2191,9 +2231,11 @@ function pfoa_site_homepage_page() {
 					$carousel_headline_scale = isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100;
 						$carousel_preview   = $carousel_id ? wp_get_attachment_image( $carousel_id, array( 80, 80 ) ) : '';
 						$carousel_field_base = 'pfoa_hero[carousel_items][' . $carousel_index . ']';
+						$is_inactive_slot = $carousel_index >= $carousel_slide_count;
 						?>
 						<?php if ( $carousel_preview ) : ?>
-							<li class="pfoa-hero-carousel-item">
+							<li class="pfoa-hero-carousel-item<?php echo $is_inactive_slot ? ' is-inactive' : ''; ?>">
+								<strong class="pfoa-hero-carousel-slot"><?php printf( esc_html__( 'Slide %d', 'pfoa-theme' ), $carousel_index + 1 ); ?><?php echo $is_inactive_slot ? ' — ' . esc_html__( 'Inactive — will show if count increased', 'pfoa-theme' ) : ''; ?></strong>
 								<span class="pfoa-hero-carousel-preview"><?php echo $carousel_preview; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
 								<input type="hidden" class="pfoa-hero-carousel-id" name="<?php echo esc_attr( $carousel_field_base ); ?>[id]" value="<?php echo esc_attr( (string) $carousel_id ); ?>" />
 								<label class="pfoa-hero-carousel-link">
@@ -2234,6 +2276,7 @@ function pfoa_site_homepage_page() {
 				</ul>
 				<template id="pfoa-hero-carousel-template">
 					<li class="pfoa-hero-carousel-item">
+						<strong class="pfoa-hero-carousel-slot"></strong>
 						<span class="pfoa-hero-carousel-preview"></span>
 						<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][__INDEX__][id]" value="0" />
 						<label class="pfoa-hero-carousel-link">
@@ -2271,7 +2314,8 @@ function pfoa_site_homepage_page() {
 					</li>
 				</template>
 				<button type="button" class="button pfoa-hero-carousel-add"><?php esc_html_e( 'Add Images', 'pfoa-theme' ); ?></button>
-				<p class="description"><?php esc_html_e( 'Shown in order when Carousel mode is selected. Use Move Up and Move Down to reorder; the buttons stay the same on every image.', 'pfoa-theme' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Shown in order when Carousel mode is selected, up to the Number of Carousel Slides above (max 5 slots). Use Move Up and Move Down to reorder; the buttons stay the same on every image. Lowering the slide count keeps the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
+				<p class="pfoa-hero-carousel-limit-notice" style="display:none;color:#b32d2e;" role="status"><?php esc_html_e( 'Maximum 5 carousel slots. Remove a slot before adding another.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
 		<tr>

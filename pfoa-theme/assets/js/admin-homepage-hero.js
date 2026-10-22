@@ -86,6 +86,64 @@
 		}
 	} );
 
+	var PFOA_HERO_MAX_SLIDES = 5;
+
+	function getSlideCount() {
+		var select = $( '#pfoa-hero-carousel-slide-count' );
+
+		if ( ! select.length ) {
+			return 3;
+		}
+
+		var count = parseInt( select.val(), 10 );
+
+		if ( isNaN( count ) || count < 2 || count > PFOA_HERO_MAX_SLIDES ) {
+			return 3;
+		}
+
+		return count;
+	}
+
+	function refreshInactiveSlots() {
+		var list = $( '.pfoa-hero-carousel-list' );
+
+		if ( ! list.length ) {
+			return;
+		}
+
+		var count = getSlideCount();
+
+		list.attr( 'data-slide-count', String( count ) );
+
+		list.children( '.pfoa-hero-carousel-item' ).each( function ( position ) {
+			var item = $( this );
+			var inactive = position >= count;
+
+			item.toggleClass( 'is-inactive', inactive );
+
+			var slotLabel = item.find( '.pfoa-hero-carousel-slot' );
+
+			if ( slotLabel.length ) {
+				var base = 'Slide ' + ( position + 1 );
+
+				if ( inactive ) {
+					base += ' — Inactive — will show if count increased';
+				}
+
+				slotLabel.text( base );
+			}
+
+			// Inputs stay enabled so inactive slot values still submit;
+			// nothing here disables or removes fields.
+		} );
+	}
+
+	$( document ).on( 'change', '#pfoa-hero-carousel-slide-count', refreshInactiveSlots );
+
+	$( function () {
+		refreshInactiveSlots();
+	} );
+
 	function nextCarouselIndex( list ) {
 		var next = parseInt( list.data( 'next-index' ), 10 );
 
@@ -110,6 +168,13 @@
 			return;
 		}
 
+		if ( list.children( '.pfoa-hero-carousel-item' ).length >= PFOA_HERO_MAX_SLIDES ) {
+			$( '.pfoa-hero-carousel-limit-notice' ).show();
+			return;
+		}
+
+		$( '.pfoa-hero-carousel-limit-notice' ).hide();
+
 		var thumb = '';
 
 		if ( attachment.sizes && attachment.sizes.thumbnail && attachment.sizes.thumbnail.url ) {
@@ -127,11 +192,13 @@
 			item.find( '.pfoa-hero-carousel-id' ).val( id );
 			item.find( '.pfoa-hero-carousel-preview' ).html( thumb );
 			list.append( item );
+			refreshInactiveSlots();
 			return;
 		}
 
 	list.append(
 		'<li class="pfoa-hero-carousel-item">' +
+		'<strong class="pfoa-hero-carousel-slot"></strong> ' +
 		'<span class="pfoa-hero-carousel-preview">' + thumb + '</span> ' +
 		'<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][' + index + '][id]" value="' + id + '" /> ' +
 		'<label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">— No link —</option></select></label> ' +
@@ -143,6 +210,7 @@
 		'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +
 		'</li>'
 	);
+		refreshInactiveSlots();
 	}
 
 	$( document ).on( 'click', '.pfoa-hero-carousel-add', function ( event ) {
@@ -174,6 +242,7 @@
 
 		var item = $( this ).closest( '.pfoa-hero-carousel-item' );
 		item.prev( '.pfoa-hero-carousel-item' ).before( item );
+		refreshInactiveSlots();
 	} );
 
 	$( document ).on( 'click', '.pfoa-hero-carousel-down', function ( event ) {
@@ -181,12 +250,15 @@
 
 		var item = $( this ).closest( '.pfoa-hero-carousel-item' );
 		item.next( '.pfoa-hero-carousel-item' ).after( item );
+		refreshInactiveSlots();
 	} );
 
 	$( document ).on( 'click', '.pfoa-hero-carousel-remove', function ( event ) {
 		event.preventDefault();
 
 		$( this ).closest( '.pfoa-hero-carousel-item' ).remove();
+		$( '.pfoa-hero-carousel-limit-notice' ).hide();
+		refreshInactiveSlots();
 	} );
 
 	$( document ).on( 'click', '.pfoa-hero-cta-add', function ( event ) {
