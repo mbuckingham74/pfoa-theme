@@ -188,7 +188,7 @@ fixture_assert( false !== $gate_pos && false !== $content_pos && $gate_pos < $co
 
 	// style.css: version 0.1.218, and no display:none touches the title header.
 	$css = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' );
-	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.217/', $css ), 'css: theme version 0.1.218' );
+	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.218/', $css ), 'css: theme version 0.1.218' );
 fixture_assert( false !== strpos( $css, '.page-content .entry-header' ), 'css: existing page-content entry-header styling intact' );
 $blocks = explode( '}', $css );
 foreach ( $blocks as $block ) {

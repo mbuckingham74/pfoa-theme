@@ -48,7 +48,7 @@ $css = (string) file_get_contents( $css_path );
 fixture_assert( '' !== $css, 'css: style.css readable' );
 	// Version gate for this release (0.1.161 block preserved; header now 0.1.218).
 
-	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.217/', $css ), 'css: theme version 0.1.218' );
+	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.218/', $css ), 'css: theme version 0.1.218' );
 
 // Release marker comment present.
 fixture_assert( false !== strpos( $css, 'PFOA 0.1.161' ), 'css: 0.1.161 release marker present' );
