@@ -46,9 +46,9 @@ $css_path = dirname( __DIR__ ) . '/pfoa-theme/style.css';
 fixture_assert( file_exists( $css_path ), 'css: style.css exists' );
 $css = (string) file_get_contents( $css_path );
 fixture_assert( '' !== $css, 'css: style.css readable' );
-	// Version gate for this release (0.1.161 block preserved; header now 0.1.223).
+	// Version gate for this release (0.1.161 block preserved; header now 0.1.224).
 
-	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.223/', $css ), 'css: theme version 0.1.223' );
+	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.224/', $css ), 'css: theme version 0.1.224' );
 
 // Release marker comment present.
 fixture_assert( false !== strpos( $css, 'PFOA 0.1.161' ), 'css: 0.1.161 release marker present' );

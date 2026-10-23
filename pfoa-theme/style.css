@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-         Version: 0.1.223
+         Version: 0.1.224
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -7402,7 +7402,7 @@ body.page-id-11290 .page-content .entry-content span.pfoa-hf-archive__sep {
 	}
 }
 
-/* PFOA 0.1.223 — Roadster editorial floats (page-id-25515 ONLY).
+/* PFOA 0.1.224 — Roadster editorial floats (page-id-25515 ONLY).
  * Scoped strictly to body.page-id-25515; global align/float rules
  * (lines ~741-754) and the 720px mobile float-stack (~2365-2370)
  * are untouched. Widens the shell to 1000px, sets a 760px prose
@@ -7455,6 +7455,10 @@ body.page-id-25515 .entry-content > blockquote {
 	font-size: 1.12rem;
 	line-height: 1.65;
 	margin: 2rem auto;
+}
+body.page-id-25515 .entry-content > p:has(+ blockquote) {
+	clear: both;
+	padding-top: 0.5rem;
 }
 body.page-id-25515 .entry-content .wp-block-buttons {
 	clear: both;
