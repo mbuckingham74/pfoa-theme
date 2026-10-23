@@ -233,6 +233,14 @@
 					stopTimer();
 					updateToggle();
 				} else {
+					// Explicit Resume overrides transient hover/focus pauses:
+					// the pointer/focus is still inside the section when the
+					// toggle is activated, so without this reset canAutoplay()
+					// stays false and auto-rotation never restarts (manual
+					// Prev/Next still single-step via goTo). Reduced-motion
+					// still blocks autoplay via canAutoplay().
+					hoverPaused = false;
+					focusPaused = false;
 					current = showSlide( slides, current );
 					scheduleNext();
 				}
