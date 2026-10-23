@@ -3578,6 +3578,10 @@ function pfoa_site_homepage_page() {
 .pfoa-hero-carousel-list .pfoa-hero-slide-actions{display:flex;gap:8px;flex-wrap:wrap;max-width:100%;}
 .pfoa-hero-carousel-list .pfoa-hero-carousel-inactive-note{display:none;font-style:italic;color:#6f6963;margin:8px 0 0;}
 .pfoa-hero-carousel-list .pfoa-hero-carousel-item.is-inactive .pfoa-hero-carousel-inactive-note,.pfoa-hero-carousel-list .pfoa-hero-slide-card.is-inactive .pfoa-hero-carousel-inactive-note{display:block;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-save-status{font-size:12px;line-height:2;color:#50575e;white-space:nowrap;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-save-status.is-unsaved{color:#8a5a00;font-weight:600;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-save-status.is-saved{color:#1d5c2f;font-weight:600;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-save-status.is-error{color:#b32d2e;font-weight:600;}
 </style>
 				<ul class="pfoa-hero-carousel-list" data-next-index="<?php echo esc_attr( (string) count( $carousel_items ) ); ?>" data-slide-count="<?php echo esc_attr( (string) $carousel_slide_count ); ?>">
 					<?php foreach ( $carousel_items as $carousel_index => $carousel_item ) : ?>
@@ -3605,7 +3609,7 @@ function pfoa_site_homepage_page() {
 						$carousel_field_base = 'pfoa_hero[carousel_items][' . $carousel_index . ']';
 						$is_inactive_slot = $carousel_index >= $carousel_slide_count;
 						?>
-						<li class="pfoa-hero-carousel-item<?php echo $is_inactive_slot ? ' is-inactive' : ''; ?>">
+						<li class="pfoa-hero-carousel-item<?php echo $is_inactive_slot ? ' is-inactive' : ''; ?>" data-pfoa-slide-key="<?php echo esc_attr( (string) $carousel_id ); ?>">
 							<?php
 							$carousel_summary_thumb    = $carousel_preview ? $carousel_preview : '<span class="pfoa-hero-slide-empty" aria-hidden="true"></span>';
 							$carousel_summary_headline = '' !== trim( (string) $carousel_headline ) ? $carousel_headline : __( '— No headline —', 'pfoa-theme' );
@@ -3761,6 +3765,8 @@ function pfoa_site_homepage_page() {
 							<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
 							<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
 							<button type="button" class="button pfoa-hero-carousel-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+							<button type="button" class="button button-primary pfoa-hero-slide-save"><?php esc_html_e( 'Save Slide', 'pfoa-theme' ); ?></button>
+							<span class="pfoa-hero-slide-save-status" role="status" aria-live="polite"></span>
 								</div>
 								<p class="pfoa-hero-carousel-inactive-note"><?php esc_html_e( 'Inactive — will show if count increased', 'pfoa-theme' ); ?></p>
 							</section>
@@ -3770,7 +3776,7 @@ function pfoa_site_homepage_page() {
 					<?php endforeach; ?>
 				</ul>
 				<template id="pfoa-hero-carousel-template">
-					<li class="pfoa-hero-carousel-item">
+					<li class="pfoa-hero-carousel-item" data-pfoa-slide-key="0">
 						<details class="pfoa-hero-slide-card" open>
 							<summary class="pfoa-hero-slide-summary">
 								<span class="pfoa-hero-slide-badge pfoa-hero-carousel-slot"></span>
@@ -3887,6 +3893,8 @@ function pfoa_site_homepage_page() {
 						<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
 						<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
 						<button type="button" class="button pfoa-hero-carousel-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+						<button type="button" class="button button-primary pfoa-hero-slide-save"><?php esc_html_e( 'Save Slide', 'pfoa-theme' ); ?></button>
+						<span class="pfoa-hero-slide-save-status" role="status" aria-live="polite"></span>
 							</div>
 							<p class="pfoa-hero-carousel-inactive-note"><?php esc_html_e( 'Inactive — will show if count increased', 'pfoa-theme' ); ?></p>
 						</section>
@@ -3990,9 +3998,20 @@ function pfoa_hero_admin_assets( $hook ) {
 			'pfoa-hero-admin',
 			'pfoaHeroAdmin',
 			array(
-				'moveUp'   => __( 'Move Up', 'pfoa-theme' ),
-				'moveDown' => __( 'Move Down', 'pfoa-theme' ),
-				'remove'   => __( 'Remove', 'pfoa-theme' ),
+				'moveUp'           => __( 'Move Up', 'pfoa-theme' ),
+				'moveDown'         => __( 'Move Down', 'pfoa-theme' ),
+				'remove'           => __( 'Remove', 'pfoa-theme' ),
+				'ajaxUrl'          => admin_url( 'admin-ajax.php' ),
+				'slideNonce'       => wp_create_nonce( 'pfoa_hero_slide_save' ),
+				'frontId'          => pfoa_homepage_front_id(),
+				'saveSlide'        => __( 'Save Slide', 'pfoa-theme' ),
+				'saving'           => __( 'Saving…', 'pfoa-theme' ),
+				'saved'            => __( 'Saved.', 'pfoa-theme' ),
+				'saveFailed'       => __( 'Save failed. Please try again.', 'pfoa-theme' ),
+				'unsavedChanges'   => __( 'Unsaved changes', 'pfoa-theme' ),
+				'newSlotHomepage'  => __( 'This is a new slide. Click Save Homepage first to add it, then edit it per-slide.', 'pfoa-theme' ),
+				'conflictHomepage' => __( 'Slides changed elsewhere. Reload the page and use Save Homepage to keep every change.', 'pfoa-theme' ),
+				'linkWarning'      => __( '— External URL was invalid, so its link was removed.', 'pfoa-theme' ),
 			)
 		);
 	}
@@ -4066,6 +4085,321 @@ function pfoa_homepage_hero_save() {
 	exit;
 }
 add_action( 'admin_post_pfoa_homepage_hero_save', 'pfoa_homepage_hero_save' );
+
+/**
+ * AJAX handler: save a single existing carousel slide in place.
+ *
+ * Structural changes (add/remove/reorder) are rejected with an actionable
+ * error directing the admin to Save Homepage; only the matched slide's
+ * config fields are replaced. Everything else in the stored hero array
+ * (featured_pin verbatim — no pin expiry re-resolution — mode, headlines,
+ * ctas, interval, slide count) is preserved.
+ *
+ * Request (POST):
+ *   nonce, post_id, slide_key ("0" = new slot), position (int DOM index),
+ *   known_ids (array of DOM-ordered attachment ids),
+ *   id, link_type, link_page_id, link_url, headline,
+ *   brightness, headline_scale, headline_color, zoom, image_position.
+ *
+ * Error codes (responseJSON.data.code): new_slot, conflict, not_found,
+ * moved, duplicate, forbidden, no_front_page, front_mismatch, save_failed.
+ *
+ * @return void
+ */
+function pfoa_hero_save_slide() {
+	if ( ! check_ajax_referer( 'pfoa_hero_slide_save', 'nonce', false ) ) {
+		wp_send_json_error(
+			array(
+				'code'    => 'forbidden',
+				'message' => __( 'Security check failed. Reload the page and try again.', 'pfoa-theme' ),
+			),
+			403
+		);
+	}
+
+	if ( ! current_user_can( 'edit_pages' ) ) {
+		wp_send_json_error(
+			array(
+				'code'    => 'forbidden',
+				'message' => __( 'You do not have permission to edit the homepage.', 'pfoa-theme' ),
+			),
+			403
+		);
+	}
+
+	$expected_front = pfoa_homepage_front_id();
+
+	if ( ! $expected_front ) {
+		wp_send_json_error(
+			array(
+				'code'    => 'no_front_page',
+				'message' => __( 'No static front page is assigned. Set one under Settings > Reading first.', 'pfoa-theme' ),
+			),
+			400
+		);
+	}
+
+	$post_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
+
+	if ( $post_id !== $expected_front ) {
+		wp_send_json_error(
+			array(
+				'code'    => 'front_mismatch',
+				'message' => __( 'This slide belongs to a different page. Reload and try again.', 'pfoa-theme' ),
+			),
+			400
+		);
+	}
+
+	$front_id = $expected_front;
+
+	if ( 'page' !== get_post_type( $front_id ) || ! current_user_can( 'edit_page', $front_id ) ) {
+		wp_send_json_error(
+			array(
+				'code'    => 'forbidden',
+				'message' => __( 'You do not have permission to edit the homepage.', 'pfoa-theme' ),
+			),
+			403
+		);
+	}
+
+	$raw_post = wp_unslash( $_POST );
+
+	$slide_key_raw = isset( $raw_post['slide_key'] ) ? trim( (string) $raw_post['slide_key'] ) : '';
+	$slide_key     = absint( $slide_key_raw );
+	$raw_id        = isset( $raw_post['id'] ) ? absint( $raw_post['id'] ) : 0;
+
+	if ( '' === $slide_key_raw || '0' === $slide_key_raw || 0 === $slide_key || 0 === $raw_id ) {
+		wp_send_json_error(
+			array(
+				'code'    => 'new_slot',
+				'message' => __( 'This is a new slide. Click Save Homepage first to add it, then edit it per-slide.', 'pfoa-theme' ),
+			),
+			400
+		);
+	}
+
+	$position = isset( $raw_post['position'] ) ? absint( $raw_post['position'] ) : 0;
+
+	$known_ids = array();
+
+	if ( isset( $raw_post['known_ids'] ) && is_array( $raw_post['known_ids'] ) ) {
+		foreach ( $raw_post['known_ids'] as $known_id ) {
+			$known_ids[] = absint( $known_id );
+		}
+	}
+
+	$hero = pfoa_get_hero( $front_id );
+
+	$stored_items = ( isset( $hero['carousel_items'] ) && is_array( $hero['carousel_items'] ) ) ? array_values( $hero['carousel_items'] ) : array();
+
+	$stored_ids = array();
+
+	foreach ( $stored_items as $stored_item ) {
+		$stored_ids[] = isset( $stored_item['id'] ) ? absint( $stored_item['id'] ) : 0;
+	}
+
+	$found = -1;
+
+	foreach ( $stored_ids as $index => $stored_id ) {
+		if ( $stored_id === $slide_key ) {
+			$found = $index;
+			break;
+		}
+	}
+
+	if ( -1 === $found ) {
+		wp_send_json_error(
+			array(
+				'code'    => 'not_found',
+				'message' => __( 'This slide is no longer saved. Reload the page and use Save Homepage.', 'pfoa-theme' ),
+			),
+			404
+		);
+	}
+
+	if ( $found !== (int) $position ) {
+		wp_send_json_error(
+			array(
+				'code'    => 'moved',
+				'message' => __( 'This slide was reordered without saving. Use Save Homepage to save the new order first.', 'pfoa-theme' ),
+			),
+			409
+		);
+	}
+
+	// Concurrency guard: the DOM order must match stored order, except the
+	// edited card itself may carry a replacement image id, and empty (id=0)
+	// slots never persist so they are ignored on both sides. Any other
+	// drift (reorder/add/remove elsewhere) is a structural change.
+	$expected_ids = $stored_ids;
+	$expected_ids[ $found ] = $raw_id;
+
+	$known_nonzero = array_values(
+		array_filter(
+			$known_ids,
+			function ( $id ) {
+				return 0 !== $id;
+			}
+		)
+	);
+
+	$expected_nonzero = array_values(
+		array_filter(
+			$expected_ids,
+			function ( $id ) {
+				return 0 !== $id;
+			}
+		)
+	);
+
+	if ( $known_nonzero !== $expected_nonzero ) {
+		wp_send_json_error(
+			array(
+				'code'    => 'conflict',
+				'message' => __( 'Slides changed elsewhere (reordered, added, or removed). Reload the page and use Save Homepage to keep every change.', 'pfoa-theme' ),
+			),
+			409
+		);
+	}
+
+	// Same per-field rules as pfoa_sanitize_hero() carousel items.
+	$new_id = absint( isset( $raw_post['id'] ) ? $raw_post['id'] : 0 );
+	$new_id = ( $new_id && wp_attachment_is_image( $new_id ) ) ? $new_id : 0;
+
+	if ( ! $new_id ) {
+		wp_send_json_error(
+			array(
+				'code'    => 'new_slot',
+				'message' => __( 'Removing a slide image is a structural change. Click Save Homepage first.', 'pfoa-theme' ),
+			),
+			400
+		);
+	}
+
+	foreach ( $stored_ids as $index => $stored_id ) {
+		if ( $index !== $found && $stored_id === $new_id ) {
+			wp_send_json_error(
+				array(
+					'code'    => 'duplicate',
+					'message' => __( 'This image is already used by another slide. Choose a different image.', 'pfoa-theme' ),
+				),
+				400
+			);
+		}
+	}
+
+	$item_link_page_id = isset( $raw_post['link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $raw_post['link_page_id'] ) : 0;
+
+	$new_slide = array(
+		'id'             => $new_id,
+		'link_page_id'   => $item_link_page_id,
+		'link_type'      => pfoa_resolve_hero_link_type(
+			array(
+				'link_type'    => isset( $raw_post['link_type'] ) ? $raw_post['link_type'] : null,
+				'link_page_id' => $item_link_page_id,
+			)
+		),
+		'link_url'       => isset( $raw_post['link_url'] ) ? pfoa_sanitize_hero_external_url( $raw_post['link_url'] ) : '',
+		'headline'       => isset( $raw_post['headline'] ) ? sanitize_text_field( $raw_post['headline'] ) : '',
+		'brightness'     => isset( $raw_post['brightness'] ) ? pfoa_sanitize_hero_brightness( $raw_post['brightness'] ) : 100,
+		'headline_scale' => isset( $raw_post['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $raw_post['headline_scale'] ) : 100,
+		'headline_color' => isset( $raw_post['headline_color'] ) ? pfoa_sanitize_hero_headline_color( $raw_post['headline_color'] ) : 'white',
+		'zoom'           => isset( $raw_post['zoom'] ) ? pfoa_sanitize_hero_zoom( $raw_post['zoom'] ) : 100,
+		'position'       => isset( $raw_post['image_position'] ) ? pfoa_sanitize_hero_position( $raw_post['image_position'] ) : 'center center',
+	);
+
+	// Mirror the Save Homepage warning pattern: an invalid external URL is
+	// saved with the link removed; the client surfaces the notice.
+	$link_warning      = false;
+	$submitted_url_raw = isset( $raw_post['link_url'] ) ? trim( (string) $raw_post['link_url'] ) : '';
+
+	if ( 'external' === $new_slide['link_type'] && '' !== $submitted_url_raw && '' === $new_slide['link_url'] ) {
+		$link_warning = true;
+	}
+
+	$hero['carousel_items'][ $found ] = $new_slide;
+	$hero['carousel_items']            = array_values( $hero['carousel_items'] );
+	$hero['carousel_ids']              = array();
+
+	foreach ( $hero['carousel_items'] as $carousel_item ) {
+		$hero['carousel_ids'][] = isset( $carousel_item['id'] ) ? absint( $carousel_item['id'] ) : 0;
+	}
+
+	$updated = update_post_meta( $front_id, PFOA_HERO_META_KEY, $hero );
+
+	if ( ! $updated ) {
+		$recheck = get_post_meta( $front_id, PFOA_HERO_META_KEY, true );
+		$matches = is_array( $recheck )
+			&& isset( $recheck['carousel_items'] )
+			&& is_array( $recheck['carousel_items'] )
+			&& isset( $recheck['carousel_items'][ $found ] )
+			&& is_array( $recheck['carousel_items'][ $found ] )
+			&& absint( $recheck['carousel_items'][ $found ]['id'] ) === $new_id
+			&& $recheck['carousel_items'][ $found ] == $new_slide; // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison -- sanitized array equality tolerates int/string id juggling.
+
+		if ( ! $matches ) {
+			wp_send_json_error(
+				array(
+					'code'    => 'save_failed',
+					'message' => __( 'Save failed. Please try again.', 'pfoa-theme' ),
+				),
+				500
+			);
+		}
+	}
+
+	// Summary mirrors the PHP card render (headline fallback + truncated link label).
+	$summary_headline = '' !== trim( (string) $new_slide['headline'] ) ? $new_slide['headline'] : __( '— No headline —', 'pfoa-theme' );
+	$summary_link     = __( '— No link —', 'pfoa-theme' );
+	$link_found       = false;
+	$stored_link      = $new_slide['link_page_id'];
+
+	if ( is_string( $stored_link ) && '' !== $stored_link && '0' !== $stored_link ) {
+		foreach ( pfoa_get_hero_bonded_pairs() as $pair ) {
+			if ( isset( $pair['token'], $pair['title'] ) && $stored_link === (string) $pair['token'] ) {
+				/* translators: %s: bonded pair title. */
+				$summary_link = sprintf( __( '%s — Bonded Pair', 'pfoa-theme' ), $pair['title'] );
+				$link_found   = true;
+				break;
+			}
+		}
+	} elseif ( absint( $stored_link ) ) {
+		foreach ( pfoa_get_hero_link_cat_profiles() as $cat ) {
+			if ( $cat instanceof WP_Post && absint( $stored_link ) === (int) $cat->ID ) {
+				/* translators: 1: cat profile title, 2: post ID. */
+				$summary_link = sprintf( __( '%s (#%d)', 'pfoa-theme' ), $cat->post_title, $cat->ID );
+				$link_found   = true;
+				break;
+			}
+		}
+
+		if ( ! $link_found ) {
+			$linked_title = get_the_title( absint( $stored_link ) );
+
+			if ( '' !== trim( (string) $linked_title ) ) {
+				$summary_link = $linked_title;
+			}
+		}
+	}
+
+	if ( 'external' === $new_slide['link_type'] && '' !== $new_slide['link_url'] ) {
+		$summary_link = strlen( $new_slide['link_url'] ) > 48 ? substr( $new_slide['link_url'], 0, 47 ) . '…' : $new_slide['link_url'];
+	}
+
+	wp_send_json_success(
+		array(
+			'slide'        => $new_slide,
+			'position'     => $found,
+			'summary'      => array(
+				'headline' => $summary_headline,
+				'link'     => $summary_link,
+			),
+			'link_warning' => $link_warning,
+		)
+	);
+}
+add_action( 'wp_ajax_pfoa_hero_save_slide', 'pfoa_hero_save_slide' );
 
 /**
  * Render a minimal recovery menu when no Primary Menu has been assigned.

@@ -51,6 +51,38 @@
 		return labels.inactive || 'Inactive';
 	}
 
+	function saveSlideLabel() {
+		return labels.saveSlide || 'Save Slide';
+	}
+
+	function savingLabel() {
+		return labels.saving || 'Saving…';
+	}
+
+	function savedLabel() {
+		return labels.saved || 'Saved';
+	}
+
+	function saveFailedLabel() {
+		return labels.saveFailed || 'Save failed';
+	}
+
+	function unsavedChangesLabel() {
+		return labels.unsavedChanges || 'Unsaved changes';
+	}
+
+	function newSlotHomepageMessage() {
+		return labels.newSlotHomepage || 'This is a new slide. Use Save Homepage to publish this slot first.';
+	}
+
+	function conflictHomepageMessage() {
+		return labels.conflictHomepage || 'This slide changed elsewhere. Use Save Homepage to reload the latest order and retry.';
+	}
+
+	function linkWarningNote() {
+		return labels.linkWarning || '— External URL was invalid, so its link was removed.';
+	}
+
 	function setSingleImage( cell, attachment ) {
 		var idInput = cell.find( '.pfoa-hero-single-id' );
 		var preview = cell.find( '.pfoa-hero-single-preview' );
@@ -272,6 +304,240 @@
 		refreshInactiveSlots();
 	} );
 
+	// Per-slide save (Lane B): dirty tracking + AJAX save for one card.
+	// The PHP lane renders `.pfoa-hero-slide-save` + `.pfoa-hero-slide-save-status`
+	// inside each card's `.pfoa-hero-slide-actions`; every string below
+	// defensively defaults when window.pfoaHeroAdmin lacks it.
+	function markSlideDirty( item ) {
+		if ( ! item || ! item.length ) {
+			return;
+		}
+
+		var pending = item.data( 'pfoa-save-timer' );
+
+		if ( pending ) {
+			clearTimeout( pending );
+			item.removeData( 'pfoa-save-timer' );
+		}
+
+		item.data( 'pfoa-slide-edits', ( item.data( 'pfoa-slide-edits' ) || 0 ) + 1 );
+		item.attr( 'data-dirty', '1' );
+
+		var status = item.find( '.pfoa-hero-slide-save-status' );
+
+		if ( status.length ) {
+			status.text( unsavedChangesLabel() ).removeClass( 'is-saved is-error' ).addClass( 'is-unsaved' );
+		}
+	}
+
+	function isConflictSlideCode( code ) {
+		return 'conflict' === code || 'not_found' === code || 'moved' === code || 'new_slot' === code || 'duplicate' === code;
+	}
+
+	function slideAppearanceVal( item, wrapperClass, name ) {
+		var select = item.find( '.' + wrapperClass + ' select' );
+
+		if ( ! select.length ) {
+			select = item.find( '[name$="[' + name + ']"]' );
+		}
+
+		if ( ! select.length ) {
+			return '';
+		}
+
+		var value = select.val();
+
+		return null === value || 'undefined' === typeof value ? '' : value;
+	}
+
+	function handleSlideSaveResponse( item, button, response, editCount ) {
+		var status = item.find( '.pfoa-hero-slide-save-status' );
+
+		button.prop( 'disabled', false ).text( saveSlideLabel() );
+		openSlideCard( item );
+
+		if ( response && response.success && response.data ) {
+			var data = response.data;
+			var savedId = data.slide && data.slide.id ? data.slide.id : 0;
+
+			if ( savedId ) {
+				item.attr( 'data-pfoa-slide-key', String( savedId ) );
+			}
+
+			refreshSummary( item );
+			refreshInactiveSlots();
+
+			// Edits landed mid-save: keep the unsaved state, skip the Saved note.
+			if ( ( item.data( 'pfoa-slide-edits' ) || 0 ) !== editCount ) {
+				markSlideDirty( item );
+				return;
+			}
+
+			item.removeAttr( 'data-dirty' );
+
+			if ( status.length ) {
+				var text = savedLabel();
+
+				if ( data.link_warning ) {
+					text += ' ' + linkWarningNote();
+				}
+
+				status.text( text ).removeClass( 'is-unsaved is-error' ).addClass( 'is-saved' );
+
+				var pending = item.data( 'pfoa-save-timer' );
+
+				if ( pending ) {
+					clearTimeout( pending );
+				}
+
+				var timer = setTimeout( function () {
+					if ( item.attr( 'data-dirty' ) !== '1' ) {
+						status.text( '' ).removeClass( 'is-unsaved is-saved is-error' );
+					}
+				}, 4000 );
+
+				item.data( 'pfoa-save-timer', timer );
+			}
+
+			return;
+		}
+
+		var errData = response && response.data ? response.data : {};
+		var code = errData.code ? String( errData.code ) : '';
+		var serverMessage = errData.message ? String( errData.message ) : '';
+		var message;
+
+		if ( isConflictSlideCode( code ) ) {
+			message = serverMessage || conflictHomepageMessage();
+		} else if ( serverMessage ) {
+			message = saveFailedLabel() + ': ' + serverMessage;
+		} else {
+			message = saveFailedLabel();
+		}
+
+		if ( status.length ) {
+			status.text( message ).removeClass( 'is-unsaved is-saved' ).addClass( 'is-error' );
+		}
+	}
+
+	function handleSlideSaveError( item, button ) {
+		var status = item.find( '.pfoa-hero-slide-save-status' );
+
+		button.prop( 'disabled', false ).text( saveSlideLabel() );
+		openSlideCard( item );
+
+		if ( status.length ) {
+			status.text( saveFailedLabel() ).removeClass( 'is-unsaved is-saved' ).addClass( 'is-error' );
+		}
+	}
+
+	// Any real user edit inside a card marks only that card unsaved.
+	// Programmatic summary syncs (refreshSummary/refreshInactiveSlots) set
+	// .text() only and never fire input/change, so they stay clean.
+	$( document ).on( 'input change', '.pfoa-hero-carousel-item input, .pfoa-hero-carousel-item select', function () {
+		var item = $( this ).closest( '.pfoa-hero-carousel-item' );
+
+		if ( item.length ) {
+			markSlideDirty( item );
+		}
+	} );
+
+	$( document ).on( 'click', '.pfoa-hero-slide-save', function ( event ) {
+		event.preventDefault();
+
+		var button = $( this );
+		var item = button.closest( '.pfoa-hero-carousel-item' );
+
+		if ( ! item.length ) {
+			return;
+		}
+
+		var status = item.find( '.pfoa-hero-slide-save-status' );
+		var key = item.attr( 'data-pfoa-slide-key' );
+
+		// New not-yet-persisted slot: no POST, direct to Save Homepage.
+		if ( ! key || '0' === String( key ) ) {
+			if ( status.length ) {
+				status.text( newSlotHomepageMessage() ).removeClass( 'is-unsaved is-saved' ).addClass( 'is-error' );
+			}
+
+			openSlideCard( item );
+			return;
+		}
+
+		var ajaxUrl = labels.ajaxUrl || ( typeof window.ajaxurl === 'string' ? window.ajaxurl : '' );
+
+		if ( ! ajaxUrl ) {
+			if ( status.length ) {
+				status.text( saveFailedLabel() ).removeClass( 'is-unsaved is-saved' ).addClass( 'is-error' );
+			}
+
+			return;
+		}
+
+		button.prop( 'disabled', true ).text( savingLabel() );
+
+		if ( status.length ) {
+			status.text( savingLabel() ).removeClass( 'is-unsaved is-saved is-error' );
+		}
+
+		var list = item.closest( '.pfoa-hero-carousel-list' );
+		var knownIds = [];
+
+		if ( list.length ) {
+			list.find( '.pfoa-hero-carousel-id' ).each( function () {
+				knownIds.push( $( this ).val() );
+			} );
+		}
+
+		var position = list.length ? list.children( '.pfoa-hero-carousel-item' ).index( item ) : 0;
+		var typeInput = item.find( '.pfoa-hero-link-type-input:checked' );
+		var pageSelect = item.find( '.pfoa-hero-link-internal-wrap select' );
+
+		if ( ! pageSelect.length ) {
+			pageSelect = item.find( '.pfoa-hero-carousel-link select' );
+		}
+
+		// Bonded-pair token values (e.g. "post:123") pass through verbatim.
+		var pageValue = pageSelect.length ? pageSelect.val() : '';
+
+		if ( null === pageValue || 'undefined' === typeof pageValue ) {
+			pageValue = '';
+		}
+
+		var editCount = item.data( 'pfoa-slide-edits' ) || 0;
+
+		$.ajax( {
+			url: ajaxUrl,
+			type: 'POST',
+			dataType: 'json',
+			data: {
+				action: 'pfoa_hero_save_slide',
+				nonce: labels.slideNonce,
+				post_id: labels.frontId,
+				slide_key: String( key ),
+				position: position,
+				known_ids: knownIds,
+				id: item.find( '.pfoa-hero-carousel-id' ).val(),
+				link_type: typeInput.length ? String( typeInput.val() ) : 'none',
+				link_page_id: pageValue,
+				link_url: item.find( '.pfoa-hero-link-url-input' ).val() || '',
+				headline: item.find( '.pfoa-hero-carousel-headline-input' ).val() || '',
+				brightness: slideAppearanceVal( item, 'pfoa-hero-carousel-brightness', 'brightness' ),
+				headline_scale: slideAppearanceVal( item, 'pfoa-hero-carousel-headline-size', 'headline_scale' ),
+				headline_color: slideAppearanceVal( item, 'pfoa-hero-carousel-headline-color', 'headline_color' ),
+				zoom: slideAppearanceVal( item, 'pfoa-hero-carousel-zoom', 'zoom' ),
+				image_position: slideAppearanceVal( item, 'pfoa-hero-carousel-position', 'position' )
+			},
+			success: function ( response ) {
+				handleSlideSaveResponse( item, button, response, editCount );
+			},
+			error: function () {
+				handleSlideSaveError( item, button );
+			}
+		} );
+	} );
+
 	$( function () {
 		ensureRowCount( getSlideCount() );
 		refreshInactiveSlots();
@@ -343,7 +609,7 @@
 	}
 
 	function fallbackCardHtml( index, thumb, buttonLabel ) {
-		return '<li class="pfoa-hero-carousel-item">' +
+		return '<li class="pfoa-hero-carousel-item" data-pfoa-slide-key="0">' +
 			'<details class="pfoa-hero-slide-card" open>' +
 			'<summary class="pfoa-hero-slide-summary">' +
 			'<span class="pfoa-hero-slide-badge pfoa-hero-carousel-slot"></span> ' +
@@ -381,7 +647,9 @@
 			'<div class="pfoa-hero-slide-actions">' +
 			'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
 			'<button type="button" class="button pfoa-hero-carousel-down">' + moveDownLabel() + '</button> ' +
-			'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +
+			'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button> ' +
+			'<button type="button" class="button button-primary pfoa-hero-slide-save">' + saveSlideLabel() + '</button> ' +
+			'<span class="pfoa-hero-slide-save-status" role="status" aria-live="polite"></span>' +
 			'</div>' +
 			'</section>' +
 			'</div>' +
@@ -472,6 +740,7 @@
 			list.append( item );
 			openSlideCard( item );
 			refreshLinkType( item );
+			markSlideDirty( item );
 			refreshInactiveSlots();
 			return;
 		}
@@ -481,6 +750,7 @@
 		fallback.find( '.pfoa-hero-carousel-id' ).val( id );
 		list.append( fallback );
 		refreshLinkType( fallback );
+		markSlideDirty( fallback );
 		refreshInactiveSlots();
 	}
 
@@ -525,6 +795,7 @@
 		item.find( '.pfoa-hero-carousel-preview' ).html( thumb );
 		item.find( '.pfoa-hero-slide-thumb' ).html( thumb );
 		item.find( '.pfoa-hero-carousel-select' ).text( 'Replace Image' );
+		markSlideDirty( item );
 	}
 
 	$( document ).on( 'click', '.pfoa-hero-carousel-select', function ( event ) {
