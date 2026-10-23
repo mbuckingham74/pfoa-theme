@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-         Version: 0.1.212
+         Version: 0.1.214
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -7174,6 +7174,35 @@ body.page-id-11290 .page-content .entry-content details.pfoa-hf-archive__more > 
 	}
 
 	body.page-id-11290 .page-content .entry-content div.pfoa-hf-video {
+		max-width: 100%;
+	}
+}
+
+/* PFOA 0.1.214 — Pet Tidings Wills photo constraint (page-id-4799 only,
+ * https://dev.safehavenpfoa.org/pettidings/).
+ * Root cause: figure.pfoa-pt-intro__photo used a fixed flex-basis/width
+ * (180px desktop, 160px mobile) with flex-shrink:0 and no max-width guard,
+ * so the native-size Wills upload could overflow its flex lane on narrow
+ * widths and visually dwarf the intro paragraph. The img had width:100% /
+ * height:auto but no max-width cap relative to the figure.
+ * Fix (presentation only, later equal-specificity overrides win): allow the
+ * figure to shrink, cap it at 180px desktop / 160px mobile and 100% of its
+ * lane, and cap the img at 100% with aspect preserved. Intro copy, Current
+ * Edition button, archive, prefs, About, print rules, and all other pages
+ * (Home Front 11290, Dine Out, Potholders) are untouched. Every selector
+ * below starts with body.page-id-4799. */
+body.page-id-4799 .entry-content figure.pfoa-pt-intro__photo {
+	flex: 0 1 180px;
+	width: min(180px, 100%);
+	max-width: 100%;
+}
+body.page-id-4799 .entry-content figure.pfoa-pt-intro__photo img {
+	max-width: 100%;
+}
+@media (max-width: 600px) {
+	body.page-id-4799 .entry-content figure.pfoa-pt-intro__photo {
+		flex: none;
+		width: min(160px, 100%);
 		max-width: 100%;
 	}
 }
