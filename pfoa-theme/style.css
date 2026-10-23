@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-         Version: 0.1.221
+         Version: 0.1.222
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6974,13 +6974,16 @@ body.page-id-11290 .page-content .entry-content div.pfoa-hf-page {
 	box-sizing: border-box;
 }
 
+/* PFOA 0.1.222 — Home Front eyebrow hierarchy: larger/bolder subordinate
+ * heading (clamp 18px to 22px, weight 800) that stays below the Pet Tidings
+ * 1.75rem section heading; main H1 and all other rules untouched. */
 body.page-id-11290 .page-content .entry-content p.pfoa-hf-eyebrow {
 	margin-block: 0 1rem;
 	color: var(--pfoa-text-muted);
-	font-size: 0.85rem;
-	font-weight: 700;
-	letter-spacing: 0.12em;
-	line-height: 1.5;
+	font-size: clamp(1.125rem, 1rem + 1vw, 1.375rem);
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	line-height: 1.3;
 	text-align: center;
 	text-transform: uppercase;
 }
