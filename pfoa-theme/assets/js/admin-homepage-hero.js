@@ -6,6 +6,12 @@
  * Move Up/Move Down/Remove buttons (no drag), and an editable ordered
  * button list with the same up/down/remove controls. All edits persist
  * with the normal page save; nothing is submitted separately.
+ *
+ * Carousel slides render as native <details>/<summary> cards. Collapsing
+ * a card never disables or removes inputs (details-closed content still
+ * submits); reordering moves the whole <li> node so field associations
+ * stay intact, and submission follows DOM order without renumbering the
+ * name indexes.
  */
 ( function ( $ ) {
 	'use strict';
@@ -27,6 +33,22 @@
 
 	function removeLabel() {
 		return labels.remove || 'Remove';
+	}
+
+	function noHeadlineLabel() {
+		return labels.noHeadline || '\u2014 No headline \u2014';
+	}
+
+	function noLinkLabel() {
+		return labels.noLink || '\u2014 No link \u2014';
+	}
+
+	function activeLabel() {
+		return labels.active || 'Active';
+	}
+
+	function inactiveLabel() {
+		return labels.inactive || 'Inactive';
 	}
 
 	function setSingleImage( cell, attachment ) {
@@ -106,6 +128,48 @@
 		return count;
 	}
 
+	function refreshSummaryHeadline( item ) {
+		var headline = item.find( '.pfoa-hero-slide-headline' );
+
+		if ( ! headline.length ) {
+			return;
+		}
+
+		var value = item.find( '.pfoa-hero-carousel-headline-input' ).val();
+
+		headline.text( value && String( value ).trim() !== '' ? value : noHeadlineLabel() );
+	}
+
+	function refreshSummaryLink( item ) {
+		var link = item.find( '.pfoa-hero-slide-link' );
+
+		if ( ! link.length ) {
+			return;
+		}
+
+		var select = item.find( '.pfoa-hero-carousel-link select' );
+		var label = noLinkLabel();
+
+		if ( select.length ) {
+			var selected = select.find( 'option:selected' ).text();
+
+			if ( selected && String( selected ).trim() !== '' ) {
+				label = selected;
+			}
+		}
+
+		link.text( label );
+	}
+
+	function refreshSummary( item ) {
+		if ( ! item || ! item.length ) {
+			return;
+		}
+
+		refreshSummaryHeadline( item );
+		refreshSummaryLink( item );
+	}
+
 	function refreshInactiveSlots() {
 		var list = $( '.pfoa-hero-carousel-list' );
 
@@ -122,18 +186,23 @@
 			var inactive = position >= count;
 
 			item.toggleClass( 'is-inactive', inactive );
+			item.find( '.pfoa-hero-slide-card' ).toggleClass( 'is-inactive', inactive );
 
 			var slotLabel = item.find( '.pfoa-hero-carousel-slot' );
 
 			if ( slotLabel.length ) {
-				var base = 'Slide ' + ( position + 1 );
-
-				if ( inactive ) {
-					base += ' — Inactive — will show if count increased';
-				}
-
-				slotLabel.text( base );
+				slotLabel.text( 'Slide ' + ( position + 1 ) );
 			}
+
+			var pill = item.find( '.pfoa-hero-slide-status' );
+
+			if ( pill.length ) {
+				pill.text( inactive ? inactiveLabel() : activeLabel() );
+				pill.toggleClass( 'is-inactive', inactive );
+				pill.toggleClass( 'is-active', ! inactive );
+			}
+
+			refreshSummary( item );
 
 			// Inputs stay enabled so inactive slot values still submit;
 			// nothing here disables or removes fields.
@@ -150,6 +219,24 @@
 		refreshInactiveSlots();
 	} );
 
+	// Live-sync the card summary while editing; the summary is display-only
+	// and never carries submitted fields.
+	$( document ).on( 'input', '.pfoa-hero-carousel-headline-input', function () {
+		var item = $( this ).closest( '.pfoa-hero-carousel-item' );
+
+		if ( item.length ) {
+			refreshSummaryHeadline( item );
+		}
+	} );
+
+	$( document ).on( 'change', '.pfoa-hero-carousel-link select', function () {
+		var item = $( this ).closest( '.pfoa-hero-carousel-item' );
+
+		if ( item.length ) {
+			refreshSummaryLink( item );
+		}
+	} );
+
 	function nextCarouselIndex( list ) {
 		var next = parseInt( list.data( 'next-index' ), 10 );
 
@@ -162,6 +249,59 @@
 		return next;
 	}
 
+	function openSlideCard( item ) {
+		if ( ! item || ! item.length ) {
+			return;
+		}
+
+		item.find( '.pfoa-hero-slide-card' ).each( function () {
+			$( this ).attr( 'open', 'open' );
+			this.open = true;
+		} );
+	}
+
+	function fallbackCardHtml( index, thumb, buttonLabel ) {
+		return '<li class="pfoa-hero-carousel-item">' +
+			'<details class="pfoa-hero-slide-card" open>' +
+			'<summary class="pfoa-hero-slide-summary">' +
+			'<span class="pfoa-hero-slide-badge pfoa-hero-carousel-slot"></span> ' +
+			'<span class="pfoa-hero-slide-thumb">' + ( thumb || '<span class="pfoa-hero-slide-empty" aria-hidden="true"></span>' ) + '</span> ' +
+			'<span class="pfoa-hero-slide-headline">' + noHeadlineLabel() + '</span> ' +
+			'<span class="pfoa-hero-slide-link">' + noLinkLabel() + '</span> ' +
+			'<span class="pfoa-hero-slide-status is-active">' + activeLabel() + '</span>' +
+			'</summary>' +
+			'<div class="pfoa-hero-slide-body">' +
+			'<section class="pfoa-hero-slide-section">' +
+			'<h4 class="pfoa-hero-slide-heading">Content</h4>' +
+			'<span class="pfoa-hero-carousel-preview">' + ( thumb || '' ) + '</span> ' +
+			'<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][' + index + '][id]" value="0" /> ' +
+			'<button type="button" class="button pfoa-hero-carousel-select">' + buttonLabel + '</button> ' +
+			'<label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">' + noLinkLabel() + '</option></select></label> ' +
+			'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
+			'</section>' +
+			'<section class="pfoa-hero-slide-section">' +
+			'<h4 class="pfoa-hero-slide-heading">Appearance</h4>' +
+			'<div class="pfoa-hero-slide-grid">' +
+			'<label class="pfoa-hero-carousel-headline-size">Headline size <select name="pfoa_hero[carousel_items][' + index + '][headline_scale]"><option value="50">50%</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option></select></label> ' +
+			'<label class="pfoa-hero-carousel-headline-color">Headline color <select name="pfoa_hero[carousel_items][' + index + '][headline_color]"><option value="white" selected="selected">White</option><option value="black">Black</option></select></label> ' +
+			'<label class="pfoa-hero-carousel-brightness">Image brightness <select name="pfoa_hero[carousel_items][' + index + '][brightness]"><option value="100" selected="selected">Original (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option></select></label> ' +
+			'<label class="pfoa-hero-carousel-zoom">Image zoom <select name="pfoa_hero[carousel_items][' + index + '][zoom]"><option value="50">50%</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option><option value="140">140%</option><option value="150">150%</option></select></label> ' +
+			'<label class="pfoa-hero-carousel-position">Image position <select name="pfoa_hero[carousel_items][' + index + '][position]"><option value="top left">Top left</option><option value="top center">Top center</option><option value="top right">Top right</option><option value="center left">Center left</option><option value="center center" selected="selected">Center (default)</option><option value="center right">Center right</option><option value="bottom left">Bottom left</option><option value="bottom center">Bottom center</option><option value="bottom right">Bottom right</option></select></label> ' +
+			'</div>' +
+			'</section>' +
+			'<section class="pfoa-hero-slide-section">' +
+			'<h4 class="pfoa-hero-slide-heading">Actions</h4>' +
+			'<div class="pfoa-hero-slide-actions">' +
+			'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
+			'<button type="button" class="button pfoa-hero-carousel-down">' + moveDownLabel() + '</button> ' +
+			'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +
+			'</div>' +
+			'</section>' +
+			'</div>' +
+			'</details>' +
+			'</li>';
+	}
+
 	function appendEmptyRow( list ) {
 		var index = nextCarouselIndex( list );
 		var template = document.getElementById( 'pfoa-hero-carousel-template' );
@@ -170,32 +310,16 @@
 			var item = $( template.innerHTML.replace( /__INDEX__/g, String( index ) ) );
 
 			list.append( item );
+			openSlideCard( item );
 			return item;
 		}
 
-		var fallback = $(
-			'<li class="pfoa-hero-carousel-item">' +
-			'<strong class="pfoa-hero-carousel-slot"></strong> ' +
-			'<span class="pfoa-hero-carousel-preview"></span> ' +
-			'<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][' + index + '][id]" value="0" /> ' +
-			'<button type="button" class="button pfoa-hero-carousel-select">Select Image</button> ' +
-			'<label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">— No link —</option></select></label> ' +
-			'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
-			'<label class="pfoa-hero-carousel-brightness">Image brightness <select name="pfoa_hero[carousel_items][' + index + '][brightness]"><option value="100" selected="selected">Original (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option></select></label> ' +
-		'<label class="pfoa-hero-carousel-headline-size">Headline size <select name="pfoa_hero[carousel_items][' + index + '][headline_scale]"><option value="50">50%</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option></select></label> ' +
-		'<label class="pfoa-hero-carousel-headline-color">Headline color <select name="pfoa_hero[carousel_items][' + index + '][headline_color]"><option value="white" selected="selected">White</option><option value="black">Black</option></select></label> ' +
-		'<label class="pfoa-hero-carousel-zoom">Image zoom <select name="pfoa_hero[carousel_items][' + index + '][zoom]"><option value="50">50%</option><option value="60">60%</option><option value="50">50%</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option><option value="140">140%</option><option value="150">150%</option></select></label> ' +
-		'<label class="pfoa-hero-carousel-position">Image position <select name="pfoa_hero[carousel_items][' + index + '][position]"><option value="top left">Top left</option><option value="top center">Top center</option><option value="top right">Top right</option><option value="center left">Center left</option><option value="center center" selected="selected">Center (default)</option><option value="center right">Center right</option><option value="bottom left">Bottom left</option><option value="bottom center">Bottom center</option><option value="bottom right">Bottom right</option></select></label> ' +
-		'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
-		'<button type="button" class="button pfoa-hero-carousel-down">' + moveDownLabel() + '</button> ' +
-		'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +
-		'</li>'
-	);
+		var fallback = $( fallbackCardHtml( index, '', 'Select Image' ) );
 
-	list.append( fallback );
+		list.append( fallback );
 
-	return fallback;
-}
+		return fallback;
+	}
 
 	// Add empty rows (from the template) until the list holds N rows.
 	// Never removes rows: lowering N only dims extras via refreshInactiveSlots.
@@ -254,30 +378,18 @@
 
 			item.find( '.pfoa-hero-carousel-id' ).val( id );
 			item.find( '.pfoa-hero-carousel-preview' ).html( thumb );
+			item.find( '.pfoa-hero-slide-thumb' ).html( thumb || '<span class="pfoa-hero-slide-empty" aria-hidden="true"></span>' );
 			item.find( '.pfoa-hero-carousel-select' ).text( 'Replace Image' );
 			list.append( item );
+			openSlideCard( item );
 			refreshInactiveSlots();
 			return;
 		}
 
-	list.append(
-		'<li class="pfoa-hero-carousel-item">' +
-		'<strong class="pfoa-hero-carousel-slot"></strong> ' +
-		'<span class="pfoa-hero-carousel-preview">' + thumb + '</span> ' +
-		'<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][' + index + '][id]" value="' + id + '" /> ' +
-		'<button type="button" class="button pfoa-hero-carousel-select">Replace Image</button> ' +
-		'<label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">— No link —</option></select></label> ' +
-		'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
-		'<label class="pfoa-hero-carousel-brightness">Image brightness <select name="pfoa_hero[carousel_items][' + index + '][brightness]"><option value="100" selected="selected">Original (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option></select></label> ' +
-	'<label class="pfoa-hero-carousel-headline-size">Headline size <select name="pfoa_hero[carousel_items][' + index + '][headline_scale]"><option value="50">50%</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option></select></label> ' +
-	'<label class="pfoa-hero-carousel-headline-color">Headline color <select name="pfoa_hero[carousel_items][' + index + '][headline_color]"><option value="white" selected="selected">White</option><option value="black">Black</option></select></label> ' +
-	'<label class="pfoa-hero-carousel-zoom">Image zoom <select name="pfoa_hero[carousel_items][' + index + '][zoom]"><option value="50">50%</option><option value="60">60%</option><option value="50">50%</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option><option value="90">90%</option><option value="100" selected="selected">Default (100%)</option><option value="110">110%</option><option value="120">120%</option><option value="130">130%</option><option value="140">140%</option><option value="150">150%</option></select></label> ' +
-	'<label class="pfoa-hero-carousel-position">Image position <select name="pfoa_hero[carousel_items][' + index + '][position]"><option value="top left">Top left</option><option value="top center">Top center</option><option value="top right">Top right</option><option value="center left">Center left</option><option value="center center" selected="selected">Center (default)</option><option value="center right">Center right</option><option value="bottom left">Bottom left</option><option value="bottom center">Bottom center</option><option value="bottom right">Bottom right</option></select></label> ' +
-	'<button type="button" class="button pfoa-hero-carousel-up">' + moveUpLabel() + '</button> ' +
-		'<button type="button" class="button pfoa-hero-carousel-down">' + moveDownLabel() + '</button> ' +
-		'<button type="button" class="button pfoa-hero-carousel-remove">' + removeLabel() + '</button>' +
-		'</li>'
-	);
+		var fallback = $( fallbackCardHtml( index, thumb, 'Replace Image' ) );
+
+		fallback.find( '.pfoa-hero-carousel-id' ).val( id );
+		list.append( fallback );
 		refreshInactiveSlots();
 	}
 
@@ -320,6 +432,7 @@
 
 		item.find( '.pfoa-hero-carousel-id' ).val( id );
 		item.find( '.pfoa-hero-carousel-preview' ).html( thumb );
+		item.find( '.pfoa-hero-slide-thumb' ).html( thumb );
 		item.find( '.pfoa-hero-carousel-select' ).text( 'Replace Image' );
 	}
 

@@ -2987,7 +2987,38 @@ function pfoa_site_homepage_page() {
 		<tr>
 			<th scope="row"><?php esc_html_e( 'Carousel images', 'pfoa-theme' ); ?></th>
 			<td>
-				<style>.pfoa-hero-carousel-item.is-inactive{opacity:.55;background:#f6f5f2;}.pfoa-hero-carousel-inactive-note{font-style:italic;color:#6f6963;}</style>
+				<style>
+.pfoa-hero-carousel-list{list-style:none;margin:0 0 12px;padding:0;max-width:100%;}
+.pfoa-hero-carousel-list .pfoa-hero-carousel-item{margin:0 0 12px;padding:0;max-width:100%;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-card{background:#fff;border:1px solid #c8c0b5;border-radius:6px;max-width:100%;box-sizing:border-box;overflow:hidden;}
+.pfoa-hero-carousel-list .pfoa-hero-carousel-item.is-inactive .pfoa-hero-slide-card,.pfoa-hero-carousel-list .pfoa-hero-slide-card.is-inactive{opacity:.55;background:#f6f5f2;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-summary{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:0;cursor:pointer;list-style:none;max-width:100%;box-sizing:border-box;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-summary::-webkit-details-marker{display:none;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-summary::before{content:"\25b8";flex:none;color:#50575e;font-size:14px;line-height:1;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-card[open] .pfoa-hero-slide-summary::before{content:"\25be";}
+.pfoa-hero-carousel-list .pfoa-hero-slide-summary:focus-visible{outline:2px solid #2271b1;outline-offset:2px;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-badge{flex:none;font-weight:600;white-space:nowrap;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-thumb{flex:none;width:44px;height:44px;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-thumb img{width:44px;height:44px;object-fit:cover;display:block;border-radius:4px;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-empty{display:block;width:44px;height:44px;box-sizing:border-box;border:1px dashed #c8c0b5;border-radius:4px;background:#f6f5f2;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-headline{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-link{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#50575e;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-status{flex:none;font-size:12px;line-height:1.6;padding:2px 10px;border-radius:999px;border:1px solid #dcdcde;white-space:nowrap;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-status.is-active{background:#e7f5ea;color:#1d5c2f;border-color:#b6dfc0;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-status.is-inactive{background:#f0f0f1;color:#50575e;font-style:italic;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-body{padding:4px 12px 12px;border-top:1px solid #dcdcde;max-width:100%;box-sizing:border-box;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-section{padding:10px 0;max-width:100%;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-section + .pfoa-hero-slide-section{border-top:1px solid #dcdcde;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-heading{margin:0 0 8px;font-size:13px;line-height:1.4;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 12px;max-width:100%;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-body label{display:block;margin:8px 0;max-width:100%;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-grid label{margin:0;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-body input[type="text"],.pfoa-hero-carousel-list .pfoa-hero-slide-body select{max-width:100%;box-sizing:border-box;}
+.pfoa-hero-carousel-list .pfoa-hero-carousel-preview{display:block;margin:8px 0;max-width:100%;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-actions{display:flex;gap:8px;flex-wrap:wrap;max-width:100%;}
+.pfoa-hero-carousel-list .pfoa-hero-carousel-inactive-note{display:none;font-style:italic;color:#6f6963;margin:8px 0 0;}
+.pfoa-hero-carousel-list .pfoa-hero-carousel-item.is-inactive .pfoa-hero-carousel-inactive-note,.pfoa-hero-carousel-list .pfoa-hero-slide-card.is-inactive .pfoa-hero-carousel-inactive-note{display:block;}
+</style>
 				<ul class="pfoa-hero-carousel-list" data-next-index="<?php echo esc_attr( (string) count( $carousel_items ) ); ?>" data-slide-count="<?php echo esc_attr( (string) $carousel_slide_count ); ?>">
 					<?php foreach ( $carousel_items as $carousel_index => $carousel_item ) : ?>
 						<?php
@@ -3008,7 +3039,49 @@ function pfoa_site_homepage_page() {
 						$is_inactive_slot = $carousel_index >= $carousel_slide_count;
 						?>
 						<li class="pfoa-hero-carousel-item<?php echo $is_inactive_slot ? ' is-inactive' : ''; ?>">
-							<strong class="pfoa-hero-carousel-slot"><?php printf( esc_html__( 'Slide %d', 'pfoa-theme' ), $carousel_index + 1 ); ?><?php echo $is_inactive_slot ? ' — ' . esc_html__( 'Inactive — will show if count increased', 'pfoa-theme' ) : ''; ?></strong>
+							<?php
+							$carousel_summary_thumb    = $carousel_preview ? $carousel_preview : '<span class="pfoa-hero-slide-empty" aria-hidden="true"></span>';
+							$carousel_summary_headline = '' !== trim( (string) $carousel_headline ) ? $carousel_headline : __( '— No headline —', 'pfoa-theme' );
+							$carousel_link_label       = __( '— No link —', 'pfoa-theme' );
+							$carousel_link_found       = false;
+
+							if ( is_string( $carousel_link ) && '' !== $carousel_link && '0' !== $carousel_link ) {
+								foreach ( pfoa_get_hero_bonded_pairs() as $carousel_pair ) {
+									if ( isset( $carousel_pair['token'], $carousel_pair['title'] ) && $carousel_link === (string) $carousel_pair['token'] ) {
+										$carousel_link_label = sprintf( '%s — Bonded Pair', $carousel_pair['title'] );
+										$carousel_link_found = true;
+										break;
+									}
+								}
+							} elseif ( absint( $carousel_link ) ) {
+								foreach ( pfoa_get_hero_link_cat_profiles() as $carousel_cat ) {
+									if ( $carousel_cat instanceof WP_Post && absint( $carousel_link ) === (int) $carousel_cat->ID ) {
+										$carousel_link_label = sprintf( '%s (#%d)', $carousel_cat->post_title, $carousel_cat->ID );
+										$carousel_link_found = true;
+										break;
+									}
+								}
+
+								if ( ! $carousel_link_found ) {
+									$carousel_linked_title = get_the_title( absint( $carousel_link ) );
+
+									if ( '' !== trim( (string) $carousel_linked_title ) ) {
+										$carousel_link_label = $carousel_linked_title;
+									}
+								}
+							}
+							?>
+							<details class="pfoa-hero-slide-card<?php echo $is_inactive_slot ? ' is-inactive' : ''; ?>"<?php echo 0 === $carousel_index ? ' open' : ''; ?>>
+								<summary class="pfoa-hero-slide-summary">
+									<span class="pfoa-hero-slide-badge pfoa-hero-carousel-slot"><?php printf( esc_html__( 'Slide %d', 'pfoa-theme' ), $carousel_index + 1 ); ?></span>
+									<span class="pfoa-hero-slide-thumb"><?php echo $carousel_summary_thumb; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
+									<span class="pfoa-hero-slide-headline"><?php echo esc_html( $carousel_summary_headline ); ?></span>
+									<span class="pfoa-hero-slide-link"><?php echo esc_html( $carousel_link_label ); ?></span>
+									<span class="pfoa-hero-slide-status<?php echo $is_inactive_slot ? ' is-inactive' : ' is-active'; ?>"><?php echo $is_inactive_slot ? esc_html__( 'Inactive', 'pfoa-theme' ) : esc_html__( 'Active', 'pfoa-theme' ); ?></span>
+								</summary>
+								<div class="pfoa-hero-slide-body">
+									<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide content', 'pfoa-theme' ); ?>">
+										<h4 class="pfoa-hero-slide-heading"><?php esc_html_e( 'Content', 'pfoa-theme' ); ?></h4>
 							<span class="pfoa-hero-carousel-preview"><?php echo $carousel_preview ? $carousel_preview : esc_html__( 'No image selected yet.', 'pfoa-theme' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
 							<input type="hidden" class="pfoa-hero-carousel-id" name="<?php echo esc_attr( $carousel_field_base ); ?>[id]" value="<?php echo esc_attr( (string) $carousel_id ); ?>" />
 							<button type="button" class="button pfoa-hero-carousel-select"><?php echo $carousel_preview ? esc_html__( 'Replace Image', 'pfoa-theme' ) : esc_html__( 'Select Image', 'pfoa-theme' ); ?></button>
@@ -3020,6 +3093,11 @@ function pfoa_site_homepage_page() {
 								<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
 								<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[headline]" value="<?php echo esc_attr( $carousel_headline ); ?>" />
 							</label>
+								<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
+							</section>
+							<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide appearance', 'pfoa-theme' ); ?>">
+								<h4 class="pfoa-hero-slide-heading"><?php esc_html_e( 'Appearance', 'pfoa-theme' ); ?></h4>
+								<div class="pfoa-hero-slide-grid">
 							<label class="pfoa-hero-carousel-brightness">
 								<?php esc_html_e( 'Image brightness', 'pfoa-theme' ); ?>
 								<select name="<?php echo esc_attr( $carousel_field_base ); ?>[brightness]">
@@ -3079,16 +3157,36 @@ function pfoa_site_homepage_page() {
 								<option value="bottom right"<?php selected( $carousel_position, 'bottom right' ); ?>><?php esc_html_e( 'Bottom right', 'pfoa-theme' ); ?></option>
 							</select>
 						</label>
-								<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
+									<p class="description"><?php esc_html_e( 'Lowering the slide count only dims the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
+								</div>
+							</section>
+							<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide actions', 'pfoa-theme' ); ?>">
+								<h4 class="pfoa-hero-slide-heading"><?php esc_html_e( 'Actions', 'pfoa-theme' ); ?></h4>
+								<div class="pfoa-hero-slide-actions">
 							<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
 							<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
 							<button type="button" class="button pfoa-hero-carousel-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+								</div>
+								<p class="pfoa-hero-carousel-inactive-note"><?php esc_html_e( 'Inactive — will show if count increased', 'pfoa-theme' ); ?></p>
+							</section>
+								</div>
+							</details>
 						</li>
 					<?php endforeach; ?>
 				</ul>
 				<template id="pfoa-hero-carousel-template">
 					<li class="pfoa-hero-carousel-item">
-						<strong class="pfoa-hero-carousel-slot"></strong>
+						<details class="pfoa-hero-slide-card" open>
+							<summary class="pfoa-hero-slide-summary">
+								<span class="pfoa-hero-slide-badge pfoa-hero-carousel-slot"></span>
+								<span class="pfoa-hero-slide-thumb"><span class="pfoa-hero-slide-empty" aria-hidden="true"></span></span>
+								<span class="pfoa-hero-slide-headline"><?php esc_html_e( '— No headline —', 'pfoa-theme' ); ?></span>
+								<span class="pfoa-hero-slide-link"><?php esc_html_e( '— No link —', 'pfoa-theme' ); ?></span>
+								<span class="pfoa-hero-slide-status is-active"><?php esc_html_e( 'Active', 'pfoa-theme' ); ?></span>
+							</summary>
+							<div class="pfoa-hero-slide-body">
+								<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide content', 'pfoa-theme' ); ?>">
+									<h4 class="pfoa-hero-slide-heading"><?php esc_html_e( 'Content', 'pfoa-theme' ); ?></h4>
 						<span class="pfoa-hero-carousel-preview"></span>
 						<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][__INDEX__][id]" value="0" />
 						<button type="button" class="button pfoa-hero-carousel-select"><?php esc_html_e( 'Select Image', 'pfoa-theme' ); ?></button>
@@ -3100,6 +3198,11 @@ function pfoa_site_homepage_page() {
 						<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
 						<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][__INDEX__][headline]" value="" />
 					</label>
+							<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
+						</section>
+						<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide appearance', 'pfoa-theme' ); ?>">
+							<h4 class="pfoa-hero-slide-heading"><?php esc_html_e( 'Appearance', 'pfoa-theme' ); ?></h4>
+							<div class="pfoa-hero-slide-grid">
 					<label class="pfoa-hero-carousel-brightness">
 						<?php esc_html_e( 'Image brightness', 'pfoa-theme' ); ?>
 						<select name="pfoa_hero[carousel_items][__INDEX__][brightness]">
@@ -3159,10 +3262,20 @@ function pfoa_site_homepage_page() {
 						<option value="bottom right"><?php esc_html_e( 'Bottom right', 'pfoa-theme' ); ?></option>
 					</select>
 				</label>
-						<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Lowering the slide count only dims the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
+							</div>
+						</section>
+						<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide actions', 'pfoa-theme' ); ?>">
+							<h4 class="pfoa-hero-slide-heading"><?php esc_html_e( 'Actions', 'pfoa-theme' ); ?></h4>
+							<div class="pfoa-hero-slide-actions">
 						<button type="button" class="button pfoa-hero-carousel-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
 						<button type="button" class="button pfoa-hero-carousel-down"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
 						<button type="button" class="button pfoa-hero-carousel-remove"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+							</div>
+							<p class="pfoa-hero-carousel-inactive-note"><?php esc_html_e( 'Inactive — will show if count increased', 'pfoa-theme' ); ?></p>
+						</section>
+							</div>
+						</details>
 					</li>
 				</template>
 				<button type="button" class="button pfoa-hero-carousel-add"><?php esc_html_e( 'Add Images', 'pfoa-theme' ); ?></button>
