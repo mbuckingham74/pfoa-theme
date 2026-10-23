@@ -449,7 +449,7 @@ define( 'PFOA_HOMEPAGE_CARDS_OPTION', 'pfoa_homepage_cards' );
  */
 function pfoa_get_homepage_card_defaults() {
 	$adoptable_cats_page = pfoa_get_page_by_paths( array( 'adoptablecats2' ) );
-	$home_front_page     = pfoa_get_page_by_paths( array( 'news-announcements', 'fromthehomefront-2' ) );
+	$home_front_page     = pfoa_get_page_by_paths( array( 'fromthehomefront-2', 'news-announcements' ) );
 	$potholders_page     = pfoa_get_page_by_paths( array( 'potholders-2' ) );
 	$pet_tidings_page    = pfoa_get_page_by_paths( array( 'pettidings' ) );
 	$wishlist_page       = pfoa_get_page_by_paths( array( 'wishlist' ) );
