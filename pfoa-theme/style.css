@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-         Version: 0.1.218
+         Version: 0.1.219
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -7240,5 +7240,27 @@ body.page-id-17894 .page-content .entry-content div[id^="gallery-"] figure img {
 	aspect-ratio: 1 / 1;
 	object-fit: cover;
 	background: #f4f1ea;
+}
+
+/* PFOA 0.1.219 — Pet Tidings Wills photo floor (page-id-4799 only,
+ * https://dev.safehavenpfoa.org/pettidings/).
+ * Root cause: 0.1.214 changed the desktop figure to shrinkable
+ * flex:0 1 180px with width:min(180px,100%). In the flex-row intro the copy
+ * (flex:1 1 auto, min-width:0) claims free space, so the figure shrank from
+ * its 180px basis to ~42px and img{width:100%} collapsed with it (aspect
+ * preserved, hence ~42x47). Fix (presentation only, later equal-specificity
+ * override wins): restore a non-shrinking 180px desktop floor with a 100%
+ * lane guard so narrow lanes cannot overflow; mobile column rule untouched.
+ * Content unchanged; CTA, archive, prefs, nav, and all other pages untouched.
+ * Every selector below starts with body.page-id-4799. */
+body.page-id-4799 .entry-content figure.pfoa-pt-intro__photo {
+	flex: 0 0 180px;
+	width: 180px;
+	max-width: 100%;
+}
+body.page-id-4799 .entry-content figure.pfoa-pt-intro__photo img {
+	width: 100%;
+	height: auto;
+	max-width: 100%;
 }
 
