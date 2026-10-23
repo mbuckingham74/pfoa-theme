@@ -384,5 +384,7 @@ if ( function_exists( 'add_filter' ) ) {
 }
 
 if ( function_exists( 'add_action' ) ) {
-	add_action( 'template_redirect', 'pfoa_dev_block_synthetic_profiles', 1 );
+	// Priority 0 (not 1): plugins register before the theme, so at the same
+	// priority the plugin fragment handler would run first and exit. 0 runs first.
+	add_action( 'template_redirect', 'pfoa_dev_block_synthetic_profiles', 0 );
 }
