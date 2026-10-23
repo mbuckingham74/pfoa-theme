@@ -155,6 +155,27 @@ function pfoa_enqueue_assets() {
 		}
 	}
 
+	// PFOA 0.1.216 — presentation only: From the Home Front archive links
+	// (page 11290 / fromthehomefront-2 only) open in a separate browser tab
+	// so the archive listing stays available. Same-tab navigation forces a
+	// full reload of the heavy article (large images + YouTube embed) and
+	// loses the reader's archive position. Scoped to archive-listing anchors
+	// only (div.pfoa-hf-archive rows plus the retired p.pfoa-hf-archive__list
+	// variant); no-ops without archive links.
+	if ( function_exists( 'is_page' ) && ( is_page( 11290 ) || is_page( 'fromthehomefront-2' ) ) ) {
+		$hf_archive_script = get_template_directory() . '/assets/js/pfoa-home-front-archive.js';
+
+		if ( file_exists( $hf_archive_script ) ) {
+			wp_enqueue_script(
+				'pfoa-home-front-archive',
+				get_template_directory_uri() . '/assets/js/pfoa-home-front-archive.js',
+				array(),
+				(string) filemtime( $hf_archive_script ),
+				array( 'strategy' => 'defer' )
+			);
+		}
+	}
+
 	if ( is_front_page() ) {
 		$front_page_id = (int) get_option( 'page_on_front' );
 
