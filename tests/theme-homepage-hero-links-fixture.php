@@ -27,7 +27,7 @@
  *   change/indefinite-to-timed change/missing future expiry; preserved
  *   expires_at + created_at on unrelated saves with unchanged pin+mode and
  *   a valid future expires_at in the hidden field.
-  * - style.css version 0.1.216; no DB writes.
+  * - style.css version 0.1.217; no DB writes.
  *
  * Run with:
  *   php tests/theme-homepage-hero-links-fixture.php
@@ -567,11 +567,11 @@ fixture_assert( 101 === $stored_hero['carousel_items'][0]['link_page_id'], 'get_
 fixture_assert( 'none' === $stored_hero['carousel_items'][1]['link_type'], 'get_hero: stored unlinked row resolves none' );
 fixture_assert( 'none' === $stored_hero['featured_pin']['mode'], 'get_hero: missing pin defaults to none' );
 
-	// style.css: version 0.1.216.
+	// style.css: version 0.1.217.
 $css = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' );
-	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.216/', $css ), 'css: theme version 0.1.216' );
+	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.217/', $css ), 'css: theme version 0.1.217' );
 
 // No writes during helper evaluation.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during hero evaluation' );
 
-fwrite( STDOUT, "PASS: theme homepage hero links fixture (external accept/reject, legacy internal compat, type retention, slide-link resolver, invalid-link finder, pin resolve/save semantics, css 0.1.216, no writes)\n" );
+fwrite( STDOUT, "PASS: theme homepage hero links fixture (external accept/reject, legacy internal compat, type retention, slide-link resolver, invalid-link finder, pin resolve/save semantics, css 0.1.217, no writes)\n" );

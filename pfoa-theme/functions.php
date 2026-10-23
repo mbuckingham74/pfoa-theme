@@ -8367,3 +8367,192 @@ function pfoa_table_scroll_region_attrs( $block_content, $block ) {
 if ( function_exists( 'add_filter' ) ) {
 	add_filter( 'render_block', 'pfoa_table_scroll_region_attrs', 10, 2 );
 }
+
+/**
+ * PFOA 0.1.217 — Potholders page content compatibility (page 17894 /
+ * slug potholders-2 only; Dine Out, Pet Tidings, and Home Front untouched).
+ *
+ * Render-time corrections for the Potholders page; stored post_content is
+ * never modified. Each step is independent and fail-closed (content passes
+ * through unchanged when its markers are absent):
+ *   (a) a bare scram@gmail.com address (shcram@ variant included) that is
+ *       not already inside an anchor becomes a proper mailto: link;
+ *   (b) the two team paragraphs use the exact approved wording, including
+ *       "potholders" (one word) and "(In 21 years we've raised over
+ *       $405,000!)";
+ *   (c) the legacy gallery block is moved before the "OUR MICROWAVEABLE
+ *       BOWLS" heading so the potholder gallery reads with the potholder
+ *       section instead of trailing the microwave-bowls copy.
+ *
+ * Narrowly scoped to the potholders main-loop content; returns $content
+ * unchanged otherwise (including admin, feeds, and every other page).
+ *
+ * @param string $content Post content.
+ * @return string Possibly-corrected content.
+ */
+function pfoa_potholders_content_compat( $content ) {
+	if ( ! is_string( $content ) || '' === $content ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_admin' ) && is_admin() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_feed' ) && is_feed() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'in_the_loop' ) && ! in_the_loop() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_main_query' ) && ! is_main_query() ) {
+		return $content;
+	}
+
+	$is_target_page = false;
+
+	if ( function_exists( 'is_page' ) && ( is_page( 17894 ) || is_page( 'potholders-2' ) ) ) {
+		$is_target_page = true;
+	} elseif ( function_exists( 'get_post' ) ) {
+		$post = get_post();
+
+		if ( $post instanceof WP_Post && ( 17894 === (int) $post->ID || 'potholders-2' === strtolower( (string) $post->post_name ) ) ) {
+			$is_target_page = true;
+		}
+	}
+
+	if ( ! $is_target_page ) {
+		return $content;
+	}
+
+	// (a) Bare scram@gmail.com addresses become mailto: links. Occurrences
+	// already inside an anchor are left untouched (idempotent).
+	$anchor_spans = array();
+
+	if ( preg_match_all( '/<a\b[^>]*>.*?<\/a\s*>/is', $content, $anchor_matches, PREG_OFFSET_CAPTURE ) ) {
+		foreach ( $anchor_matches[0] as $anchor_match ) {
+			$anchor_spans[] = array( (int) $anchor_match[1], (int) $anchor_match[1] + strlen( $anchor_match[0] ) );
+		}
+	}
+
+	$email_hits = array();
+
+	if ( preg_match_all( '/[A-Za-z0-9._%+\-]*scram@gmail\.com/i', $content, $email_matches, PREG_OFFSET_CAPTURE ) ) {
+		$email_hits = $email_matches[0];
+	}
+
+	if ( array() !== $email_hits ) {
+		$rebuilt = '';
+		$cursor  = 0;
+
+		foreach ( $email_hits as $hit ) {
+			$email_text  = (string) $hit[0];
+			$email_start = (int) $hit[1];
+			$email_end   = $email_start + strlen( $email_text );
+
+			if ( $email_start < $cursor ) {
+				continue;
+			}
+
+			$inside_anchor = false;
+
+			foreach ( $anchor_spans as $span ) {
+				if ( $email_start >= $span[0] && $email_end <= $span[1] ) {
+					$inside_anchor = true;
+					break;
+				}
+			}
+
+			$rebuilt .= substr( $content, $cursor, $email_start - $cursor );
+
+			if ( $inside_anchor ) {
+				$rebuilt .= $email_text;
+			} else {
+				$rebuilt .= '<a href="mailto:' . $email_text . '">' . $email_text . '</a>';
+			}
+
+			$cursor = $email_end;
+		}
+
+		$rebuilt .= substr( $content, $cursor );
+		$content  = $rebuilt;
+	}
+
+	// (b) Exact approved wording for the two team paragraphs. The source
+	// may use a curly apostrophe (U+2019), a straight apostrophe, or an
+	// HTML entity; the replacement uses the exact ASCII wording.
+	$apos = "(?:\xE2\x80\x99|'|&rsquo;|&#8217;)";
+
+	$sentence_replacements = array(
+		'/The money we raise by making and selling our pot holders helps support PFOA' . $apos . 's feline shelter, their pet food bank, and their outreach and adoption programs\. \(In \d+ years we' . $apos . 've raised over \$[\d,]+!\)/u' => 'The money we raise by making and selling our potholders helps support PFOA\'s feline shelter, their pet food bank, and their outreach and adoption programs. (In 21 years we\'ve raised over \$405,000!)',
+		'/We have a great group of seamstresses, but we can' . $apos . 't keep up with demand! All materials and supplies are provided, and we will give a short training course in how to make our pot holders\. And we have fun doing this great project!/u' => 'We have a great group of seamstresses, but we can\'t keep up with demand! All materials and supplies are provided, and we will give a short training course in how to make our potholders. And we have fun doing this great project!',
+	);
+
+	foreach ( $sentence_replacements as $pattern => $replacement ) {
+		$replaced = preg_replace( $pattern, $replacement, $content, 1 );
+
+		if ( is_string( $replaced ) ) {
+			$content = $replaced;
+		}
+	}
+
+	// (c) Move the legacy gallery block before the microwave-bowls
+	// heading. The gallery nests figures, never divs, so a depth scan
+	// finds its balanced close; anything unexpected leaves the content
+	// untouched.
+	if ( 1 === preg_match( '/<div[^>]*\bid\s*=\s*["\']gallery-\d+["\'][^>]*>/i', $content, $gallery_open, PREG_OFFSET_CAPTURE ) ) {
+		$gallery_start    = (int) $gallery_open[0][1];
+		$gallery_scan     = $gallery_start + strlen( $gallery_open[0][0] );
+		$gallery_depth    = 1;
+		$gallery_end      = null;
+		$gallery_scans    = 0;
+		$content_length   = strlen( $content );
+
+		while ( 0 < $gallery_depth && $gallery_scan < $content_length && $gallery_scans < 500 ) {
+			$gallery_scans++;
+
+			$next_open  = stripos( $content, '<div', $gallery_scan );
+			$next_close = stripos( $content, '</div', $gallery_scan );
+
+			if ( false === $next_close ) {
+				break;
+			}
+
+			if ( false !== $next_open && $next_open < $next_close ) {
+				$gallery_depth++;
+				$gallery_scan = $next_open + 4;
+				continue;
+			}
+
+			$close_bracket = strpos( $content, '>', $next_close );
+
+			if ( false === $close_bracket ) {
+				break;
+			}
+
+			$gallery_depth--;
+			$gallery_scan = $close_bracket + 1;
+
+			if ( 0 === $gallery_depth ) {
+				$gallery_end = $gallery_scan;
+			}
+		}
+
+		if ( null !== $gallery_end && 1 === preg_match( '/<h[1-6][^>]*>.*?OUR MICROWAVEABLE BOWLS.*?<\/h[1-6]\s*>/is', $content, $bowls_heading, PREG_OFFSET_CAPTURE ) ) {
+			$heading_start = (int) $bowls_heading[0][1];
+
+			if ( $gallery_start > $heading_start ) {
+				$gallery_html = substr( $content, $gallery_start, $gallery_end - $gallery_start );
+				$content      = substr( $content, 0, $heading_start ) . $gallery_html . substr( $content, $heading_start, $gallery_start - $heading_start ) . substr( $content, $gallery_end );
+			}
+		}
+	}
+
+	return $content;
+}
+
+if ( function_exists( 'add_filter' ) ) {
+	add_filter( 'the_content', 'pfoa_potholders_content_compat', 1002 );
+}
