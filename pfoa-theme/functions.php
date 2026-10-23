@@ -821,8 +821,11 @@ function pfoa_homepage_cards_page() {
  *   'headline'           => string,
  *   'image_id'           => int (attachment ID),
  *   'image_link_page_id' => int|string (published page/Cat Profile post ID, or 'pair:<lower-id>:<upper-id>' bonded-pair token; 0 = not clickable),
+ *   'image_link_type'    => 'internal' | 'external' | 'none' (missing legacy rows resolve as internal when image_link_page_id is non-zero, else none),
+ *   'image_link_url'     => string (absolute http/https URL used when image_link_type is 'external'; '' = no link),
+ *   'featured_pin'       => array( 'slide' => 0|1-5 (1-based position at save; 0 = normal rotation), 'attachment_id' => int (snapshot), 'mode' => 'none'|'timed'|'indefinite', 'expires_at' => int (UTC timestamp, site-local via current_time), 'created_at' => int ),
  *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
- *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int|string (page/Cat Profile post ID or 'pair:<a>:<b>' bonded-pair token), 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 50|60|70|80|90|100|110|120, 'headline_color' => 'white'|'black', 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
+ *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int|string (page/Cat Profile post ID or 'pair:<a>:<b>' bonded-pair token), 'link_type' => 'internal'|'external'|'none' (missing legacy rows resolve as internal when link_page_id is non-zero, else none), 'link_url' => string (absolute http/https URL used when link_type is 'external'), 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 50|60|70|80|90|100|110|120, 'headline_color' => 'white'|'black', 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
  *   'carousel_interval_ms' => 3500|5000|7000 (ms each carousel image stays visible; missing/invalid resolves to 5000),
  *   'ctas'               => array[] of array( 'label' => string, 'url' => string ),
  * ).
@@ -867,6 +870,15 @@ function pfoa_get_hero_defaults() {
 		'headline'           => __( 'Homepage', 'pfoa-theme' ),
 		'image_id'           => 0,
 		'image_link_page_id' => 0,
+		'image_link_type'    => 'none',
+		'image_link_url'     => '',
+		'featured_pin'       => array(
+			'slide'         => 0,
+			'attachment_id' => 0,
+			'mode'          => 'none',
+			'expires_at'    => 0,
+			'created_at'    => 0,
+		),
 		'carousel_ids'       => array(),
 		'carousel_items'     => array(),
 		'carousel_slide_count' => 3,
@@ -1687,6 +1699,385 @@ function pfoa_get_hero_link( $page_id ) {
 }
 
 /**
+ * Sanitize a hero external link URL.
+ *
+ * Accepts only absolute http/https URLs: the value is trimmed, passed
+ * through esc_url_raw(), and must parse with an http/https scheme and a
+ * host. Anything else (relative paths, other schemes such as javascript: or
+ * ftp:, unparseable input, empty strings) sanitizes to '' (no link) so an
+ * invalid external URL can never render a clickable destination.
+ *
+ * @param mixed $value Raw submitted value.
+ * @return string Sanitized absolute URL, or '' when invalid.
+ */
+function pfoa_sanitize_hero_external_url( $value ) {
+	if ( ! is_string( $value ) ) {
+		if ( is_numeric( $value ) ) {
+			$value = (string) $value;
+		} else {
+			return '';
+		}
+	}
+
+	$url = trim( $value );
+
+	if ( '' === $url ) {
+		return '';
+	}
+
+	$url = esc_url_raw( $url );
+
+	if ( '' === $url ) {
+		return '';
+	}
+
+	$parts = parse_url( $url );
+
+	if ( ! is_array( $parts ) || ! isset( $parts['scheme'], $parts['host'] ) || '' === $parts['host'] ) {
+		return '';
+	}
+
+	$scheme = strtolower( (string) $parts['scheme'] );
+
+	if ( 'http' !== $scheme && 'https' !== $scheme ) {
+		return '';
+	}
+
+	return $url;
+}
+
+/**
+ * Resolve the effective link destination type for a hero image item.
+ *
+ * Explicit 'internal' | 'external' | 'none' values pass through. Rows that
+ * predate link_type/link_url (no key, null, or an unknown value) resolve as
+ * internal when a link_page_id destination is stored and none otherwise, so
+ * legacy rows keep their existing behavior without a migration.
+ *
+ * @param mixed $item Hero image item array (carousel item or single-image fields).
+ * @return string 'internal', 'external', or 'none'.
+ */
+function pfoa_resolve_hero_link_type( $item ) {
+	if ( is_array( $item ) && isset( $item['link_type'] ) ) {
+		$type = strtolower( trim( (string) $item['link_type'] ) );
+
+		if ( in_array( $type, array( 'internal', 'external', 'none' ), true ) ) {
+			return $type;
+		}
+	}
+
+	$stored = ( is_array( $item ) && isset( $item['link_page_id'] ) ) ? $item['link_page_id'] : 0;
+
+	if ( is_string( $stored ) ) {
+		$stored = trim( $stored );
+
+		if ( '' !== $stored && '0' !== $stored ) {
+			return 'internal';
+		}
+
+		return 'none';
+	}
+
+	return absint( $stored ) ? 'internal' : 'none';
+}
+
+/**
+ * Return the clickable destination for a hero image item, if valid.
+ *
+ * Shared by carousel slides and the single image. Internal destinations
+ * re-validate through pfoa_get_hero_link() (existing page/Cat Profile/
+ * bonded-pair behavior unchanged). External destinations return the
+ * sanitized URL with the slide headline as title (falling back to the
+ * supplied headline, then the URL host). None/empty/invalid resolves to an
+ * empty destination.
+ *
+ * @param mixed  $item              Hero image item array with link_type/link_page_id/link_url/headline.
+ * @param string $fallback_headline Headline to use when the item has none (e.g. global hero headline).
+ * @return array Array with 'url', 'title', and 'external' (bool) keys.
+ */
+function pfoa_get_hero_slide_link( $item, $fallback_headline = '' ) {
+	$empty = array(
+		'url'      => '',
+		'title'    => '',
+		'external' => false,
+	);
+
+	if ( ! is_array( $item ) ) {
+		return $empty;
+	}
+
+	$type = pfoa_resolve_hero_link_type( $item );
+
+	if ( 'external' === $type ) {
+		$url = pfoa_sanitize_hero_external_url( isset( $item['link_url'] ) ? $item['link_url'] : '' );
+
+		if ( '' === $url ) {
+			return $empty;
+		}
+
+		$title = isset( $item['headline'] ) ? trim( (string) $item['headline'] ) : '';
+
+		if ( '' === $title ) {
+			$title = trim( (string) $fallback_headline );
+		}
+
+		if ( '' === $title ) {
+			$host  = (string) parse_url( $url, PHP_URL_HOST );
+			$title = '' !== $host ? $host : $url;
+		}
+
+		return array(
+			'url'      => $url,
+			'title'    => $title,
+			'external' => true,
+		);
+	}
+
+	if ( 'internal' === $type ) {
+		$link = pfoa_get_hero_link( isset( $item['link_page_id'] ) ? $item['link_page_id'] : 0 );
+
+		return array(
+			'url'      => $link['url'],
+			'title'    => $link['title'],
+			'external' => false,
+		);
+	}
+
+	return $empty;
+}
+
+/**
+ * Sanitize the featured-pin portion of the hero value (structural only).
+ *
+ * Slide clamps to 0-5 (0 = normal rotation); mode allows none/timed/
+ * indefinite. A zero slide or 'none' mode normalizes to the all-zero pin.
+ * Expiry/creation timestamps pass through as integers here; save-time
+ * semantics (fresh vs. preserved expiry) are applied by
+ * pfoa_resolve_hero_pin_for_save() in the save handler, never by this
+ * sanitizer, so pfoa_get_hero() round-trips stored pins untouched.
+ *
+ * @param mixed $value Raw submitted featured_pin value.
+ * @return array Sanitized pin array with slide/attachment_id/mode/expires_at/created_at keys.
+ */
+function pfoa_sanitize_hero_featured_pin( $value ) {
+	$none = array(
+		'slide'         => 0,
+		'attachment_id' => 0,
+		'mode'          => 'none',
+		'expires_at'    => 0,
+		'created_at'    => 0,
+	);
+
+	if ( ! is_array( $value ) ) {
+		return $none;
+	}
+
+	$slide = isset( $value['slide'] ) ? absint( $value['slide'] ) : 0;
+
+	if ( $slide < 0 || $slide > 5 ) {
+		$slide = 0;
+	}
+
+	$mode = isset( $value['mode'] ) ? sanitize_key( (string) $value['mode'] ) : 'none';
+
+	if ( ! in_array( $mode, array( 'none', 'timed', 'indefinite' ), true ) ) {
+		$mode = 'none';
+	}
+
+	if ( 0 === $slide || 'none' === $mode ) {
+		return $none;
+	}
+
+	return array(
+		'slide'         => $slide,
+		'attachment_id' => isset( $value['attachment_id'] ) ? absint( $value['attachment_id'] ) : 0,
+		'mode'          => $mode,
+		'expires_at'    => isset( $value['expires_at'] ) ? absint( $value['expires_at'] ) : 0,
+		'created_at'    => isset( $value['created_at'] ) ? absint( $value['created_at'] ) : 0,
+	);
+}
+
+/**
+ * Apply featured-pin save semantics for the Save Homepage workflow.
+ *
+ * Snapshot attachment_id comes from the sanitized carousel items at the
+ * pinned 1-based position (0 when missing/invalid image; render then falls
+ * back to rotation). Timed pins keep the original expires_at (and
+ * created_at) when an unrelated Homepage save resubmits the unchanged pin
+ * with the still-valid future expires_at in the hidden field — the expiry
+ * is NOT extended. A fresh expires_at (now + DAY_IN_SECONDS, site-local via
+ * current_time) is computed only when the pin is newly set, the slide
+ * changes, the mode changes from indefinite to timed, or no valid future
+ * expiry was submitted.
+ *
+ * @param mixed $submitted_pin  Sanitized submitted featured_pin (hidden expires_at included).
+ * @param mixed $stored_pin     Previously stored featured_pin, if any.
+ * @param array $carousel_items Sanitized carousel items (display order).
+ * @param int   $now            Current time as current_time('timestamp').
+ * @return array Final featured_pin array to store.
+ */
+function pfoa_resolve_hero_pin_for_save( $submitted_pin, $stored_pin, $carousel_items, $now ) {
+	$now = (int) $now;
+	$pin = pfoa_sanitize_hero_featured_pin( $submitted_pin );
+
+	if ( 'none' === $pin['mode'] ) {
+		return $pin;
+	}
+
+	if ( ! is_array( $carousel_items ) ) {
+		$carousel_items = array();
+	}
+
+	$attachment_id = 0;
+	$position      = $pin['slide'] - 1;
+
+	if ( isset( $carousel_items[ $position ] ) && is_array( $carousel_items[ $position ] ) ) {
+		$candidate = isset( $carousel_items[ $position ]['id'] ) ? absint( $carousel_items[ $position ]['id'] ) : 0;
+
+		if ( $candidate && wp_attachment_is_image( $candidate ) ) {
+			$attachment_id = $candidate;
+		}
+	}
+
+	$pin['attachment_id'] = $attachment_id;
+
+	$stored = pfoa_sanitize_hero_featured_pin( $stored_pin );
+
+	if ( 'timed' === $pin['mode'] ) {
+		if ( 'timed' === $stored['mode'] && $stored['slide'] === $pin['slide'] && $stored['expires_at'] > $now && $pin['expires_at'] === $stored['expires_at'] ) {
+			$pin['created_at'] = $stored['created_at'] ? $stored['created_at'] : $now;
+
+			return $pin;
+		}
+
+		$pin['expires_at'] = $now + DAY_IN_SECONDS;
+		$pin['created_at'] = $now;
+
+		return $pin;
+	}
+
+	$pin['expires_at'] = 0;
+
+	if ( 'indefinite' === $stored['mode'] && $stored['slide'] === $pin['slide'] && $stored['created_at'] ) {
+		$pin['created_at'] = $stored['created_at'];
+	} else {
+		$pin['created_at'] = $now;
+	}
+
+	return $pin;
+}
+
+/**
+ * Return the pinned slide's attachment ID when a valid pin resolves, else 0.
+ *
+ * Evaluated server-side on every request: valid only when the pin mode is
+ * not none, the 1-based slide position falls within carousel_slide_count,
+ * the stored carousel item at that position holds a valid image, and a
+ * timed pin has not yet expired (expires_at > current_time('timestamp'));
+ * indefinite pins carry no expiry. Anything else returns 0 so the template
+ * silently falls back to normal rotation with all slides intact.
+ *
+ * Page-cache limitation: this check runs in PHP per uncached request. A
+ * host, CDN, or plugin serving full-page cache may keep showing the pinned
+ * hero (or the rotation) until the cached page expires or is flushed — no
+ * cache flush or no-cache handling is added here, so a timed pin can remain
+ * visible up to one cache TTL past expiry on cached pages.
+ *
+ * @param array $hero Sanitized hero value.
+ * @return int Pinned attachment ID, or 0 when no pin resolves.
+ */
+function pfoa_get_hero_pinned_slide_id( $hero ) {
+	if ( ! is_array( $hero ) || ! isset( $hero['featured_pin'] ) || ! is_array( $hero['featured_pin'] ) ) {
+		return 0;
+	}
+
+	$pin = pfoa_sanitize_hero_featured_pin( $hero['featured_pin'] );
+
+	if ( 'none' === $pin['mode'] ) {
+		return 0;
+	}
+
+	$slide_count = isset( $hero['carousel_slide_count'] ) ? pfoa_sanitize_hero_carousel_slide_count( $hero['carousel_slide_count'] ) : 3;
+
+	if ( $pin['slide'] < 1 || $pin['slide'] > $slide_count ) {
+		return 0;
+	}
+
+	if ( 'timed' === $pin['mode'] && (int) $pin['expires_at'] <= (int) current_time( 'timestamp' ) ) {
+		return 0;
+	}
+
+	$items = ( isset( $hero['carousel_items'] ) && is_array( $hero['carousel_items'] ) ) ? array_values( $hero['carousel_items'] ) : array();
+	$position = $pin['slide'] - 1;
+
+	if ( ! isset( $items[ $position ] ) || ! is_array( $items[ $position ] ) ) {
+		return 0;
+	}
+
+	$attachment_id = isset( $items[ $position ]['id'] ) ? absint( $items[ $position ]['id'] ) : 0;
+
+	if ( ! $attachment_id || ! wp_attachment_is_image( $attachment_id ) ) {
+		return 0;
+	}
+
+	return $attachment_id;
+}
+
+/**
+ * Scan a raw submitted hero value for external URLs that sanitize to empty.
+ *
+ * Used by the save handler to surface admin feedback (query-flagged notice
+ * naming the single image / slide number) without blocking the rest of the
+ * save; the invalid URL itself still sanitizes to '' (no link).
+ *
+ * @param mixed $raw Raw submitted pfoa_hero value (unslashed).
+ * @return string[] 'single' and/or 1-based slide numbers (as strings) with invalid external URLs.
+ */
+function pfoa_find_hero_invalid_external_links( $raw ) {
+	$bad = array();
+
+	if ( ! is_array( $raw ) ) {
+		return $bad;
+	}
+
+	$single_type = isset( $raw['image_link_type'] ) ? strtolower( trim( (string) $raw['image_link_type'] ) ) : '';
+
+	if ( 'external' === $single_type ) {
+		$single_url = isset( $raw['image_link_url'] ) ? trim( (string) $raw['image_link_url'] ) : '';
+
+		if ( '' !== $single_url && '' === pfoa_sanitize_hero_external_url( $single_url ) ) {
+			$bad[] = 'single';
+		}
+	}
+
+	if ( isset( $raw['carousel_items'] ) && is_array( $raw['carousel_items'] ) ) {
+		$position = 0;
+
+		foreach ( $raw['carousel_items'] as $carousel_item ) {
+			$position++;
+
+			if ( ! is_array( $carousel_item ) ) {
+				continue;
+			}
+
+			$item_type = isset( $carousel_item['link_type'] ) ? strtolower( trim( (string) $carousel_item['link_type'] ) ) : '';
+
+			if ( 'external' !== $item_type ) {
+				continue;
+			}
+
+			$item_url = isset( $carousel_item['link_url'] ) ? trim( (string) $carousel_item['link_url'] ) : '';
+
+			if ( '' !== $item_url && '' === pfoa_sanitize_hero_external_url( $item_url ) ) {
+				$bad[] = (string) $position;
+			}
+		}
+	}
+
+	return $bad;
+}
+
+/**
  * Sanitize a per-image hero carousel brightness value.
  *
  * Only 100, 110, 120, 130 are accepted; anything else becomes 100 (Original).
@@ -1873,6 +2264,15 @@ function pfoa_sanitize_hero( $value ) {
 		'headline'           => '',
 		'image_id'           => 0,
 		'image_link_page_id' => 0,
+		'image_link_type'    => 'none',
+		'image_link_url'     => '',
+		'featured_pin'       => array(
+			'slide'         => 0,
+			'attachment_id' => 0,
+			'mode'          => 'none',
+			'expires_at'    => 0,
+			'created_at'    => 0,
+		),
 		'carousel_ids'       => array(),
 		'carousel_items'     => array(),
 		'carousel_slide_count' => 3,
@@ -1893,6 +2293,17 @@ function pfoa_sanitize_hero( $value ) {
 	$hero['image_id'] = ( $image_id && wp_attachment_is_image( $image_id ) ) ? $image_id : 0;
 
 	$hero['image_link_page_id'] = isset( $value['image_link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $value['image_link_page_id'] ) : 0;
+
+	$hero['image_link_type'] = pfoa_resolve_hero_link_type(
+		array(
+			'link_type'    => isset( $value['image_link_type'] ) ? $value['image_link_type'] : null,
+			'link_page_id' => $hero['image_link_page_id'],
+		)
+	);
+
+	$hero['image_link_url'] = isset( $value['image_link_url'] ) ? pfoa_sanitize_hero_external_url( $value['image_link_url'] ) : '';
+
+	$hero['featured_pin'] = pfoa_sanitize_hero_featured_pin( isset( $value['featured_pin'] ) ? $value['featured_pin'] : array() );
 
 	$hero['carousel_interval_ms'] = isset( $value['carousel_interval_ms'] ) ? pfoa_sanitize_hero_carousel_interval_ms( $value['carousel_interval_ms'] ) : 5000;
 
@@ -1925,9 +2336,18 @@ function pfoa_sanitize_hero( $value ) {
 				continue;
 			}
 
+			$item_link_page_id = isset( $carousel_item['link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $carousel_item['link_page_id'] ) : 0;
+
 			$carousel_items[] = array(
 				'id'             => $carousel_id,
-				'link_page_id'   => isset( $carousel_item['link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $carousel_item['link_page_id'] ) : 0,
+				'link_page_id'   => $item_link_page_id,
+				'link_type'      => pfoa_resolve_hero_link_type(
+					array(
+						'link_type'    => isset( $carousel_item['link_type'] ) ? $carousel_item['link_type'] : null,
+						'link_page_id' => $item_link_page_id,
+					)
+				),
+				'link_url'       => isset( $carousel_item['link_url'] ) ? pfoa_sanitize_hero_external_url( $carousel_item['link_url'] ) : '',
 				'headline'       => isset( $carousel_item['headline'] ) ? sanitize_text_field( $carousel_item['headline'] ) : '',
 				'brightness'     => isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100,
 				'headline_scale' => isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100,
@@ -1962,6 +2382,8 @@ function pfoa_sanitize_hero( $value ) {
 			$carousel_items[] = array(
 				'id'             => $carousel_id,
 				'link_page_id'   => 0,
+				'link_type'      => 'none',
+				'link_url'       => '',
 				'headline'       => '',
 				'brightness'     => 100,
 				'headline_scale' => 100,
@@ -2852,6 +3274,32 @@ function pfoa_site_homepage_page() {
 		);
 	}
 
+	if ( isset( $_GET['pfoa-hero-link-warning'] ) && is_string( $_GET['pfoa-hero-link-warning'] ) ) {
+		$warning_tokens = array_filter( array_map( 'trim', explode( ',', wp_unslash( $_GET['pfoa-hero-link-warning'] ) ) ) );
+
+		foreach ( $warning_tokens as $warning_token ) {
+			if ( 'single' === $warning_token ) {
+				add_settings_error(
+					'pfoa_homepage_messages',
+					'pfoa_hero_link_single_invalid',
+					esc_html__( 'Single image: the external URL was invalid, so its link was removed. The rest of the homepage saved normally.', 'pfoa-theme' ),
+					'warning'
+				);
+			} elseif ( ctype_digit( $warning_token ) && (int) $warning_token >= 1 ) {
+				add_settings_error(
+					'pfoa_homepage_messages',
+					'pfoa_hero_link_slide_invalid_' . $warning_token,
+					sprintf(
+						/* translators: %d: 1-based carousel slide number. */
+						esc_html__( 'Slide %d: the external URL was invalid, so its link was removed. The rest of the homepage saved normally.', 'pfoa-theme' ),
+						(int) $warning_token
+					),
+					'warning'
+				);
+			}
+		}
+	}
+
 	$can_edit_hero = $front_id && current_user_can( 'edit_page', $front_id );
 
 	if ( $front_id && ! current_user_can( 'edit_page', $front_id ) ) {
@@ -2867,6 +3315,13 @@ function pfoa_site_homepage_page() {
 	if ( ! is_string( $image_link_page_id ) ) {
 		$image_link_page_id = absint( $image_link_page_id );
 	}
+	$image_link_type = pfoa_resolve_hero_link_type(
+		array(
+			'link_type'    => isset( $hero['image_link_type'] ) ? $hero['image_link_type'] : null,
+			'link_page_id' => $image_link_page_id,
+		)
+	);
+	$image_link_url = isset( $hero['image_link_url'] ) ? (string) $hero['image_link_url'] : '';
 	$carousel_ids = ( isset( $hero['carousel_ids'] ) && is_array( $hero['carousel_ids'] ) ) ? $hero['carousel_ids'] : array();
 	$carousel_interval_ms = isset( $hero['carousel_interval_ms'] ) ? pfoa_sanitize_hero_carousel_interval_ms( $hero['carousel_interval_ms'] ) : 5000;
 	$carousel_slide_count = isset( $hero['carousel_slide_count'] ) ? pfoa_sanitize_hero_carousel_slide_count( $hero['carousel_slide_count'] ) : 3;
@@ -2881,6 +3336,13 @@ function pfoa_site_homepage_page() {
 			$carousel_items[] = array(
 				'id'             => isset( $carousel_item['id'] ) ? absint( $carousel_item['id'] ) : 0,
 				'link_page_id'   => isset( $carousel_item['link_page_id'] ) ? ( is_string( $carousel_item['link_page_id'] ) ? trim( $carousel_item['link_page_id'] ) : absint( $carousel_item['link_page_id'] ) ) : 0,
+				'link_type'      => pfoa_resolve_hero_link_type(
+					array(
+						'link_type'    => isset( $carousel_item['link_type'] ) ? $carousel_item['link_type'] : null,
+						'link_page_id' => isset( $carousel_item['link_page_id'] ) ? ( is_string( $carousel_item['link_page_id'] ) ? trim( $carousel_item['link_page_id'] ) : absint( $carousel_item['link_page_id'] ) ) : 0,
+					)
+				),
+				'link_url'       => isset( $carousel_item['link_url'] ) ? (string) $carousel_item['link_url'] : '',
 				'headline'       => isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '',
 				'brightness'     => isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100,
 				'headline_scale' => isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100,
@@ -2894,6 +3356,8 @@ function pfoa_site_homepage_page() {
 			$carousel_items[] = array(
 				'id'             => absint( $carousel_id ),
 				'link_page_id'   => 0,
+				'link_type'      => 'none',
+				'link_url'       => '',
 				'headline'       => '',
 				'brightness'     => 100,
 				'headline_scale' => 100,
@@ -2912,6 +3376,8 @@ function pfoa_site_homepage_page() {
 		$carousel_items[] = array(
 			'id'             => 0,
 			'link_page_id'   => 0,
+			'link_type'      => 'none',
+			'link_url'       => '',
 			'headline'       => '',
 			'brightness'     => 100,
 			'headline_scale' => 100,
@@ -2923,6 +3389,18 @@ function pfoa_site_homepage_page() {
 
 	$ctas         = ( isset( $hero['ctas'] ) && is_array( $hero['ctas'] ) ) ? $hero['ctas'] : array();
 	$preview      = $image_id ? wp_get_attachment_image( $image_id, array( 80, 80 ) ) : '';
+
+	$featured_pin      = pfoa_sanitize_hero_featured_pin( isset( $hero['featured_pin'] ) ? $hero['featured_pin'] : array() );
+	$pinned_slide_id   = pfoa_get_hero_pinned_slide_id( $hero );
+	$pinned_slide_headline = '';
+
+	if ( $featured_pin['slide'] >= 1 && isset( $carousel_items[ $featured_pin['slide'] - 1 ] ) && is_array( $carousel_items[ $featured_pin['slide'] - 1 ] ) ) {
+		$pinned_slide_headline = isset( $carousel_items[ $featured_pin['slide'] - 1 ]['headline'] ) ? trim( (string) $carousel_items[ $featured_pin['slide'] - 1 ]['headline'] ) : '';
+	}
+
+	if ( '' === $pinned_slide_headline ) {
+		$pinned_slide_headline = $headline;
+	}
 
 	?>
 	<div class="wrap">
@@ -2965,11 +3443,30 @@ function pfoa_site_homepage_page() {
 				<button type="button" class="button pfoa-hero-single-select"><?php echo $preview ? esc_html__( 'Replace', 'pfoa-theme' ) : esc_html__( 'Select Image', 'pfoa-theme' ); ?></button>
 				<button type="button" class="button pfoa-hero-single-remove"<?php echo $preview ? '' : ' style="display:none;"'; ?>><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
 				<p class="description"><?php esc_html_e( 'Shown when Single Image mode is selected. If empty, the page featured image (or the theme fallback banner) is used.', 'pfoa-theme' ); ?></p>
-				<p>
+				<fieldset class="pfoa-hero-link-type-group">
+					<legend><?php esc_html_e( 'Link destination type', 'pfoa-theme' ); ?></legend>
+					<label>
+						<input type="radio" class="pfoa-hero-link-type-input" name="pfoa_hero[image_link_type]" value="internal"<?php checked( $image_link_type, 'internal' ); ?> />
+						<?php esc_html_e( 'Internal', 'pfoa-theme' ); ?>
+					</label>
+					<label>
+						<input type="radio" class="pfoa-hero-link-type-input" name="pfoa_hero[image_link_type]" value="external"<?php checked( $image_link_type, 'external' ); ?> />
+						<?php esc_html_e( 'External URL', 'pfoa-theme' ); ?>
+					</label>
+					<label>
+						<input type="radio" class="pfoa-hero-link-type-input" name="pfoa_hero[image_link_type]" value="none"<?php checked( $image_link_type, 'none' ); ?> />
+						<?php esc_html_e( 'No Link', 'pfoa-theme' ); ?>
+					</label>
+				</fieldset>
+				<p class="pfoa-hero-link-internal-wrap"<?php echo 'internal' === $image_link_type ? '' : ' style="display:none;"'; ?>>
 					<label for="pfoa-hero-image-link"><?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?></label><br />
 					<?php pfoa_render_hero_link_selector( 'pfoa_hero[image_link_page_id]', $image_link_page_id, 'pfoa-hero-image-link' ); ?>
 				</p>
-				<p class="description"><?php esc_html_e( 'Optional. Clicking the hero image opens the selected page, Cat Profile, or bonded pair.', 'pfoa-theme' ); ?></p>
+				<p class="pfoa-hero-link-external-wrap"<?php echo 'external' === $image_link_type ? '' : ' style="display:none;"'; ?>>
+					<label for="pfoa-hero-image-link-url"><?php esc_html_e( 'External URL', 'pfoa-theme' ); ?></label><br />
+					<input type="url" id="pfoa-hero-image-link-url" class="regular-text pfoa-hero-link-url-input" name="pfoa_hero[image_link_url]" value="<?php echo esc_attr( $image_link_url ); ?>" placeholder="https://" />
+				</p>
+				<p class="description"><?php esc_html_e( 'Optional. Clicking the hero image opens the selected page, Cat Profile, bonded pair, or external URL.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
 		<tr>
@@ -2982,6 +3479,68 @@ function pfoa_site_homepage_page() {
 					<option value="5"<?php selected( $carousel_slide_count, 5 ); ?>><?php esc_html_e( '5 slides', 'pfoa-theme' ); ?></option>
 				</select>
 				<p class="description"><?php esc_html_e( 'How many of the carousel slots below show on the homepage (2–5). Slots beyond this count are kept — they will show if the count is increased.', 'pfoa-theme' ); ?></p>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><?php esc_html_e( 'Featured slide', 'pfoa-theme' ); ?></th>
+			<td>
+				<fieldset>
+					<legend class="screen-reader-text"><?php esc_html_e( 'Featured slide', 'pfoa-theme' ); ?></legend>
+					<label>
+						<input type="radio" name="pfoa_hero[featured_pin][slide]" value="0"<?php checked( $featured_pin['slide'], 0 ); ?> />
+						<?php esc_html_e( 'Normal Carousel Rotation', 'pfoa-theme' ); ?>
+					</label><br />
+					<?php for ( $pin_option = 1; $pin_option <= $carousel_slide_count; $pin_option++ ) : ?>
+						<label>
+							<input type="radio" name="pfoa_hero[featured_pin][slide]" value="<?php echo esc_attr( (string) $pin_option ); ?>"<?php checked( $featured_pin['slide'], $pin_option ); ?> />
+							<?php printf( esc_html__( 'Pin Slide %d', 'pfoa-theme' ), $pin_option ); ?>
+						</label><br />
+					<?php endfor; ?>
+				</fieldset>
+				<div class="pfoa-hero-pin-mode"<?php echo $featured_pin['slide'] ? '' : ' hidden'; ?>>
+					<fieldset>
+						<legend class="screen-reader-text"><?php esc_html_e( 'Pin duration', 'pfoa-theme' ); ?></legend>
+						<label>
+							<input type="radio" name="pfoa_hero[featured_pin][mode]" value="timed"<?php checked( $featured_pin['slide'] ? $featured_pin['mode'] : 'timed', 'timed' ); ?> />
+							<?php esc_html_e( '24 hours', 'pfoa-theme' ); ?>
+						</label>
+						<label>
+							<input type="radio" name="pfoa_hero[featured_pin][mode]" value="indefinite"<?php checked( $featured_pin['slide'] ? $featured_pin['mode'] : 'timed', 'indefinite' ); ?> />
+							<?php esc_html_e( 'Until Unpinned', 'pfoa-theme' ); ?>
+						</label>
+					</fieldset>
+					<input type="hidden" name="pfoa_hero[featured_pin][expires_at]" value="<?php echo esc_attr( (string) $featured_pin['expires_at'] ); ?>" />
+				</div>
+				<p class="description">
+					<?php if ( ! $featured_pin['slide'] || 'none' === $featured_pin['mode'] ) : ?>
+						<?php esc_html_e( 'Normal carousel rotation.', 'pfoa-theme' ); ?>
+					<?php elseif ( $pinned_slide_id ) : ?>
+						<?php
+						if ( 'timed' === $featured_pin['mode'] ) {
+							printf(
+								/* translators: 1: slide number, 2: slide headline, 3: local expiry date/time. */
+								esc_html__( 'Pinned: Slide %1$d — %2$s, expires %3$s.', 'pfoa-theme' ),
+								(int) $featured_pin['slide'],
+								'' !== $pinned_slide_headline ? $pinned_slide_headline : sprintf( __( 'Slide %d', 'pfoa-theme' ), (int) $featured_pin['slide'] ),
+								date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $featured_pin['expires_at'] )
+							);
+						} else {
+							printf(
+								/* translators: 1: slide number, 2: slide headline. */
+								esc_html__( 'Pinned: Slide %1$d — %2$s, shows until unpinned.', 'pfoa-theme' ),
+								(int) $featured_pin['slide'],
+								'' !== $pinned_slide_headline ? $pinned_slide_headline : sprintf( __( 'Slide %d', 'pfoa-theme' ), (int) $featured_pin['slide'] )
+							);
+						}
+						?>
+					<?php elseif ( 'timed' === $featured_pin['mode'] && (int) $featured_pin['expires_at'] <= (int) current_time( 'timestamp' ) ) : ?>
+						<?php esc_html_e( 'Pin expired — returns to rotation.', 'pfoa-theme' ); ?>
+					<?php elseif ( (int) $featured_pin['slide'] > (int) $carousel_slide_count ) : ?>
+						<?php esc_html_e( 'Pinned slide is beyond the current slide count — rotation continues normally.', 'pfoa-theme' ); ?>
+					<?php else : ?>
+						<?php esc_html_e( 'Pinned slide has no valid image — rotation continues normally.', 'pfoa-theme' ); ?>
+					<?php endif; ?>
+				</p>
 			</td>
 		</tr>
 		<tr>
@@ -3006,6 +3565,7 @@ function pfoa_site_homepage_page() {
 .pfoa-hero-carousel-list .pfoa-hero-slide-status{flex:none;font-size:12px;line-height:1.6;padding:2px 10px;border-radius:999px;border:1px solid #dcdcde;white-space:nowrap;}
 .pfoa-hero-carousel-list .pfoa-hero-slide-status.is-active{background:#e7f5ea;color:#1d5c2f;border-color:#b6dfc0;}
 .pfoa-hero-carousel-list .pfoa-hero-slide-status.is-inactive{background:#f0f0f1;color:#50575e;font-style:italic;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-pinned{flex:none;font-size:12px;line-height:1.6;padding:2px 10px;border-radius:999px;border:1px solid #e9ad4e;background:#fdf3e3;color:#713033;white-space:nowrap;}
 .pfoa-hero-carousel-list .pfoa-hero-slide-body{padding:4px 12px 12px;border-top:1px solid #dcdcde;max-width:100%;box-sizing:border-box;}
 .pfoa-hero-carousel-list .pfoa-hero-slide-section{padding:10px 0;max-width:100%;}
 .pfoa-hero-carousel-list .pfoa-hero-slide-section + .pfoa-hero-slide-section{border-top:1px solid #dcdcde;}
@@ -3022,12 +3582,19 @@ function pfoa_site_homepage_page() {
 				<ul class="pfoa-hero-carousel-list" data-next-index="<?php echo esc_attr( (string) count( $carousel_items ) ); ?>" data-slide-count="<?php echo esc_attr( (string) $carousel_slide_count ); ?>">
 					<?php foreach ( $carousel_items as $carousel_index => $carousel_item ) : ?>
 						<?php
-					$carousel_id        = absint( $carousel_item['id'] );
-					$carousel_link      = isset( $carousel_item['link_page_id'] ) ? $carousel_item['link_page_id'] : 0;
+						$carousel_id        = absint( $carousel_item['id'] );
+						$carousel_link      = isset( $carousel_item['link_page_id'] ) ? $carousel_item['link_page_id'] : 0;
 
-					if ( ! is_string( $carousel_link ) ) {
-						$carousel_link = absint( $carousel_link );
-					}
+						if ( ! is_string( $carousel_link ) ) {
+							$carousel_link = absint( $carousel_link );
+						}
+						$carousel_link_type = pfoa_resolve_hero_link_type(
+							array(
+								'link_type'    => isset( $carousel_item['link_type'] ) ? $carousel_item['link_type'] : null,
+								'link_page_id' => $carousel_link,
+							)
+						);
+						$carousel_link_url = isset( $carousel_item['link_url'] ) ? trim( (string) $carousel_item['link_url'] ) : '';
 					$carousel_headline  = isset( $carousel_item['headline'] ) ? $carousel_item['headline'] : '';
 				$carousel_brightness = isset( $carousel_item['brightness'] ) ? pfoa_sanitize_hero_brightness( $carousel_item['brightness'] ) : 100;
 				$carousel_headline_scale = isset( $carousel_item['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_item['headline_scale'] ) : 100;
@@ -3070,6 +3637,10 @@ function pfoa_site_homepage_page() {
 									}
 								}
 							}
+
+							if ( 'external' === $carousel_link_type && '' !== $carousel_link_url ) {
+								$carousel_link_label = strlen( $carousel_link_url ) > 48 ? substr( $carousel_link_url, 0, 47 ) . '…' : $carousel_link_url;
+							}
 							?>
 							<details class="pfoa-hero-slide-card<?php echo $is_inactive_slot ? ' is-inactive' : ''; ?>"<?php echo 0 === $carousel_index ? ' open' : ''; ?>>
 								<summary class="pfoa-hero-slide-summary">
@@ -3078,6 +3649,9 @@ function pfoa_site_homepage_page() {
 									<span class="pfoa-hero-slide-headline"><?php echo esc_html( $carousel_summary_headline ); ?></span>
 									<span class="pfoa-hero-slide-link"><?php echo esc_html( $carousel_link_label ); ?></span>
 									<span class="pfoa-hero-slide-status<?php echo $is_inactive_slot ? ' is-inactive' : ' is-active'; ?>"><?php echo $is_inactive_slot ? esc_html__( 'Inactive', 'pfoa-theme' ) : esc_html__( 'Active', 'pfoa-theme' ); ?></span>
+									<?php if ( $pinned_slide_id && $carousel_id === $pinned_slide_id ) : ?>
+										<span class="pfoa-hero-slide-pinned"><?php esc_html_e( 'Pinned', 'pfoa-theme' ); ?></span>
+									<?php endif; ?>
 								</summary>
 								<div class="pfoa-hero-slide-body">
 									<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide content', 'pfoa-theme' ); ?>">
@@ -3085,9 +3659,30 @@ function pfoa_site_homepage_page() {
 							<span class="pfoa-hero-carousel-preview"><?php echo $carousel_preview ? $carousel_preview : esc_html__( 'No image selected yet.', 'pfoa-theme' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
 							<input type="hidden" class="pfoa-hero-carousel-id" name="<?php echo esc_attr( $carousel_field_base ); ?>[id]" value="<?php echo esc_attr( (string) $carousel_id ); ?>" />
 							<button type="button" class="button pfoa-hero-carousel-select"><?php echo $carousel_preview ? esc_html__( 'Replace Image', 'pfoa-theme' ) : esc_html__( 'Select Image', 'pfoa-theme' ); ?></button>
-								<label class="pfoa-hero-carousel-link">
-									<?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?>
-									<?php pfoa_render_hero_link_selector( $carousel_field_base . '[link_page_id]', $carousel_link ); ?>
+								<fieldset class="pfoa-hero-link-type-group">
+									<legend><?php esc_html_e( 'Link destination type', 'pfoa-theme' ); ?></legend>
+									<label>
+										<input type="radio" class="pfoa-hero-link-type-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[link_type]" value="internal"<?php checked( $carousel_link_type, 'internal' ); ?> />
+										<?php esc_html_e( 'Internal', 'pfoa-theme' ); ?>
+									</label>
+									<label>
+										<input type="radio" class="pfoa-hero-link-type-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[link_type]" value="external"<?php checked( $carousel_link_type, 'external' ); ?> />
+										<?php esc_html_e( 'External URL', 'pfoa-theme' ); ?>
+									</label>
+									<label>
+										<input type="radio" class="pfoa-hero-link-type-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[link_type]" value="none"<?php checked( $carousel_link_type, 'none' ); ?> />
+										<?php esc_html_e( 'No Link', 'pfoa-theme' ); ?>
+									</label>
+								</fieldset>
+								<span class="pfoa-hero-link-internal-wrap"<?php echo 'internal' === $carousel_link_type ? '' : ' style="display:none;"'; ?>>
+									<label class="pfoa-hero-carousel-link">
+										<?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?>
+										<?php pfoa_render_hero_link_selector( $carousel_field_base . '[link_page_id]', $carousel_link ); ?>
+									</label>
+								</span>
+								<label class="pfoa-hero-link-external-wrap"<?php echo 'external' === $carousel_link_type ? '' : ' style="display:none;"'; ?>>
+									<?php esc_html_e( 'External URL', 'pfoa-theme' ); ?>
+									<input type="url" class="regular-text pfoa-hero-link-url-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[link_url]" value="<?php echo esc_attr( $carousel_link_url ); ?>" placeholder="https://" />
 								</label>
 							<label class="pfoa-hero-carousel-headline">
 								<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
@@ -3190,9 +3785,30 @@ function pfoa_site_homepage_page() {
 						<span class="pfoa-hero-carousel-preview"></span>
 						<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][__INDEX__][id]" value="0" />
 						<button type="button" class="button pfoa-hero-carousel-select"><?php esc_html_e( 'Select Image', 'pfoa-theme' ); ?></button>
-						<label class="pfoa-hero-carousel-link">
-							<?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?>
-							<?php pfoa_render_hero_link_selector( 'pfoa_hero[carousel_items][__INDEX__][link_page_id]', 0 ); ?>
+						<fieldset class="pfoa-hero-link-type-group">
+							<legend><?php esc_html_e( 'Link destination type', 'pfoa-theme' ); ?></legend>
+							<label>
+								<input type="radio" class="pfoa-hero-link-type-input" name="pfoa_hero[carousel_items][__INDEX__][link_type]" value="internal" />
+								<?php esc_html_e( 'Internal', 'pfoa-theme' ); ?>
+							</label>
+							<label>
+								<input type="radio" class="pfoa-hero-link-type-input" name="pfoa_hero[carousel_items][__INDEX__][link_type]" value="external" />
+								<?php esc_html_e( 'External URL', 'pfoa-theme' ); ?>
+							</label>
+							<label>
+								<input type="radio" class="pfoa-hero-link-type-input" name="pfoa_hero[carousel_items][__INDEX__][link_type]" value="none" checked="checked" />
+								<?php esc_html_e( 'No Link', 'pfoa-theme' ); ?>
+							</label>
+						</fieldset>
+						<span class="pfoa-hero-link-internal-wrap" style="display:none;">
+							<label class="pfoa-hero-carousel-link">
+								<?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?>
+								<?php pfoa_render_hero_link_selector( 'pfoa_hero[carousel_items][__INDEX__][link_page_id]', 0 ); ?>
+							</label>
+						</span>
+						<label class="pfoa-hero-link-external-wrap" style="display:none;">
+							<?php esc_html_e( 'External URL', 'pfoa-theme' ); ?>
+							<input type="url" class="regular-text pfoa-hero-link-url-input" name="pfoa_hero[carousel_items][__INDEX__][link_url]" value="" placeholder="https://" />
 						</label>
 					<label class="pfoa-hero-carousel-headline">
 						<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
@@ -3425,9 +4041,28 @@ function pfoa_homepage_hero_save() {
 
 	$raw = isset( $_POST['pfoa_hero'] ) && is_array( $_POST['pfoa_hero'] ) ? wp_unslash( $_POST['pfoa_hero'] ) : array();
 
-	update_post_meta( $front_id, PFOA_HERO_META_KEY, pfoa_sanitize_hero( $raw ) );
+	$invalid_links = pfoa_find_hero_invalid_external_links( $raw );
+	$sanitized     = pfoa_sanitize_hero( $raw );
 
-	wp_safe_redirect( add_query_arg( 'pfoa-homepage-updated', '1', admin_url( 'admin.php?page=pfoa-site' ) ) );
+	$previous   = get_post_meta( $front_id, PFOA_HERO_META_KEY, true );
+	$stored_pin = ( is_array( $previous ) && isset( $previous['featured_pin'] ) ) ? $previous['featured_pin'] : array();
+
+	$sanitized['featured_pin'] = pfoa_resolve_hero_pin_for_save(
+		isset( $sanitized['featured_pin'] ) ? $sanitized['featured_pin'] : array(),
+		$stored_pin,
+		isset( $sanitized['carousel_items'] ) ? $sanitized['carousel_items'] : array(),
+		current_time( 'timestamp' )
+	);
+
+	update_post_meta( $front_id, PFOA_HERO_META_KEY, $sanitized );
+
+	$redirect = add_query_arg( 'pfoa-homepage-updated', '1', admin_url( 'admin.php?page=pfoa-site' ) );
+
+	if ( array() !== $invalid_links ) {
+		$redirect = add_query_arg( 'pfoa-hero-link-warning', implode( ',', $invalid_links ), $redirect );
+	}
+
+	wp_safe_redirect( $redirect );
 	exit;
 }
 add_action( 'admin_post_pfoa_homepage_hero_save', 'pfoa_homepage_hero_save' );

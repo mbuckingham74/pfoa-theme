@@ -147,18 +147,76 @@
 			return;
 		}
 
-		var select = item.find( '.pfoa-hero-carousel-link select' );
+		var typeInput = item.find( '.pfoa-hero-link-type-input:checked' );
+		var type = typeInput.length ? String( typeInput.val() ) : 'internal';
 		var label = noLinkLabel();
 
-		if ( select.length ) {
-			var selected = select.find( 'option:selected' ).text();
+		if ( 'external' === type ) {
+			var url = item.find( '.pfoa-hero-link-url-input' ).val();
 
-			if ( selected && String( selected ).trim() !== '' ) {
-				label = selected;
+			if ( url && String( url ).trim() !== '' ) {
+				url = String( url ).trim();
+				label = url.length > 48 ? url.slice( 0, 47 ) + '…' : url;
+			}
+		} else if ( 'internal' === type ) {
+			var select = item.find( '.pfoa-hero-link-internal-wrap select' );
+
+			if ( ! select.length ) {
+				select = item.find( '.pfoa-hero-carousel-link select' );
+			}
+
+			if ( select.length ) {
+				var selected = select.find( 'option:selected' ).text();
+
+				if ( selected && String( selected ).trim() !== '' ) {
+					label = selected;
+				}
 			}
 		}
 
 		link.text( label );
+	}
+
+	// Show only the inputs for the active link destination type. Values in
+	// hidden inputs are never cleared, so switching types retains entries.
+	function refreshLinkType( item ) {
+		if ( ! item || ! item.length ) {
+			return;
+		}
+
+		var typeInput = item.find( '.pfoa-hero-link-type-input:checked' );
+		var type = typeInput.length ? String( typeInput.val() ) : 'none';
+		var internalWrap = item.find( '.pfoa-hero-link-internal-wrap' );
+		var externalWrap = item.find( '.pfoa-hero-link-external-wrap' );
+
+		if ( 'internal' === type ) {
+			internalWrap.show();
+			externalWrap.hide();
+		} else if ( 'external' === type ) {
+			internalWrap.hide();
+			externalWrap.show();
+		} else {
+			internalWrap.hide();
+			externalWrap.hide();
+		}
+
+		refreshSummaryLink( item );
+	}
+
+	function refreshPinMode() {
+		var mode = $( '.pfoa-hero-pin-mode' );
+
+		if ( ! mode.length ) {
+			return;
+		}
+
+		var selected = $( 'input[name="pfoa_hero[featured_pin][slide]"]:checked' ).val();
+
+		if ( selected && '0' !== String( selected ) ) {
+			mode.show();
+		} else {
+			mode.hide();
+		}
 	}
 
 	function refreshSummary( item ) {
@@ -217,6 +275,10 @@
 	$( function () {
 		ensureRowCount( getSlideCount() );
 		refreshInactiveSlots();
+		$( '.pfoa-hero-carousel-item, .pfoa-hero-single-cell' ).each( function () {
+			refreshLinkType( $( this ) );
+		} );
+		refreshPinMode();
 	} );
 
 	// Live-sync the card summary while editing; the summary is display-only
@@ -235,6 +297,26 @@
 		if ( item.length ) {
 			refreshSummaryLink( item );
 		}
+	} );
+
+	$( document ).on( 'change', '.pfoa-hero-link-type-input', function () {
+		var scope = $( this ).closest( '.pfoa-hero-carousel-item, .pfoa-hero-single-cell' );
+
+		if ( scope.length ) {
+			refreshLinkType( scope );
+		}
+	} );
+
+	$( document ).on( 'input', '.pfoa-hero-link-url-input', function () {
+		var scope = $( this ).closest( '.pfoa-hero-carousel-item, .pfoa-hero-single-cell' );
+
+		if ( scope.length ) {
+			refreshSummaryLink( scope );
+		}
+	} );
+
+	$( document ).on( 'change', 'input[name="pfoa_hero[featured_pin][slide]"]', function () {
+		refreshPinMode();
 	} );
 
 	function nextCarouselIndex( list ) {
@@ -276,7 +358,12 @@
 			'<span class="pfoa-hero-carousel-preview">' + ( thumb || '' ) + '</span> ' +
 			'<input type="hidden" class="pfoa-hero-carousel-id" name="pfoa_hero[carousel_items][' + index + '][id]" value="0" /> ' +
 			'<button type="button" class="button pfoa-hero-carousel-select">' + buttonLabel + '</button> ' +
-			'<label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">' + noLinkLabel() + '</option></select></label> ' +
+			'<fieldset class="pfoa-hero-link-type-group"><legend>Link destination type</legend> ' +
+			'<label><input type="radio" class="pfoa-hero-link-type-input" name="pfoa_hero[carousel_items][' + index + '][link_type]" value="internal" /> Internal</label> ' +
+			'<label><input type="radio" class="pfoa-hero-link-type-input" name="pfoa_hero[carousel_items][' + index + '][link_type]" value="external" /> External URL</label> ' +
+			'<label><input type="radio" class="pfoa-hero-link-type-input" name="pfoa_hero[carousel_items][' + index + '][link_type]" value="none" checked="checked" /> No Link</label></fieldset> ' +
+			'<span class="pfoa-hero-link-internal-wrap" style="display:none;"><label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">' + noLinkLabel() + '</option></select></label></span> ' +
+			'<label class="pfoa-hero-link-external-wrap" style="display:none;">External URL <input type="url" class="regular-text pfoa-hero-link-url-input" name="pfoa_hero[carousel_items][' + index + '][link_url]" value="" placeholder="https://" /></label> ' +
 			'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
 			'</section>' +
 			'<section class="pfoa-hero-slide-section">' +
@@ -311,12 +398,14 @@
 
 			list.append( item );
 			openSlideCard( item );
+			refreshLinkType( item );
 			return item;
 		}
 
 		var fallback = $( fallbackCardHtml( index, '', 'Select Image' ) );
 
 		list.append( fallback );
+		refreshLinkType( fallback );
 
 		return fallback;
 	}
@@ -382,6 +471,7 @@
 			item.find( '.pfoa-hero-carousel-select' ).text( 'Replace Image' );
 			list.append( item );
 			openSlideCard( item );
+			refreshLinkType( item );
 			refreshInactiveSlots();
 			return;
 		}
@@ -390,6 +480,7 @@
 
 		fallback.find( '.pfoa-hero-carousel-id' ).val( id );
 		list.append( fallback );
+		refreshLinkType( fallback );
 		refreshInactiveSlots();
 	}
 
