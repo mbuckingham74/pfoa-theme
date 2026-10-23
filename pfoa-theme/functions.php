@@ -16,6 +16,15 @@ if ( ! defined( 'PFOA_THEME_PASSIVE_RESOLVER_LOADED' ) ) {
 	}
 }
 
+// PFOA DEV-ONLY TEMPORARY SYNTHETIC EXCLUSION — REMOVE AT FINAL CLEANUP
+// (docs/dev-synthetic-exclusion-removal.md). Presentation only, DEV host only.
+if ( ! defined( 'PFOA_DEV_SYNTHETIC_EXCLUSION_LOADED' ) ) {
+	$dev_synth_file = __DIR__ . '/inc/pfoa-dev-synthetic-exclusion.php';
+	if ( file_exists( $dev_synth_file ) ) {
+		require_once $dev_synth_file;
+	}
+}
+
 /**
  * Configure theme supports and menu locations.
  *
@@ -6000,6 +6009,11 @@ function pfoa_present_adoption_events( $content ) {
 			continue;
 		}
 
+		// PFOA DEV-ONLY TEMPORARY SYNTHETIC EXCLUSION — REMOVE AT FINAL CLEANUP.
+		if ( function_exists( 'pfoa_dev_synthetic_is_excluded_event' ) && pfoa_dev_synthetic_is_excluded_event( $event_id ) ) {
+			continue;
+		}
+
 		if ( function_exists( 'get_post' ) ) {
 			$event_post = get_post( $event_id );
 
@@ -6077,6 +6091,22 @@ function pfoa_present_adoption_events( $content ) {
 
 		if ( empty( $members ) ) {
 			continue;
+		}
+
+		// PFOA DEV-ONLY TEMPORARY SYNTHETIC EXCLUSION — REMOVE AT FINAL CLEANUP.
+		if ( function_exists( 'pfoa_dev_synthetic_is_excluded_cat' ) ) {
+			$dev_synth_hit = false;
+
+			foreach ( $members as $dev_synth_member ) {
+				if ( is_array( $dev_synth_member ) && isset( $dev_synth_member['cat_post_id'] ) && pfoa_dev_synthetic_is_excluded_cat( (int) $dev_synth_member['cat_post_id'] ) ) {
+					$dev_synth_hit = true;
+					break;
+				}
+			}
+
+			if ( $dev_synth_hit ) {
+				continue;
+			}
 		}
 
 		// PFOA 0.1.120 — presentation only: optional legacy-gallery anchor
@@ -6834,6 +6864,20 @@ function pfoa_recently_adopted_is_currently_adopted( $cat_id, $candidate_event_i
 		return $filter_state['cache'][ $cache_key ];
 	}
 
+	// PFOA DEV-ONLY TEMPORARY SYNTHETIC EXCLUSION — REMOVE AT FINAL CLEANUP.
+	if ( function_exists( 'pfoa_dev_synthetic_is_excluded_cat' ) && pfoa_dev_synthetic_is_excluded_cat( $cat_id ) ) {
+		$filter_state['report'][] = array(
+			'code'        => 'dev-synthetic-excluded',
+			'event_id'    => $candidate_event_id,
+			'cat_post_id' => $cat_id,
+			'detail'      => 'DEV-only temporary synthetic QA exclusion; record preserved.',
+		);
+
+		$filter_state['cache'][ $cache_key ] = false;
+
+		return false;
+	}
+
 	// Currency: authoritative current-event link first, forward-scan map
 	// (newest valid event containing the cat) otherwise.
 	$current_event_id = 0;
@@ -6994,6 +7038,11 @@ function pfoa_get_recently_adopted_events( $limit = 4 ) {
 			continue;
 		}
 
+		// PFOA DEV-ONLY TEMPORARY SYNTHETIC EXCLUSION — REMOVE AT FINAL CLEANUP.
+		if ( function_exists( 'pfoa_dev_synthetic_is_excluded_event' ) && pfoa_dev_synthetic_is_excluded_event( $event_id ) ) {
+			continue;
+		}
+
 		if ( function_exists( 'get_post' ) ) {
 			$event_post = get_post( $event_id );
 
@@ -7084,6 +7133,22 @@ function pfoa_get_recently_adopted_events( $limit = 4 ) {
 
 		if ( empty( $members ) ) {
 			continue;
+		}
+
+		// PFOA DEV-ONLY TEMPORARY SYNTHETIC EXCLUSION — REMOVE AT FINAL CLEANUP.
+		if ( function_exists( 'pfoa_dev_synthetic_is_excluded_cat' ) ) {
+			$dev_synth_hit = false;
+
+			foreach ( $members as $dev_synth_member ) {
+				if ( is_array( $dev_synth_member ) && isset( $dev_synth_member['cat_post_id'] ) && pfoa_dev_synthetic_is_excluded_cat( (int) $dev_synth_member['cat_post_id'] ) ) {
+					$dev_synth_hit = true;
+					break;
+				}
+			}
+
+			if ( $dev_synth_hit ) {
+				continue;
+			}
 		}
 
 		// Bonded-pair classification preserved in data exactly as in
