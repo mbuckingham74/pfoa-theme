@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-         Version: 0.1.214
+         Version: 0.1.215
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -2725,6 +2725,22 @@ body.page-id-4968 #staff-roster a:focus-visible {
 	width: calc(100% * var(--pfoa-hero-zoom, 1));
 	height: calc(100% * var(--pfoa-hero-zoom, 1));
 	transform: translate(-50%, -50%);
+}
+
+/* PFOA 0.1.215 — Dine Out promo slide (National Cat Day / Black Bear Diner)
+ * mobile fit. The artwork carries embedded text (date + 8am-8pm hours) that
+ * cover-crops at 390px widths (mobile hero is near-square ~390x343 vs
+ * desktop panoramic ~1440x481). On mobile only, render just this slide with
+ * contain so the full artwork (date/hours) stays visible, letterboxed on
+ * the existing charcoal media background. Scoped to
+ * .homepage-hero__slide--dine-out (tagged in homepage-hero.php); other
+ * slides, pause/resume, link destinations, and desktop (>=721px cover)
+ * presentation are unchanged. */
+@media (max-width: 720px) {
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide--dine-out .homepage-hero__image {
+		object-fit: contain;
+		object-position: center center;
+	}
 }
 
 .front-page-content .homepage-hero__controls {

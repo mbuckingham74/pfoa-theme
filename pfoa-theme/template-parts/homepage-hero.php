@@ -162,6 +162,79 @@ if ( $is_pinned ) {
 if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fallback_hero ) {
 	$hero_classes[] = 'homepage-hero--no-image';
 }
+
+// PFOA 0.1.215 — Dine Out promo slide identifier (National Cat Day / Black
+// Bear Diner). The promo artwork carries embedded text (date + 8am-8pm
+// hours) that cover-crops at 390px mobile widths. Slides are
+// admin-configured attachments, so identify this slide by content signals
+// (headline, attachment title/alt/caption/description/file, or its external
+// Facebook destination) and tag only the matching slide. Other slides,
+// pause/resume, the Facebook destination, and desktop presentation are
+// untouched.
+if ( ! function_exists( 'pfoa_is_dine_out_promo_slide' ) ) {
+	/**
+	 * Whether a carousel slide is the Dine Out promo artwork.
+	 *
+	 * @param int   $slide_id Attachment ID.
+	 * @param array $slide    Carousel slide row (headline/link_* keys).
+	 * @return bool
+	 */
+	function pfoa_is_dine_out_promo_slide( $slide_id, $slide ) {
+		$needles = array( 'dine out', 'dine-out', 'dineout', 'black bear', 'blackbear', 'black-bear', 'cat day', 'cat-day', 'national cat' );
+
+		$haystacks = array();
+
+		if ( is_array( $slide ) ) {
+			if ( isset( $slide['headline'] ) ) {
+				$haystacks[] = (string) $slide['headline'];
+			}
+
+			if ( isset( $slide['link_url'] ) ) {
+				$haystacks[] = (string) $slide['link_url'];
+			}
+		}
+
+		$slide_id = absint( $slide_id );
+
+		if ( $slide_id && function_exists( 'get_post' ) ) {
+			$attachment = get_post( $slide_id );
+
+			if ( $attachment ) {
+				$haystacks[] = (string) $attachment->post_title;
+				$haystacks[] = (string) $attachment->post_excerpt;
+				$haystacks[] = (string) $attachment->post_content;
+				$haystacks[] = (string) $attachment->post_name;
+
+				if ( function_exists( 'get_post_meta' ) ) {
+					$haystacks[] = (string) get_post_meta( $slide_id, '_wp_attachment_image_alt', true );
+				}
+
+				if ( function_exists( 'get_attached_file' ) ) {
+					$haystacks[] = (string) get_attached_file( $slide_id );
+				}
+			}
+		}
+
+		foreach ( $haystacks as $haystack ) {
+			$text = strtolower( $haystack );
+
+			if ( '' === $text ) {
+				continue;
+			}
+
+			// Facebook destination alone is not enough to tag (other slides
+			// may link out); require a promo keyword alongside it, or match
+			// on headline/attachment text directly.
+			foreach ( $needles as $needle ) {
+				if ( false !== strpos( $text, $needle ) ) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+}
 ?>
 <section id="homepage-hero" class="<?php echo esc_attr( implode( ' ', $hero_classes ) ); ?>" aria-labelledby="homepage-hero-title">
 	<?php if ( $is_carousel ) : ?>
@@ -224,6 +297,9 @@ if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fa
 			}
 			$slide_bg_url = wp_get_attachment_image_url( $slide_id, 'full' );
 			$slide_class  = 'homepage-hero__slide' . ( 0 === $slide_index ? ' is-active' : '' ) . ( $slide_zoom < 100 ? ' is-zoom-out' : '' );
+			if ( function_exists( 'pfoa_is_dine_out_promo_slide' ) && pfoa_is_dine_out_promo_slide( $slide_id, $slide ) ) {
+				$slide_class .= ' homepage-hero__slide--dine-out';
+			}
 			?>
 			<div class="<?php echo esc_attr( $slide_class ); ?>"<?php echo 0 === $slide_index ? '' : ' aria-hidden="true"'; ?> data-headline="<?php echo esc_attr( $slide['headline'] ); ?>" data-headline-scale="<?php echo esc_attr( (string) ( isset( $slide['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $slide['headline_scale'] ) : 100 ) ); ?>" data-headline-color="<?php echo esc_attr( isset( $slide['headline_color'] ) ? pfoa_sanitize_hero_headline_color( $slide['headline_color'] ) : 'white' ); ?>" data-zoom="<?php echo esc_attr( (string) $slide_zoom ); ?>" data-position="<?php echo esc_attr( $slide_position ); ?>" style="--pfoa-hero-brightness:<?php echo esc_attr( $brightness_factor ); ?>;--pfoa-hero-zoom:<?php echo esc_attr( $zoom_factor ); ?>;--pfoa-hero-position:<?php echo esc_attr( $slide_position ); ?>;<?php echo $slide_bg_url ? '--pfoa-hero-bg:url(\'' . esc_url( $slide_bg_url ) . '\');' : ''; ?>">
 					<?php
