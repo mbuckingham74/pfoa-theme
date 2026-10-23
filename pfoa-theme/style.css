@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-         Version: 0.1.220
+         Version: 0.1.221
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -7268,6 +7268,134 @@ body.page-id-4799 .entry-content figure.pfoa-pt-intro__photo img {
 		flex: none;
 		width: 160px;
 		max-width: 100%;
+	}
+}
+
+/* PFOA 0.1.221 — From the Home Front Pet-Tidings archive parity
+ * (page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
+ * Replaces the flat 4-recent + "Show 8 more" previous-columns list with the
+ * same expandable date-range disclosure pattern used by Pet Tidings
+ * (page 4799, 0.1.195): bordered card, pale-tinted summary bar, date range +
+ * accurate column count + visible +/– affordance, wrapping underline link
+ * list with middot separators, native <details> keyboard/touch behavior.
+ * Markup contract: p.pfoa-hf-archive__intro helper copy +
+ * 1 x details.pfoa-hf-range (2026, ALL COLLAPSED, no open attribute) —
+ * summary = span.pfoa-hf-range__dates + span.pfoa-hf-range__count; content =
+ * div.pfoa-hf-range__content > p.pfoa-hf-archive__list of independent GIF
+ * links whose visible text preserves the exact Week NNN titles, newest first
+ * (12 previous columns: Weeks 275-263, Week 264 absent on disk; featured
+ * Week 276 stays in the story card above and is not duplicated in the
+ * archive). Only populated groups are rendered; historical five-year ranges
+ * (2021-2025 etc.) are added only when corresponding columns exist.
+ * Pet Tidings 4799 rules are untouched; legacy ul.pfoa-hf-archive__recent /
+ * older / details.pfoa-hf-archive__more selectors above stay inert.
+ * Every selector below starts with body.page-id-11290. */
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__intro {
+	text-align: center;
+	max-width: 40rem;
+	margin-inline: auto;
+	margin-block: 0 0.25rem;
+	font-size: 1rem;
+}
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-range {
+	border: 1px solid var(--pfoa-border-default);
+	border-radius: var(--pfoa-radius);
+	background: var(--pfoa-color-background);
+	margin-block: 0.75rem 0;
+}
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-range > summary {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.25rem 0.75rem;
+	min-height: 48px;
+	list-style: none;
+	cursor: pointer;
+	font-size: 1rem;
+	font-weight: 700;
+	padding: 0.75rem 1.25rem;
+	border-radius: var(--pfoa-radius);
+	background: var(--pfoa-surface-subtle);
+}
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-range > summary::-webkit-details-marker {
+	display: none;
+}
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-range > summary::marker {
+	content: "";
+}
+body.page-id-11290 .page-content .entry-content span.pfoa-hf-range__count {
+	font-weight: 400;
+	color: var(--pfoa-color-muted);
+}
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-range > summary::after {
+	content: "+";
+	margin-inline-start: auto;
+	font-weight: 700;
+	font-size: 1.25rem;
+	line-height: 1;
+}
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-range[open] > summary::after {
+	content: "–";
+}
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-range > summary:hover {
+	text-decoration: underline;
+}
+body.page-id-11290 .page-content .entry-content details.pfoa-hf-range > summary:focus-visible {
+	outline: 2px solid var(--pfoa-color-brand);
+	outline-offset: 2px;
+}
+body.page-id-11290 .page-content .entry-content div.pfoa-hf-range__content {
+	padding: 0.5rem 1.25rem 1rem;
+}
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.15rem 0.6rem;
+	margin: 0;
+	padding: 0.5rem 0 0.25rem;
+	font-size: 1rem;
+	line-height: 1.5;
+}
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+	overflow-wrap: break-word;
+}
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:hover {
+	text-underline-offset: 0.25em;
+}
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:focus-visible {
+	outline: 2px solid var(--pfoa-color-brand);
+	outline-offset: 2px;
+}
+body.page-id-11290 .page-content .entry-content span.pfoa-hf-archive__sep {
+	color: var(--pfoa-color-muted);
+	user-select: none;
+}
+@media (max-width: 600px) {
+	body.page-id-11290 .page-content .entry-content div.pfoa-hf-range__content {
+		padding: 0.25rem 1rem 0.75rem;
+	}
+	body.page-id-11290 .page-content .entry-content details.pfoa-hf-range > summary {
+		padding-inline: 1rem;
+	}
+	body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list {
+		gap: 0.1rem 0.5rem;
+	}
+}
+@media print {
+	body.page-id-11290 .page-content .entry-content details.pfoa-hf-range::details-content {
+		content-visibility: visible !important;
+	}
+	body.page-id-11290 .page-content .entry-content details.pfoa-hf-range:not([open]) > div.pfoa-hf-range__content {
+		display: block;
+	}
+	body.page-id-11290 .page-content .entry-content details.pfoa-hf-range:not([open]) > summary::after {
+		content: "–";
 	}
 }
 
