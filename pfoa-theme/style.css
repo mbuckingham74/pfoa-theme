@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-         Version: 0.1.222
+         Version: 0.1.223
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -7399,6 +7399,74 @@ body.page-id-11290 .page-content .entry-content span.pfoa-hf-archive__sep {
 	}
 	body.page-id-11290 .page-content .entry-content details.pfoa-hf-range:not([open]) > summary::after {
 		content: "–";
+	}
+}
+
+/* PFOA 0.1.223 — Roadster editorial floats (page-id-25515 ONLY).
+ * Scoped strictly to body.page-id-25515; global align/float rules
+ * (lines ~741-754) and the 720px mobile float-stack (~2365-2370)
+ * are untouched. Widens the shell to 1000px, sets a 760px prose
+ * measure, sizes floated figures, and clears quote/buttons below
+ * the floats. Mobile stacks page-scoped at 781px (global 720px
+ * rule already stacks; no conflict).
+ */
+body.page-id-25515 .content-shell {
+	max-width: 1000px;
+}
+body.page-id-25515 .entry-content > p,
+body.page-id-25515 .entry-content > h2,
+body.page-id-25515 .entry-content > blockquote {
+	max-width: 760px;
+	margin-inline: auto;
+}
+body.page-id-25515 .entry-content .alignright {
+	width: 300px;
+	max-width: 42%;
+	margin: 0.35rem 0 1.25rem 1.75rem;
+}
+body.page-id-25515 .entry-content .alignleft {
+	width: 320px;
+	max-width: 42%;
+	margin: 0.35rem 1.75rem 1.25rem 0;
+}
+body.page-id-25515 .entry-content figure:has(img[src*="roadster-new-home"]) {
+	width: 250px;
+}
+body.page-id-25515 .entry-content img {
+	height: auto;
+	border-radius: 10px;
+}
+body.page-id-25515 .entry-content figcaption {
+	font-size: 0.82rem;
+	font-style: italic;
+	color: var(--pfoa-text-muted);
+}
+body.page-id-25515 .entry-content > h2 {
+	clear: both;
+	padding-top: 1rem;
+}
+body.page-id-25515 .entry-content > blockquote {
+	clear: both;
+	background: #faf7f1;
+	border-left: 4px solid var(--pfoa-color-brand);
+	border-radius: 8px;
+	padding: 1.25rem 1.5rem;
+	font-family: Georgia, serif;
+	font-size: 1.12rem;
+	line-height: 1.65;
+	margin: 2rem auto;
+}
+body.page-id-25515 .entry-content .wp-block-buttons {
+	clear: both;
+	padding-top: 1.5rem;
+}
+@media (max-width: 781px) {
+	body.page-id-25515 .entry-content .alignleft,
+	body.page-id-25515 .entry-content .alignright {
+		float: none;
+		width: 100%;
+		max-width: 100%;
+		margin: 1.25rem auto;
 	}
 }
 
