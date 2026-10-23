@@ -569,7 +569,7 @@ fixture_assert( 'none' === $stored_hero['featured_pin']['mode'], 'get_hero: miss
 
 	// style.css: version 0.1.223.
 $css = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' );
-	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.222/', $css ), 'css: theme version 0.1.223' );
+	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.223/', $css ), 'css: theme version 0.1.223' );
 
 // No writes during helper evaluation.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during hero evaluation' );
