@@ -5807,19 +5807,21 @@ function pfoa_collect_gallery_item_identity( $item_node, $xpath ) {
 	return $result;
 }
 
-// PFOA 0.1.168 — presentation only: display predicate for the bonded-pair
+// PFOA 0.1.209 — presentation only: display predicate for the bonded-pair
 // badge shared by pfoa_present_adoption_events() and
 // pfoa_get_recently_adopted_events(). Theme-local; no plugin/contract
 // changes, no Cat ID reads/writes, no ID invention, no writes of any kind.
-// Branch (1): stored-classification display fallback — when the event's
-// stored classification is valid bonded_pair AND exactly 2 member cat IDs
-// are supplied AND the reciprocal raw-partner links agree (read WITHOUT
-// the Cat-ID gate), return true. This covers events whose profiles carry
-// reciprocal _pfoa_cat_bonded_partner_post_id links but blank Cat IDs
-// (where the strict pfoa_cat_is_bonded() predicate is fail-closed false).
-// Branch (2): otherwise the pre-0.1.168 strict predicate runs unchanged
-// (pfoa_cat_is_bonded() on both sides + pfoa_cat_get_bonded_pair()
-// canonical equality), so legacy/blank-classification events render
+// Historical preservation (LC-D02): a valid, explicitly stored
+// classification for an authentic two-member event wins outright,
+// independently of the cats' current bond relationship. Stored
+// bonded_pair => true (Bonded Pair); stored adopted_together or singleton
+// => false (Adopted Together via the callers' non-bonded multi-cat rule,
+// never upgraded by a later bond). Ambiguous or malformed stored data
+// (invalid value, duplicate rows) resolves conservatively to false
+// (fail-closed, never a bonded badge). Events with NO authoritative stored
+// classification (absent/empty, unknown event) fall through to the legacy
+// strict predicate below (pfoa_cat_is_bonded() on both sides +
+// pfoa_cat_get_bonded_pair() canonical equality), so legacy events render
 // exactly as before. Any check failing => false (fail-closed).
 // @param int   $event_id Adoption event post ID (0 when unknown).
 // @param array $bond_ids Two int cat post IDs in member order.
@@ -5839,58 +5841,56 @@ function pfoa_adoption_event_is_bonded_pair_for_display( $event_id, $bond_ids ) 
 		return false;
 	}
 
-	// Branch (1): stored bonded_pair classification + reciprocal raw
-	// partner agreement (no Cat-ID gate). Read-only single-row meta or
-	// the canonical stored-classification reader when present.
+	// Authoritative stored classification wins when present. Read-only
+	// single-row meta or the canonical stored-classification reader when
+	// present; never writes, never infers, never consults live bonds here.
 	if ( 0 < $event_id ) {
-		$stored_is_bonded = false;
-
 		if ( function_exists( 'pfoa_tx_read_stored_classification' ) ) {
 			$stored = pfoa_tx_read_stored_classification( $event_id );
 
 			if ( is_array( $stored ) && isset( $stored['state'], $stored['value'] ) ) {
-				$stored_is_bonded = ( 'valid' === $stored['state'] && 'bonded_pair' === $stored['value'] );
+				if ( 'valid' === $stored['state'] ) {
+					return ( 'bonded_pair' === $stored['value'] );
+				}
+
+				if ( 'invalid' === $stored['state'] || 'duplicate' === $stored['state'] ) {
+					return false;
+				}
+				// 'absent' (or any other state) falls through to legacy.
 			} elseif ( is_string( $stored ) ) {
-				$stored_is_bonded = ( 'bonded_pair' === trim( $stored ) );
-			}
-		} elseif ( function_exists( 'get_post_meta' ) ) {
-			$stored_raw = get_post_meta( $event_id, '_pfoa_event_classification', true );
+				$stored_trimmed = trim( $stored );
 
-			if ( is_string( $stored_raw ) ) {
-				$stored_is_bonded = ( 'bonded_pair' === trim( $stored_raw ) );
-			}
-		}
-
-		if ( $stored_is_bonded ) {
-			$raw_a = 0;
-			$raw_b = 0;
-
-			if ( function_exists( 'pfoa_cat_get_bonded_partner_id' ) ) {
-				$raw_a = (int) pfoa_cat_get_bonded_partner_id( $cat_a );
-				$raw_b = (int) pfoa_cat_get_bonded_partner_id( $cat_b );
-			} elseif ( function_exists( 'pfoa_cat_read_bonded_partner_raw' ) ) {
-				$raw_a = (int) pfoa_cat_read_bonded_partner_raw( $cat_a );
-				$raw_b = (int) pfoa_cat_read_bonded_partner_raw( $cat_b );
-			} elseif ( function_exists( 'get_post_meta' ) ) {
-				$raw_a = (int) get_post_meta( $cat_a, '_pfoa_cat_bonded_partner_post_id', true );
-				$raw_b = (int) get_post_meta( $cat_b, '_pfoa_cat_bonded_partner_post_id', true );
-			}
-
-			if ( $raw_a === $cat_b && $raw_b === $cat_a ) {
-				$pair_sorted   = array( $cat_a, $cat_b );
-				$member_sorted = array( $cat_a, $cat_b );
-
-				sort( $pair_sorted, SORT_NUMERIC );
-				sort( $member_sorted, SORT_NUMERIC );
-
-				if ( $pair_sorted === $member_sorted ) {
+				if ( '' === $stored_trimmed ) {
+					// Absent-equivalent: fall through to legacy.
+				} elseif ( 'bonded_pair' === $stored_trimmed ) {
 					return true;
+				} elseif ( 'adopted_together' === $stored_trimmed || 'singleton' === $stored_trimmed ) {
+					return false;
+				} else {
+					return false;
 				}
 			}
+		} elseif ( function_exists( 'get_post_meta' ) ) {
+			$rows = get_post_meta( $event_id, '_pfoa_event_classification', false );
+
+			if ( is_array( $rows ) && array() !== $rows ) {
+				if ( 1 === count( $rows ) && ( '' === $rows[0] || null === $rows[0] ) ) {
+					// Absent-equivalent legacy sentinel: fall through.
+				} elseif ( 1 !== count( $rows ) ) {
+					return false;
+				} elseif ( 'bonded_pair' === $rows[0] ) {
+					return true;
+				} elseif ( 'adopted_together' === $rows[0] || 'singleton' === $rows[0] ) {
+					return false;
+				} else {
+					return false;
+				}
+			}
+			// Absent (no rows): fall through to legacy.
 		}
 	}
-
-	// Branch (2): pre-0.1.168 strict predicate, unchanged (requires valid
+	// Legacy compatibility: no authoritative stored classification, so
+	// the pre-0.1.168 strict predicate runs unchanged (requires valid
 	// established Cat IDs both sides via pfoa_cat_is_bonded()).
 	if ( function_exists( 'pfoa_cat_is_bonded' ) && function_exists( 'pfoa_cat_get_bonded_pair' ) ) {
 		if ( pfoa_cat_is_bonded( $cat_a ) && pfoa_cat_is_bonded( $cat_b ) ) {
@@ -6194,10 +6194,10 @@ function pfoa_present_adoption_events( $content ) {
 		$count_class  = 3 < $member_count ? 'n' : (string) $member_count;
 
 		// PFOA 0.1.82 — presentation only: bonded-pair indicator for TRUE
-		// bonded 2-member events only. PFOA 0.1.168 routes the predicate
+		// bonded 2-member events only. PFOA 0.1.209 routes the predicate
 		// through pfoa_adoption_event_is_bonded_pair_for_display()
-		// (stored bonded_pair + reciprocal raw-partner agreement, else
-		// the strict helpers fail-closed). 3+ member events are NEVER
+		// (valid stored classification wins; absent falls back to the
+		// strict helpers fail-closed). 3+ member events are NEVER
 		// labelled bonded. No bond data, event meta, or stored facts are
 		// written; no Cat IDs read or invented.
 		$is_bonded_pair = false;
@@ -7087,9 +7087,9 @@ function pfoa_get_recently_adopted_events( $limit = 4 ) {
 		}
 
 		// Bonded-pair classification preserved in data exactly as in
-		// pfoa_present_adoption_events(): PFOA 0.1.168 routes the
+		// pfoa_present_adoption_events(): PFOA 0.1.209 routes the
 		// predicate through pfoa_adoption_event_is_bonded_pair_for_display()
-		// (stored bonded_pair + reciprocal raw-partner agreement, else the
+		// (valid stored classification wins; absent falls back to the
 		// strict helpers fail-closed); 3+ member events never bonded. The
 		// public badge below is conditional (0.1.86): red "Bonded Pair"
 		// for true bonded pairs, green "Adopted Together" for non-bonded
