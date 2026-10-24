@@ -1183,7 +1183,7 @@ function pfoa_homepage_cards_section() {
 					$card_summary_button = isset( $card['button'] ) && '' !== trim( (string) $card['button'] ) ? $card['button'] : '—';
 					?>
 						<li class="pfoa-homepage-cards-item">
-							<details class="pfoa-homepage-card-card"<?php echo 0 === $index ? ' open' : ''; ?>>
+							<details class="pfoa-homepage-card-card">
 								<summary class="pfoa-homepage-card-summary">
 									<span class="pfoa-homepage-card-badge"><?php printf( esc_html__( 'Card %d', 'pfoa-theme' ), $index + 1 ); ?></span>
 									<span class="pfoa-homepage-card-thumb"><?php echo $card_summary_thumb; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
@@ -4017,7 +4017,7 @@ function pfoa_site_homepage_page() {
 								$carousel_link_label = strlen( $carousel_link_url ) > 48 ? substr( $carousel_link_url, 0, 47 ) . '…' : $carousel_link_url;
 							}
 							?>
-							<details class="pfoa-hero-slide-card<?php echo $is_inactive_slot ? ' is-inactive' : ''; ?>"<?php echo 0 === $carousel_index ? ' open' : ''; ?>>
+							<details class="pfoa-hero-slide-card<?php echo $is_inactive_slot ? ' is-inactive' : ''; ?>">
 								<summary class="pfoa-hero-slide-summary">
 									<span class="pfoa-hero-slide-badge pfoa-hero-carousel-slot"><?php printf( esc_html__( 'Slide %d', 'pfoa-theme' ), $carousel_index + 1 ); ?></span>
 									<span class="pfoa-hero-slide-thumb"><?php echo $carousel_summary_thumb; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
@@ -4273,9 +4273,7 @@ function pfoa_site_homepage_page() {
 						</details>
 					</li>
 				</template>
-				<button type="button" class="button pfoa-hero-carousel-add"><?php esc_html_e( 'Add Images', 'pfoa-theme' ); ?></button>
 				<p class="description"><?php esc_html_e( 'Shown in order, up to the Number of Carousel Slides above (max 8 slots). Empty slots have their own Select Image button. Use Move Up and Move Down to reorder; the buttons stay the same on every image. Lowering the slide count only dims the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
-				<p class="pfoa-hero-carousel-limit-notice" style="display:none;color:#b32d2e;" role="status"><?php esc_html_e( 'Maximum 8 carousel slots. Remove a slot before adding another.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
 		<tr>

@@ -16,7 +16,6 @@
 ( function ( $ ) {
 	'use strict';
 
-	var carouselFrame = null;
 	var rowFrame = null;
 	var rowItem = null;
 	var labels = window.pfoaHeroAdmin || {};
@@ -639,60 +638,6 @@
 		}
 	}
 
-	function addCarouselItem( attachment ) {
-		if ( ! attachment || ! attachment.id ) {
-			return;
-		}
-
-		var id = parseInt( attachment.id, 10 );
-		var list = $( '.pfoa-hero-carousel-list' );
-
-		if ( ! list.length || list.find( '.pfoa-hero-carousel-id[value="' + id + '"]' ).length ) {
-			return;
-		}
-
-		if ( list.children( '.pfoa-hero-carousel-item' ).length >= PFOA_HERO_MAX_SLIDES ) {
-			$( '.pfoa-hero-carousel-limit-notice' ).show();
-			return;
-		}
-
-		$( '.pfoa-hero-carousel-limit-notice' ).hide();
-
-		var thumb = '';
-
-		if ( attachment.sizes && attachment.sizes.thumbnail && attachment.sizes.thumbnail.url ) {
-			thumb = '<img src="' + attachment.sizes.thumbnail.url + '" width="80" height="80" alt="" />';
-		} else if ( attachment.url ) {
-			thumb = '<img src="' + attachment.url + '" width="80" height="80" alt="" />';
-		}
-
-		var index = nextCarouselIndex( list );
-		var template = document.getElementById( 'pfoa-hero-carousel-template' );
-
-		if ( template && template.innerHTML ) {
-			var item = $( template.innerHTML.replace( /__INDEX__/g, String( index ) ) );
-
-			item.find( '.pfoa-hero-carousel-id' ).val( id );
-			item.find( '.pfoa-hero-carousel-preview' ).html( thumb );
-			item.find( '.pfoa-hero-slide-thumb' ).html( thumb || '<span class="pfoa-hero-slide-empty" aria-hidden="true"></span>' );
-			item.find( '.pfoa-hero-carousel-select' ).text( 'Replace Image' );
-			list.append( item );
-			openSlideCard( item );
-			refreshLinkType( item );
-			markSlideDirty( item );
-			refreshInactiveSlots();
-			return;
-		}
-
-		var fallback = $( fallbackCardHtml( index, thumb, 'Replace Image' ) );
-
-		fallback.find( '.pfoa-hero-carousel-id' ).val( id );
-		list.append( fallback );
-		refreshLinkType( fallback );
-		markSlideDirty( fallback );
-		refreshInactiveSlots();
-	}
-
 	function setCarouselRowImage( item, attachment ) {
 		if ( ! item || ! item.length || ! attachment || ! attachment.id ) {
 			return;
@@ -765,30 +710,6 @@
 		rowFrame.open();
 	} );
 
-	$( document ).on( 'click', '.pfoa-hero-carousel-add', function ( event ) {
-		event.preventDefault();
-
-		if ( carouselFrame ) {
-			carouselFrame.open();
-			return;
-		}
-
-		carouselFrame = wp.media( {
-			title: 'Add Hero Carousel Images',
-			button: { text: 'Add Images' },
-			library: { type: 'image' },
-			multiple: true
-		} );
-
-		carouselFrame.on( 'select', function () {
-			carouselFrame.state().get( 'selection' ).each( function ( attachment ) {
-				addCarouselItem( attachment.toJSON() );
-			} );
-		} );
-
-		carouselFrame.open();
-	} );
-
 	$( document ).on( 'click', '.pfoa-hero-carousel-up', function ( event ) {
 		event.preventDefault();
 
@@ -809,7 +730,6 @@
 		event.preventDefault();
 
 		$( this ).closest( '.pfoa-hero-carousel-item' ).remove();
-		$( '.pfoa-hero-carousel-limit-notice' ).hide();
 		refreshInactiveSlots();
 	} );
 
