@@ -1280,7 +1280,11 @@ function pfoa_get_hero_defaults() {
 
 	return array(
 		'mode'               => 'single',
-		'headline'           => __( 'Homepage', 'pfoa-theme' ),
+		// Global hero headline removed: each carousel slide owns its own
+		// headline. The 'headline' key stays for stored-shape BC (legacy
+		// stored values are dropped on next save); single-image/pinned
+		// rendering no longer reads it.
+		'headline'           => '',
 		'image_id'           => 0,
 		'image_link_page_id' => 0,
 		'image_link_type'    => 'none',
@@ -2194,7 +2198,7 @@ function pfoa_resolve_hero_link_type( $item ) {
  * empty destination.
  *
  * @param mixed  $item              Hero image item array with link_type/link_page_id/link_url/headline.
- * @param string $fallback_headline Headline to use when the item has none (e.g. global hero headline).
+ * @param string $fallback_headline Headline to use when the item has none (slide headline, then URL host).
  * @return array Array with 'url', 'title', and 'external' (bool) keys.
  */
 function pfoa_get_hero_slide_link( $item, $fallback_headline = '' ) {
@@ -2689,7 +2693,10 @@ function pfoa_sanitize_hero( $value ) {
 	$mode = isset( $value['mode'] ) ? sanitize_key( $value['mode'] ) : 'single';
 	$hero['mode'] = in_array( $mode, array( 'single', 'carousel' ), true ) ? $mode : 'single';
 
-	$hero['headline'] = isset( $value['headline'] ) ? sanitize_text_field( $value['headline'] ) : '';
+	// Global hero headline removed: the submitted headline is ignored and
+	// legacy stored values are dropped on next save. Each carousel slide
+	// owns its own headline; single-image/pinned rendering shows no headline.
+	$hero['headline'] = '';
 
 	$image_id = isset( $value['image_id'] ) ? absint( $value['image_id'] ) : 0;
 	$hero['image_id'] = ( $image_id && wp_attachment_is_image( $image_id ) ) ? $image_id : 0;
@@ -2844,9 +2851,10 @@ function pfoa_sanitize_hero( $value ) {
  * Return the effective homepage hero for a page.
  *
  * When no hero meta has been saved, the legacy effective content applies:
- * headline "Homepage" with the default Adopt/Volunteer destinations. Image
- * resolution (custom image, then featured image, then theme fallback banner)
- * happens in the template so the hero never renders empty.
+ * default Adopt/Volunteer destinations with no headline. Image resolution
+ * (custom image, then featured image, then theme fallback banner) happens
+ * in the template so the hero never renders empty. Each carousel slide owns
+ * its own headline; an empty slide headline shows no headline.
  *
  * @param int $post_id Page ID.
  * @return array
@@ -2860,10 +2868,6 @@ function pfoa_get_hero( $post_id ) {
 	}
 
 	$hero = pfoa_sanitize_hero( $saved );
-
-	if ( '' === $hero['headline'] ) {
-		$hero['headline'] = $defaults['headline'];
-	}
 
 	return $hero;
 }
@@ -3720,7 +3724,6 @@ function pfoa_site_homepage_page() {
 
 	$hero         = $front_id ? pfoa_get_hero( $front_id ) : pfoa_get_hero_defaults();
 	$mode         = in_array( $hero['mode'], array( 'single', 'carousel' ), true ) ? $hero['mode'] : 'single';
-	$headline     = isset( $hero['headline'] ) ? $hero['headline'] : '';
 	$image_id     = isset( $hero['image_id'] ) ? absint( $hero['image_id'] ) : 0;
 	$image_link_page_id = isset( $hero['image_link_page_id'] ) ? $hero['image_link_page_id'] : 0;
 
@@ -3810,10 +3813,6 @@ function pfoa_site_homepage_page() {
 		$pinned_slide_headline = isset( $carousel_items[ $featured_pin['slide'] - 1 ]['headline'] ) ? trim( (string) $carousel_items[ $featured_pin['slide'] - 1 ]['headline'] ) : '';
 	}
 
-	if ( '' === $pinned_slide_headline ) {
-		$pinned_slide_headline = $headline;
-	}
-
 	?>
 	<div class="wrap">
 		<h1><?php esc_html_e( 'Homepage', 'pfoa-theme' ); ?></h1>
@@ -3827,7 +3826,7 @@ function pfoa_site_homepage_page() {
 			<?php wp_nonce_field( 'pfoa_hero_save', 'pfoa_hero_nonce' ); ?>
 			<h2><?php esc_html_e( 'Hero Section', 'pfoa-theme' ); ?></h2>
 			<h3><?php esc_html_e( 'Hero Media', 'pfoa-theme' ); ?></h3>
-		<p><?php esc_html_e( 'Edit the hero section shown at the top of the site homepage. Each carousel image can have its own headline; images without one use the global hero headline. The buttons stay fixed while carousel images change behind them.', 'pfoa-theme' ); ?></p>
+		<p><?php esc_html_e( 'Edit the hero section shown at the top of the site homepage. Each carousel image has its own headline; images without one show no headline. The buttons stay fixed while carousel images change behind them.', 'pfoa-theme' ); ?></p>
 		<p class="submit">
 			<button type="submit" class="button button-primary" name="pfoa_hero_save" value="1"><?php esc_html_e( 'Save Homepage', 'pfoa-theme' ); ?></button>
 		</p>
@@ -4104,7 +4103,7 @@ function pfoa_site_homepage_page() {
 								<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
 								<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[headline]" value="<?php echo esc_attr( $carousel_headline ); ?>" />
 							</label>
-								<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
+								<p class="description"><?php esc_html_e( 'Optional. Leave blank to show no headline.', 'pfoa-theme' ); ?></p>
 							</section>
 							<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide appearance', 'pfoa-theme' ); ?>">
 								<h4 class="pfoa-hero-slide-heading"><?php esc_html_e( 'Appearance', 'pfoa-theme' ); ?></h4>
@@ -4232,7 +4231,7 @@ function pfoa_site_homepage_page() {
 						<?php esc_html_e( 'Hero headline', 'pfoa-theme' ); ?>
 						<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][__INDEX__][headline]" value="" />
 					</label>
-							<p class="description"><?php esc_html_e( 'Optional. Leave blank to use the global hero headline.', 'pfoa-theme' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Optional. Leave blank to show no headline.', 'pfoa-theme' ); ?></p>
 						</section>
 						<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide appearance', 'pfoa-theme' ); ?>">
 							<h4 class="pfoa-hero-slide-heading"><?php esc_html_e( 'Appearance', 'pfoa-theme' ); ?></h4>
@@ -4328,13 +4327,6 @@ function pfoa_site_homepage_page() {
 					<option value="7000"<?php selected( $carousel_interval_ms, 7000 ); ?>><?php esc_html_e( '7 seconds', 'pfoa-theme' ); ?></option>
 				</select>
 				<p class="description"><?php esc_html_e( 'Time each carousel image remains visible before advancing automatically.', 'pfoa-theme' ); ?></p>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><label for="pfoa-hero-headline"><?php esc_html_e( 'Global hero headline', 'pfoa-theme' ); ?></label></th>
-			<td>
-				<input type="text" id="pfoa-hero-headline" class="regular-text" name="pfoa_hero[headline]" value="<?php echo esc_attr( $headline ); ?>" />
-				<p class="description"><?php esc_html_e( 'Global hero headline — Used for Single Image mode and as the fallback for Carousel images without their own headline.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
 	</table>

@@ -1,13 +1,13 @@
 <?php
 /**
- * Homepage hero structure.
+ * Site hero structure.
  *
  * Content is editable via the "Hero Section" meta box on the page assigned
  * as the site homepage (stored as post meta). When nothing has been saved,
  * the legacy effective content renders: the page featured image (or the
- * theme fallback banner), the "Homepage" headline, and the Adopt/Volunteer
- * destinations. Each carousel image can have its own headline; images
- * without one fall back to the global hero headline. The buttons stay
+ * theme fallback banner) with no headline, and the Adopt/Volunteer
+ * destinations. Each carousel slide owns its own headline; an empty slide
+ * headline shows no headline. The buttons stay
  * fixed while carousel images change behind them.
  *
  * @package PFOA
@@ -20,7 +20,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 $hero = pfoa_get_hero( get_the_ID() );
 
 $hero_mode  = ( isset( $hero['mode'] ) && 'carousel' === $hero['mode'] ) ? 'carousel' : 'single';
-$hero_title = ( isset( $hero['headline'] ) && '' !== $hero['headline'] ) ? $hero['headline'] : __( 'Homepage', 'pfoa-theme' );
+// No global headline: each carousel slide owns its own headline.
+// Single-image/featured/fallback modes render no headline (empty h1 kept for aria-labelledby).
+$hero_title = '';
 $hero_ctas  = ( isset( $hero['ctas'] ) && is_array( $hero['ctas'] ) ) ? $hero['ctas'] : array();
 $hero_image = ( isset( $hero['image_id'] ) && wp_attachment_is_image( absint( $hero['image_id'] ) ) ) ? absint( $hero['image_id'] ) : 0;
 $hero_image_link = pfoa_get_hero_slide_link(
@@ -69,10 +71,7 @@ if ( 'carousel' === $hero_mode ) {
 		$slide_link_page_id = ( is_array( $raw_item ) && isset( $raw_item['link_page_id'] ) ) ? $raw_item['link_page_id'] : 0;
 
 		$slide_headline = ( is_array( $raw_item ) && isset( $raw_item['headline'] ) ) ? trim( $raw_item['headline'] ) : '';
-
-		if ( '' === $slide_headline ) {
-			$slide_headline = $hero_title;
-		}
+		// Each slide keeps its own headline, even when empty (no global fallback).
 
 		$slide_link = pfoa_get_hero_slide_link( is_array( $raw_item ) ? $raw_item : array( 'link_page_id' => $slide_link_page_id ), $slide_headline );
 
@@ -141,6 +140,9 @@ $hero_title_scale = 100;
 $hero_title_color = 'white';
 
 if ( $is_carousel ) {
+	// Pinned static slide shows that slide's headline; an empty slide
+	// headline renders an empty h1 (no headline) while still applying the
+	// slide's scale/color classes.
 	$hero_title = $carousel_slides[0]['headline'];
 	$hero_title_scale = isset( $carousel_slides[0]['headline_scale'] ) ? pfoa_sanitize_hero_headline_scale( $carousel_slides[0]['headline_scale'] ) : 100;
 	$hero_title_color = isset( $carousel_slides[0]['headline_color'] ) ? pfoa_sanitize_hero_headline_color( $carousel_slides[0]['headline_color'] ) : 'white';
@@ -377,6 +379,7 @@ if ( ! function_exists( 'pfoa_is_dine_out_promo_slide' ) ) {
 	<div class="wide-container homepage-hero__inner">
 		<div class="homepage-hero__content">
 			<p class="homepage-hero__site-name"><?php echo esc_html( get_bloginfo( 'name' ) ); ?></p>
+			<?php // H1 kept always for aria-labelledby; empty $hero_title renders no headline (single-image/featured/fallback and empty slide). ?>
 			<h1 id="homepage-hero-title" class="homepage-hero__title<?php echo $is_carousel ? ' scale-' . esc_attr( (string) $hero_title_scale ) . ' headline-' . esc_attr( $hero_title_color ) : ''; ?>"><?php echo esc_html( $hero_title ); ?></h1>
 
 			<?php if ( $hero_ctas ) : ?>
