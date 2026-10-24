@@ -1132,7 +1132,7 @@ function pfoa_homepage_cards_section() {
 
 	$cards = pfoa_get_homepage_cards();
 	?>
-		<h2><?php esc_html_e( 'Homepage Cards', 'pfoa-theme' ); ?></h2>
+		<h2 class="pfoa-homepage-section-heading"><?php esc_html_e( 'Homepage Cards', 'pfoa-theme' ); ?></h2>
 		<p><?php esc_html_e( 'Edit the cards shown in the homepage pathways section, in display order. Leave the list empty and save to restore the five default cards.', 'pfoa-theme' ); ?></p>
 		<?php settings_errors( 'pfoa_homepage_cards_messages' ); ?>
 		<form method="post" action="">
@@ -1163,6 +1163,8 @@ function pfoa_homepage_cards_section() {
 .pfoa-homepage-cards-list .pfoa-homepage-card-grid label{margin:0;}
 .pfoa-homepage-cards-list .pfoa-homepage-card-body input[type="text"],.pfoa-homepage-cards-list .pfoa-homepage-card-body select{max-width:100%;box-sizing:border-box;}
 .pfoa-homepage-cards-list .pfoa-homepage-card-actions{display:flex;gap:8px;flex-wrap:wrap;max-width:100%;}
+.pfoa-homepage-section-heading{font-size:1.3em;font-weight:600;margin:1em 0 .5em;line-height:1.4;}
+.pfoa-homepage-divider{border:0;border-top:1px solid #dcdcde;margin:16px 0 12px;}
 </style>
 			<ul class="pfoa-homepage-cards-list">
 					<?php foreach ( $cards as $index => $card ) : ?>
@@ -3843,6 +3845,8 @@ function pfoa_site_homepage_page() {
 			.pfoa-hero-display-grid .pfoa-hero-field select{max-width:100%;}
 			.pfoa-hero-display-grid .description{margin:4px 0 0;}
 			.pfoa-hero-display-grid .pfoa-hero-pin-mode{margin-top:8px;}
+			.pfoa-homepage-section-heading{font-size:1.3em;font-weight:600;margin:1em 0 .5em;line-height:1.4;}
+			.pfoa-homepage-divider{border:0;border-top:1px solid #dcdcde;margin:16px 0 12px;}
 			@media (max-width:782px){.pfoa-hero-display-grid{grid-template-columns:1fr;}}
 			</style>
 		<p class="description"><?php esc_html_e( 'Carousel images, headlines, and buttons shown at the top of the homepage.', 'pfoa-theme' ); ?></p>
@@ -3851,7 +3855,7 @@ function pfoa_site_homepage_page() {
 				<span class="pfoa-hero-display-summary" role="status"></span>
 			</div>
 			<details class="pfoa-hero-display">
-				<summary><?php esc_html_e( 'Display Settings', 'pfoa-theme' ); ?> <span class="pfoa-hero-display-summary"></span></summary>
+				<summary><?php esc_html_e( 'Hero Display Settings', 'pfoa-theme' ); ?> <span class="pfoa-hero-display-summary"></span></summary>
 				<div class="pfoa-hero-display-grid">
 					<div class="pfoa-hero-field">
 						<label for="pfoa-hero-carousel-slide-count"><?php esc_html_e( 'Number of Carousel Slides', 'pfoa-theme' ); ?></label>
@@ -3930,7 +3934,8 @@ function pfoa_site_homepage_page() {
 					</div>
 				</div>
 			</details>
-			<h3><?php esc_html_e( 'Carousel slides', 'pfoa-theme' ); ?></h3>
+			<hr class="pfoa-homepage-divider" />
+			<h3 class="pfoa-homepage-section-heading"><?php esc_html_e( 'Carousel slides', 'pfoa-theme' ); ?></h3>
 				<style>
 .pfoa-hero-carousel-list{list-style:none;margin:0 0 12px;padding:0;max-width:100%;}
 .pfoa-hero-carousel-list .pfoa-hero-carousel-item{margin:0 0 12px;padding:0;max-width:100%;}
@@ -4287,8 +4292,9 @@ function pfoa_site_homepage_page() {
 						</details>
 					</li>
 				</template>
-				<p class="description"><?php esc_html_e( 'Shown in order, up to the slide count above (max 8). Use Move Up and Move Down to reorder.', 'pfoa-theme' ); ?></p>
- 	<h4><?php esc_html_e( 'Shortcut buttons', 'pfoa-theme' ); ?></h4>
+			<p class="description"><?php esc_html_e( 'Shown in order, up to the slide count above (max 8). Use Move Up and Move Down to reorder.', 'pfoa-theme' ); ?></p>
+			<hr class="pfoa-homepage-divider" />
+  	<h3 class="pfoa-homepage-section-heading"><?php esc_html_e( 'Hero Image Shortcut Buttons', 'pfoa-theme' ); ?></h3>
 	<table class="widefat striped">
 		<thead>
 			<tr>
@@ -4335,7 +4341,7 @@ function pfoa_site_homepage_page() {
 			</p>
 		</form>
 		<?php endif; ?>
-		<hr />
+		<hr class="pfoa-homepage-divider" />
 		<?php pfoa_homepage_cards_section(); ?>
 	</div>
 	<?php
