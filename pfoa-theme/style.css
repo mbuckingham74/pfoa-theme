@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-           Version: 0.1.232
+           Version: 0.1.233
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -7399,6 +7399,98 @@ body.page-id-11290 .page-content .entry-content span.pfoa-hf-archive__sep {
 	}
 	body.page-id-11290 .page-content .entry-content details.pfoa-hf-range:not([open]) > summary::after {
 		content: "–";
+	}
+}
+
+/* PFOA 0.1.233 — From the Home Front archive article-row grid
+ * (page-id-11290 only, https://dev.safehavenpfoa.org/fromthehomefront-2/).
+ * Restyles the 0.1.221 expandable date-range disclosure content as a 2-column
+ * grid of consistently styled clickable article rows: the grid replaces the
+ * wrapping underline link list, while the bordered card, pale-tinted summary
+ * bar, 2026 date range + count + +/– affordance, and native <details>
+ * behavior are untouched. Each row is the <a> itself (ordering, exact Week
+ * NNN titles, hrefs, and new-tab behavior preserved): bold "Week NNN" badge
+ * prefix (span.pfoa-hf-week, added by pfoa-home-front-archive.js without
+ * changing visible text order or DB content) in brand-dark on a tinted pill,
+ * left-aligned title (span.pfoa-hf-title), subtle border + light background,
+ * comfortable 52px click targets at ~17px for older readers. The small "↗"
+ * external indicator is a CSS ::after (never in the accessibility tree, so
+ * screen-reader aria-labels are unaffected) in muted tone. Middot separators
+ * stay in the DOM but are hidden — the grid rows remain fully readable with
+ * CSS on and without JS (unwrapped links render as plain full-text rows);
+ * print keeps the open-details behavior from 0.1.221 with a single-column
+ * row stack. Palette vars only; Pet Tidings 4799 rules untouched.
+ * Every selector below starts with body.page-id-11290. */
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	align-items: stretch;
+	gap: 0.6rem;
+}
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	min-height: 52px;
+	margin: 0;
+	padding: 0.6rem 0.75rem;
+	border: 1px solid var(--pfoa-border-default);
+	border-radius: var(--pfoa-radius);
+	background: var(--pfoa-surface-subtle);
+	color: var(--pfoa-text-primary);
+	font-size: 1.0625rem;
+	line-height: 1.4;
+	text-decoration: none;
+}
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:hover {
+	background: var(--pfoa-color-background);
+}
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:hover span.pfoa-hf-title {
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+}
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a::after {
+	content: "↗";
+	flex: none;
+	margin-inline-start: auto;
+	color: var(--pfoa-color-muted);
+	font-size: 0.9em;
+	line-height: 1;
+}
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list span.pfoa-hf-week {
+	flex: none;
+	white-space: nowrap;
+	font-weight: 700;
+	font-size: 0.9375rem;
+	line-height: 1.4;
+	color: var(--pfoa-color-brand-dark);
+	background: var(--pfoa-surface-tinted);
+	border: 1px solid var(--pfoa-border-default);
+	border-radius: calc(var(--pfoa-radius) - 1px);
+	padding: 0.15rem 0.5rem;
+}
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list span.pfoa-hf-title {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+body.page-id-11290 .page-content .entry-content span.pfoa-hf-archive__sep {
+	display: none;
+}
+@media (max-width: 640px) {
+	body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a {
+		min-height: 48px;
+	}
+}
+@media print {
+	body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0.4rem;
+	}
+	body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a {
+		background: transparent;
 	}
 }
 

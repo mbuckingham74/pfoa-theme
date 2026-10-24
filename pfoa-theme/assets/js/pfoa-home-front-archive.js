@@ -12,9 +12,53 @@
  * p.pfoa-hf-archive__list paragraph variant) and the featured CTA container;
  * hash-only links are skipped.
  * No-ops off body.page-id-11290 or without archive links.
+ *
+ * PFOA 0.1.233 — presentation only: wraps the leading "Week NNN:" prefix of
+ * each archive-listing link in span.pfoa-hf-week and the remainder in
+ * span.pfoa-hf-title so the 0.1.233 article-row grid can style the week badge
+ * without changing DB content or visible text order. Idempotent (skips links
+ * already wrapped), skips hash-only links and links with rich markup,
+ * preserves aria-labels and other attributes, archive-listing links only
+ * (featured CTA untouched), no-ops off body.page-id-11290.
  */
 (function () {
 	'use strict';
+
+	function wrapWeekPrefix(link) {
+		if (link.querySelector('span.pfoa-hf-week')) {
+			return;
+		}
+
+		var href = link.getAttribute('href');
+
+		if (!href || '#' === href.charAt(0)) {
+			return;
+		}
+
+		if (link.children.length > 0) {
+			return;
+		}
+
+		var text = link.textContent || '';
+		var match = text.match(/^\s*(Week\s+\d+\s*:)\s*([\s\S]*)$/);
+
+		if (!match) {
+			return;
+		}
+
+		link.textContent = '';
+
+		var week = document.createElement('span');
+		week.className = 'pfoa-hf-week';
+		week.textContent = match[1];
+
+		var title = document.createElement('span');
+		title.className = 'pfoa-hf-title';
+		title.textContent = match[2];
+
+		link.appendChild(week);
+		link.appendChild(title);
+	}
 
 	function init() {
 		if (typeof document === 'undefined' || !document.querySelectorAll) {
@@ -47,6 +91,12 @@
 			}
 
 			link.setAttribute('rel', tokens.join(' '));
+		}
+
+		var archiveLinks = document.querySelectorAll('div.pfoa-hf-archive a, p.pfoa-hf-archive__list a');
+
+		for (var j = 0; j < archiveLinks.length; j++) {
+			wrapWeekPrefix(archiveLinks[j]);
 		}
 	}
 
