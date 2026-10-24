@@ -19,19 +19,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $hero = pfoa_get_hero( get_the_ID() );
 
-$hero_mode  = ( isset( $hero['mode'] ) && 'carousel' === $hero['mode'] ) ? 'carousel' : 'single';
 // No global headline: each carousel slide owns its own headline.
-// Single-image/featured/fallback modes render no headline (empty h1 kept for aria-labelledby).
+// Featured/fallback rendering shows no headline (empty h1 kept for aria-labelledby).
 $hero_title = '';
 $hero_ctas  = ( isset( $hero['ctas'] ) && is_array( $hero['ctas'] ) ) ? $hero['ctas'] : array();
-$hero_image = ( isset( $hero['image_id'] ) && wp_attachment_is_image( absint( $hero['image_id'] ) ) ) ? absint( $hero['image_id'] ) : 0;
-$hero_image_link = pfoa_get_hero_slide_link(
-	array(
-		'link_type'    => isset( $hero['image_link_type'] ) ? $hero['image_link_type'] : null,
-		'link_page_id' => isset( $hero['image_link_page_id'] ) ? $hero['image_link_page_id'] : 0,
-		'link_url'     => isset( $hero['image_link_url'] ) ? $hero['image_link_url'] : '',
-	)
-);
 
 $uploads           = wp_get_upload_dir();
 $fallback_hero     = trailingslashit( $uploads['baseurl'] ) . '2026/09/A1KittensBanner.jpg';
@@ -40,7 +31,7 @@ $has_fallback_hero = ! empty( $fallback_hero );
 $carousel_slides = array();
 $carousel_slide_count = isset( $hero['carousel_slide_count'] ) ? pfoa_sanitize_hero_carousel_slide_count( $hero['carousel_slide_count'] ) : 3;
 
-if ( 'carousel' === $hero_mode ) {
+{
 	$raw_items = array();
 
 	if ( isset( $hero['carousel_items'] ) && is_array( $hero['carousel_items'] ) && array() !== $hero['carousel_items'] ) {
@@ -119,7 +110,7 @@ if ( 'carousel' === $hero_mode ) {
 // the pinned hero (or the rotation) until the cached page expires or is
 // flushed; no cache flush or no-cache handling is added here, so a timed pin
 // can remain visible up to one cache TTL past expiry on cached pages.
-$pinned_slide_id = ( 'carousel' === $hero_mode ) ? pfoa_get_hero_pinned_slide_id( $hero ) : 0;
+$pinned_slide_id = pfoa_get_hero_pinned_slide_id( $hero );
 $is_pinned       = false;
 
 if ( $pinned_slide_id ) {
@@ -148,7 +139,6 @@ if ( $is_carousel ) {
 	$hero_title_color = isset( $carousel_slides[0]['headline_color'] ) ? pfoa_sanitize_hero_headline_color( $carousel_slides[0]['headline_color'] ) : 'white';
 }
 
-$has_custom_image   = 0 !== $hero_image;
 $has_featured_image = has_post_thumbnail();
 
 $hero_classes = array( 'homepage-section', 'homepage-hero' );
@@ -161,7 +151,7 @@ if ( $is_pinned ) {
 	$hero_classes[] = 'homepage-hero--pinned';
 }
 
-if ( ! $is_carousel && ! $has_custom_image && ! $has_featured_image && ! $has_fallback_hero ) {
+if ( ! $is_carousel && ! $has_featured_image && ! $has_fallback_hero ) {
 	$hero_classes[] = 'homepage-hero--no-image';
 }
 
@@ -324,37 +314,6 @@ if ( ! function_exists( 'pfoa_is_dine_out_promo_slide' ) ) {
 				</div>
 			<?php endforeach; ?>
 		</div>
-	<?php elseif ( $has_custom_image ) : ?>
-		<div class="homepage-hero__media">
-			<?php
-			echo wp_get_attachment_image(
-				$hero_image,
-				'full',
-				false,
-				array(
-					'class'         => 'homepage-hero__image',
-					'loading'       => 'eager',
-					'decoding'      => 'async',
-					'fetchpriority' => 'high',
-				)
-			);
-			?>
-			<span class="homepage-hero__scrim" aria-hidden="true"></span>
-			<?php if ( '' !== $hero_image_link['url'] ) : ?>
-				<?php
-				$single_label = '' !== $hero_image_link['title'] ? sprintf( __( 'Open page: %s', 'pfoa-theme' ), $hero_image_link['title'] ) : __( 'Open linked page', 'pfoa-theme' );
-
-				if ( ! empty( $hero_image_link['external'] ) ) {
-					$single_label = sprintf(
-						/* translators: %s: external link title or host. */
-						__( 'Open external link: %s, opens in new tab', 'pfoa-theme' ),
-						'' !== $hero_image_link['title'] ? $hero_image_link['title'] : $hero_image_link['url']
-					);
-				}
-				?>
-				<a class="homepage-hero__media-link" href="<?php echo esc_url( $hero_image_link['url'] ); ?>" aria-label="<?php echo esc_attr( $single_label ); ?>"<?php echo ! empty( $hero_image_link['external'] ) ? ' target="_blank" rel="noopener noreferrer"' : ''; ?>></a>
-			<?php endif; ?>
-		</div>
 	<?php elseif ( $has_featured_image ) : ?>
 		<div class="homepage-hero__media">
 			<?php
@@ -379,7 +338,7 @@ if ( ! function_exists( 'pfoa_is_dine_out_promo_slide' ) ) {
 	<div class="wide-container homepage-hero__inner">
 		<div class="homepage-hero__content">
 			<p class="homepage-hero__site-name"><?php echo esc_html( get_bloginfo( 'name' ) ); ?></p>
-			<?php // H1 kept always for aria-labelledby; empty $hero_title renders no headline (single-image/featured/fallback and empty slide). ?>
+			<?php // H1 kept always for aria-labelledby; empty $hero_title renders no headline (featured/fallback and empty slide). ?>
 			<h1 id="homepage-hero-title" class="homepage-hero__title<?php echo $is_carousel ? ' scale-' . esc_attr( (string) $hero_title_scale ) . ' headline-' . esc_attr( $hero_title_color ) : ''; ?>"><?php echo esc_html( $hero_title ); ?></h1>
 
 			<?php if ( $hero_ctas ) : ?>

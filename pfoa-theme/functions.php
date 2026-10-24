@@ -182,7 +182,7 @@ function pfoa_enqueue_assets() {
 		if ( $front_page_id ) {
 			$front_hero = pfoa_get_hero( $front_page_id );
 
-			if ( 'carousel' === $front_hero['mode'] && array() !== $front_hero['carousel_ids'] ) {
+			if ( array() !== $front_hero['carousel_ids'] ) {
 				$hero_script = get_template_directory() . '/assets/js/homepage-hero.js';
 
 				if ( file_exists( $hero_script ) ) {
@@ -1230,12 +1230,12 @@ function pfoa_homepage_cards_page() {
  * Meta key storing the editable homepage hero as a single array.
  *
  * Shape: array(
- *   'mode'               => 'single' | 'carousel',
+ *   'mode'               => 'carousel' (legacy stored 'single' values normalize to 'carousel'; no mode control remains),
  *   'headline'           => string,
- *   'image_id'           => int (attachment ID),
- *   'image_link_page_id' => int|string (published page/Cat Profile post ID, or 'pair:<lower-id>:<upper-id>' bonded-pair token; 0 = not clickable),
- *   'image_link_type'    => 'internal' | 'external' | 'none' (missing legacy rows resolve as internal when image_link_page_id is non-zero, else none),
- *   'image_link_url'     => string (absolute http/https URL used when image_link_type is 'external'; '' = no link),
+ *   'image_id'           => int (legacy Single Image attachment ID, stored-shape BC only; always 0 after save, no longer edited),
+ *   'image_link_page_id' => int|string (legacy Single Image destination, stored-shape BC only; always 0 after save, no longer edited),
+ *   'image_link_type'    => 'internal' | 'external' | 'none' (legacy Single Image link type, stored-shape BC only; always 'none' after save, no longer edited),
+ *   'image_link_url'     => string (legacy Single Image external URL, stored-shape BC only; always '' after save, no longer edited),
  *   'featured_pin'       => array( 'slide' => 0|1-5 (1-based position at save; 0 = normal rotation), 'attachment_id' => int (snapshot), 'mode' => 'none'|'timed'|'indefinite', 'expires_at' => int (UTC timestamp, site-local via current_time), 'created_at' => int ),
  *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
  *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int|string (page/Cat Profile post ID or 'pair:<a>:<b>' bonded-pair token), 'link_type' => 'internal'|'external'|'none' (missing legacy rows resolve as internal when link_page_id is non-zero, else none), 'link_url' => string (absolute http/https URL used when link_type is 'external'), 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 50|60|70|80|90|100|110|120, 'headline_color' => 'white'|'black', 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
@@ -1279,12 +1279,15 @@ function pfoa_get_hero_defaults() {
 	}
 
 	return array(
-		'mode'               => 'single',
+		'mode'               => 'carousel',
 		// Global hero headline removed: each carousel slide owns its own
 		// headline. The 'headline' key stays for stored-shape BC (legacy
 		// stored values are dropped on next save); single-image/pinned
 		// rendering no longer reads it.
 		'headline'           => '',
+		// Legacy Single Image controls removed: the carousel is the sole
+		// administrative source for hero images. These keys stay for
+		// stored-shape BC (legacy stored values are dropped on next save).
 		'image_id'           => 0,
 		'image_link_page_id' => 0,
 		'image_link_type'    => 'none',
@@ -2433,27 +2436,17 @@ function pfoa_get_hero_pinned_slide_id( $hero ) {
  * Scan a raw submitted hero value for external URLs that sanitize to empty.
  *
  * Used by the save handler to surface admin feedback (query-flagged notice
- * naming the single image / slide number) without blocking the rest of the
+ * naming the slide number) without blocking the rest of the
  * save; the invalid URL itself still sanitizes to '' (no link).
  *
  * @param mixed $raw Raw submitted pfoa_hero value (unslashed).
- * @return string[] 'single' and/or 1-based slide numbers (as strings) with invalid external URLs.
+ * @return string[] 1-based slide numbers (as strings) with invalid external URLs.
  */
 function pfoa_find_hero_invalid_external_links( $raw ) {
 	$bad = array();
 
 	if ( ! is_array( $raw ) ) {
 		return $bad;
-	}
-
-	$single_type = isset( $raw['image_link_type'] ) ? strtolower( trim( (string) $raw['image_link_type'] ) ) : '';
-
-	if ( 'external' === $single_type ) {
-		$single_url = isset( $raw['image_link_url'] ) ? trim( (string) $raw['image_link_url'] ) : '';
-
-		if ( '' !== $single_url && '' === pfoa_sanitize_hero_external_url( $single_url ) ) {
-			$bad[] = 'single';
-		}
 	}
 
 	if ( isset( $raw['carousel_items'] ) && is_array( $raw['carousel_items'] ) ) {
@@ -2666,7 +2659,7 @@ function pfoa_sanitize_hero_carousel_slide_count( $value ) {
  */
 function pfoa_sanitize_hero( $value ) {
 	$hero = array(
-		'mode'               => 'single',
+		'mode'               => 'carousel',
 		'headline'           => '',
 		'image_id'           => 0,
 		'image_link_page_id' => 0,
@@ -2690,27 +2683,21 @@ function pfoa_sanitize_hero( $value ) {
 		return $hero;
 	}
 
-	$mode = isset( $value['mode'] ) ? sanitize_key( $value['mode'] ) : 'single';
-	$hero['mode'] = in_array( $mode, array( 'single', 'carousel' ), true ) ? $mode : 'single';
+	// Legacy Single Image controls removed: the carousel is the sole
+	// administrative source for hero images. Submitted mode/image values
+	// are ignored and legacy stored values are dropped on next save.
+	$hero['mode'] = 'carousel';
 
 	// Global hero headline removed: the submitted headline is ignored and
 	// legacy stored values are dropped on next save. Each carousel slide
-	// owns its own headline; single-image/pinned rendering shows no headline.
+	// owns its own headline; pinned rendering shows the pinned slide's
+	// headline, and rotation shows each slide's own headline.
 	$hero['headline'] = '';
 
-	$image_id = isset( $value['image_id'] ) ? absint( $value['image_id'] ) : 0;
-	$hero['image_id'] = ( $image_id && wp_attachment_is_image( $image_id ) ) ? $image_id : 0;
-
-	$hero['image_link_page_id'] = isset( $value['image_link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $value['image_link_page_id'] ) : 0;
-
-	$hero['image_link_type'] = pfoa_resolve_hero_link_type(
-		array(
-			'link_type'    => isset( $value['image_link_type'] ) ? $value['image_link_type'] : null,
-			'link_page_id' => $hero['image_link_page_id'],
-		)
-	);
-
-	$hero['image_link_url'] = isset( $value['image_link_url'] ) ? pfoa_sanitize_hero_external_url( $value['image_link_url'] ) : '';
+	$hero['image_id']           = 0;
+	$hero['image_link_page_id'] = 0;
+	$hero['image_link_type']    = 'none';
+	$hero['image_link_url']     = '';
 
 	$hero['featured_pin'] = pfoa_sanitize_hero_featured_pin( isset( $value['featured_pin'] ) ? $value['featured_pin'] : array() );
 
@@ -2852,7 +2839,7 @@ function pfoa_sanitize_hero( $value ) {
  *
  * When no hero meta has been saved, the legacy effective content applies:
  * default Adopt/Volunteer destinations with no headline. Image resolution
- * (custom image, then featured image, then theme fallback banner) happens
+ * (featured image, then theme fallback banner) happens
  * in the template so the hero never renders empty. Each carousel slide owns
  * its own headline; an empty slide headline shows no headline.
  *
@@ -3694,14 +3681,7 @@ function pfoa_site_homepage_page() {
 		$warning_tokens = array_filter( array_map( 'trim', explode( ',', wp_unslash( $_GET['pfoa-hero-link-warning'] ) ) ) );
 
 		foreach ( $warning_tokens as $warning_token ) {
-			if ( 'single' === $warning_token ) {
-				add_settings_error(
-					'pfoa_homepage_messages',
-					'pfoa_hero_link_single_invalid',
-					esc_html__( 'Single image: the external URL was invalid, so its link was removed. The rest of the homepage saved normally.', 'pfoa-theme' ),
-					'warning'
-				);
-			} elseif ( ctype_digit( $warning_token ) && (int) $warning_token >= 1 ) {
+			if ( ctype_digit( $warning_token ) && (int) $warning_token >= 1 ) {
 				add_settings_error(
 					'pfoa_homepage_messages',
 					'pfoa_hero_link_slide_invalid_' . $warning_token,
@@ -3723,20 +3703,6 @@ function pfoa_site_homepage_page() {
 	}
 
 	$hero         = $front_id ? pfoa_get_hero( $front_id ) : pfoa_get_hero_defaults();
-	$mode         = in_array( $hero['mode'], array( 'single', 'carousel' ), true ) ? $hero['mode'] : 'single';
-	$image_id     = isset( $hero['image_id'] ) ? absint( $hero['image_id'] ) : 0;
-	$image_link_page_id = isset( $hero['image_link_page_id'] ) ? $hero['image_link_page_id'] : 0;
-
-	if ( ! is_string( $image_link_page_id ) ) {
-		$image_link_page_id = absint( $image_link_page_id );
-	}
-	$image_link_type = pfoa_resolve_hero_link_type(
-		array(
-			'link_type'    => isset( $hero['image_link_type'] ) ? $hero['image_link_type'] : null,
-			'link_page_id' => $image_link_page_id,
-		)
-	);
-	$image_link_url = isset( $hero['image_link_url'] ) ? (string) $hero['image_link_url'] : '';
 	$carousel_ids = ( isset( $hero['carousel_ids'] ) && is_array( $hero['carousel_ids'] ) ) ? $hero['carousel_ids'] : array();
 	$carousel_interval_ms = isset( $hero['carousel_interval_ms'] ) ? pfoa_sanitize_hero_carousel_interval_ms( $hero['carousel_interval_ms'] ) : 5000;
 	$carousel_slide_count = isset( $hero['carousel_slide_count'] ) ? pfoa_sanitize_hero_carousel_slide_count( $hero['carousel_slide_count'] ) : 3;
@@ -3803,7 +3769,6 @@ function pfoa_site_homepage_page() {
 	}
 
 	$ctas         = ( isset( $hero['ctas'] ) && is_array( $hero['ctas'] ) ) ? $hero['ctas'] : array();
-	$preview      = $image_id ? wp_get_attachment_image( $image_id, array( 80, 80 ) ) : '';
 
 	$featured_pin      = pfoa_sanitize_hero_featured_pin( isset( $hero['featured_pin'] ) ? $hero['featured_pin'] : array() );
 	$pinned_slide_id   = pfoa_get_hero_pinned_slide_id( $hero );
@@ -3831,55 +3796,6 @@ function pfoa_site_homepage_page() {
 			<button type="submit" class="button button-primary" name="pfoa_hero_save" value="1"><?php esc_html_e( 'Save Homepage', 'pfoa-theme' ); ?></button>
 		</p>
 	<table class="form-table" role="presentation">
-		<tr>
-			<th scope="row"><?php esc_html_e( 'Hero media mode', 'pfoa-theme' ); ?></th>
-			<td>
-				<fieldset>
-					<label>
-						<input type="radio" name="pfoa_hero[mode]" value="single"<?php checked( $mode, 'single' ); ?> />
-						<?php esc_html_e( 'Single Image', 'pfoa-theme' ); ?>
-					</label><br />
-					<label>
-						<input type="radio" name="pfoa_hero[mode]" value="carousel"<?php checked( $mode, 'carousel' ); ?> />
-						<?php esc_html_e( 'Carousel', 'pfoa-theme' ); ?>
-					</label>
-				</fieldset>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php esc_html_e( 'Single image', 'pfoa-theme' ); ?></th>
-			<td class="pfoa-hero-single-cell">
-				<input type="hidden" class="pfoa-hero-single-id" name="pfoa_hero[image_id]" value="<?php echo esc_attr( (string) $image_id ); ?>" />
-				<span class="pfoa-hero-single-preview"><?php echo $preview ? $preview : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
-				<button type="button" class="button pfoa-hero-single-select"><?php echo $preview ? esc_html__( 'Replace', 'pfoa-theme' ) : esc_html__( 'Select Image', 'pfoa-theme' ); ?></button>
-				<button type="button" class="button pfoa-hero-single-remove"<?php echo $preview ? '' : ' style="display:none;"'; ?>><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
-				<p class="description"><?php esc_html_e( 'Shown when Single Image mode is selected. If empty, the page featured image (or the theme fallback banner) is used.', 'pfoa-theme' ); ?></p>
-				<fieldset class="pfoa-hero-link-type-group">
-					<legend><?php esc_html_e( 'Link destination type', 'pfoa-theme' ); ?></legend>
-					<label>
-						<input type="radio" class="pfoa-hero-link-type-input" name="pfoa_hero[image_link_type]" value="internal"<?php checked( $image_link_type, 'internal' ); ?> />
-						<?php esc_html_e( 'Internal', 'pfoa-theme' ); ?>
-					</label>
-					<label>
-						<input type="radio" class="pfoa-hero-link-type-input" name="pfoa_hero[image_link_type]" value="external"<?php checked( $image_link_type, 'external' ); ?> />
-						<?php esc_html_e( 'External URL', 'pfoa-theme' ); ?>
-					</label>
-					<label>
-						<input type="radio" class="pfoa-hero-link-type-input" name="pfoa_hero[image_link_type]" value="none"<?php checked( $image_link_type, 'none' ); ?> />
-						<?php esc_html_e( 'No Link', 'pfoa-theme' ); ?>
-					</label>
-				</fieldset>
-				<p class="pfoa-hero-link-internal-wrap"<?php echo 'internal' === $image_link_type ? '' : ' style="display:none;"'; ?>>
-					<label for="pfoa-hero-image-link"><?php esc_html_e( 'Image destination', 'pfoa-theme' ); ?></label><br />
-					<?php pfoa_render_hero_link_selector( 'pfoa_hero[image_link_page_id]', $image_link_page_id, 'pfoa-hero-image-link' ); ?>
-				</p>
-				<p class="pfoa-hero-link-external-wrap"<?php echo 'external' === $image_link_type ? '' : ' style="display:none;"'; ?>>
-					<label for="pfoa-hero-image-link-url"><?php esc_html_e( 'External URL', 'pfoa-theme' ); ?></label><br />
-					<input type="url" id="pfoa-hero-image-link-url" class="regular-text pfoa-hero-link-url-input" name="pfoa_hero[image_link_url]" value="<?php echo esc_attr( $image_link_url ); ?>" placeholder="https://" />
-				</p>
-				<p class="description"><?php esc_html_e( 'Optional. Clicking the hero image opens the selected page, Cat Profile, bonded pair, or external URL.', 'pfoa-theme' ); ?></p>
-			</td>
-		</tr>
 		<tr>
 			<th scope="row"><label for="pfoa-hero-carousel-slide-count"><?php esc_html_e( 'Number of Carousel Slides', 'pfoa-theme' ); ?></label></th>
 			<td>
@@ -4314,7 +4230,7 @@ function pfoa_site_homepage_page() {
 					</li>
 				</template>
 				<button type="button" class="button pfoa-hero-carousel-add"><?php esc_html_e( 'Add Images', 'pfoa-theme' ); ?></button>
-				<p class="description"><?php esc_html_e( 'Shown in order when Carousel mode is selected, up to the Number of Carousel Slides above (max 5 slots). Empty slots have their own Select Image button. Use Move Up and Move Down to reorder; the buttons stay the same on every image. Lowering the slide count only dims the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Shown in order, up to the Number of Carousel Slides above (max 5 slots). Empty slots have their own Select Image button. Use Move Up and Move Down to reorder; the buttons stay the same on every image. Lowering the slide count only dims the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
 				<p class="pfoa-hero-carousel-limit-notice" style="display:none;color:#b32d2e;" role="status"><?php esc_html_e( 'Maximum 5 carousel slots. Remove a slot before adding another.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
@@ -4510,8 +4426,8 @@ add_action( 'admin_post_pfoa_homepage_hero_save', 'pfoa_homepage_hero_save' );
  * Structural changes (add/remove/reorder) are rejected with an actionable
  * error directing the admin to Save Homepage; only the matched slide's
  * config fields are replaced. Everything else in the stored hero array
- * (featured_pin verbatim — no pin expiry re-resolution — mode, headlines,
- * ctas, interval, slide count) is preserved.
+ * (featured_pin verbatim — no pin expiry re-resolution — mode, ctas,
+ * interval, slide count) is preserved.
  *
  * Request (POST):
  *   nonce, post_id, slide_key ("0" = new slot), position (int DOM index),

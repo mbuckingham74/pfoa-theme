@@ -2,7 +2,7 @@
  * Hero Section picker and list controls.
  *
  * Native wp.media only, mirroring the Homepage Cards admin pattern:
- * single-image select/replace/remove, carousel add-from-library with
+ * carousel add-from-library with
  * Move Up/Move Down/Remove buttons (no drag), and an editable ordered
  * button list with the same up/down/remove controls. All edits persist
  * with the normal page save; nothing is submitted separately.
@@ -16,8 +16,6 @@
 ( function ( $ ) {
 	'use strict';
 
-	var singleFrame = null;
-	var singleCell = null;
 	var carouselFrame = null;
 	var rowFrame = null;
 	var rowItem = null;
@@ -82,65 +80,6 @@
 	function linkWarningNote() {
 		return labels.linkWarning || '— External URL was invalid, so its link was removed.';
 	}
-
-	function setSingleImage( cell, attachment ) {
-		var idInput = cell.find( '.pfoa-hero-single-id' );
-		var preview = cell.find( '.pfoa-hero-single-preview' );
-		var selectButton = cell.find( '.pfoa-hero-single-select' );
-		var removeButton = cell.find( '.pfoa-hero-single-remove' );
-
-		if ( attachment && attachment.id ) {
-			idInput.val( attachment.id );
-			if ( attachment.sizes && attachment.sizes.thumbnail && attachment.sizes.thumbnail.url ) {
-				preview.html( '<img src="' + attachment.sizes.thumbnail.url + '" width="80" height="80" alt="" />' );
-			} else if ( attachment.url ) {
-				preview.html( '<img src="' + attachment.url + '" width="80" height="80" alt="" />' );
-			}
-			selectButton.text( 'Replace' );
-			removeButton.show();
-		} else {
-			idInput.val( '0' );
-			preview.empty();
-			selectButton.text( 'Select Image' );
-			removeButton.hide();
-		}
-	}
-
-	$( document ).on( 'click', '.pfoa-hero-single-select', function ( event ) {
-		event.preventDefault();
-
-		singleCell = $( this ).closest( '.pfoa-hero-single-cell' );
-
-		if ( singleFrame ) {
-			singleFrame.open();
-			return;
-		}
-
-		singleFrame = wp.media( {
-			title: 'Select Hero Image',
-			button: { text: 'Use Image' },
-			library: { type: 'image' },
-			multiple: false
-		} );
-
-		singleFrame.on( 'select', function () {
-			var attachment = singleFrame.state().get( 'selection' ).first();
-			if ( attachment && singleCell && singleCell.length ) {
-				setSingleImage( singleCell, attachment.toJSON() );
-			}
-		} );
-
-		singleFrame.open();
-	} );
-
-	$( document ).on( 'click', '.pfoa-hero-single-remove', function ( event ) {
-		event.preventDefault();
-
-		var cell = $( this ).closest( '.pfoa-hero-single-cell' );
-		if ( cell.length ) {
-			setSingleImage( cell, null );
-		}
-	} );
 
 	var PFOA_HERO_MAX_SLIDES = 5;
 
@@ -541,7 +480,7 @@
 	$( function () {
 		ensureRowCount( getSlideCount() );
 		refreshInactiveSlots();
-		$( '.pfoa-hero-carousel-item, .pfoa-hero-single-cell' ).each( function () {
+		$( '.pfoa-hero-carousel-item' ).each( function () {
 			refreshLinkType( $( this ) );
 		} );
 		refreshPinMode();
@@ -566,7 +505,7 @@
 	} );
 
 	$( document ).on( 'change', '.pfoa-hero-link-type-input', function () {
-		var scope = $( this ).closest( '.pfoa-hero-carousel-item, .pfoa-hero-single-cell' );
+		var scope = $( this ).closest( '.pfoa-hero-carousel-item' );
 
 		if ( scope.length ) {
 			refreshLinkType( scope );
@@ -574,7 +513,7 @@
 	} );
 
 	$( document ).on( 'input', '.pfoa-hero-link-url-input', function () {
-		var scope = $( this ).closest( '.pfoa-hero-carousel-item, .pfoa-hero-single-cell' );
+		var scope = $( this ).closest( '.pfoa-hero-carousel-item' );
 
 		if ( scope.length ) {
 			refreshSummaryLink( scope );

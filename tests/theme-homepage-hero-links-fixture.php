@@ -10,15 +10,17 @@
  *   (trims whitespace); rejects javascript:/ftp:/relative/empty/hostless
  *   input to '' (no link).
  * - Legacy internal compat: pfoa_sanitize_hero() preserves stored
- *   link_page_id values and derives link_type internal when a destination
- *   is stored, none otherwise (no migration; bonded-pair tokens untouched
- *   by the resolver fallback).
+ *   carousel link_page_id values and derives link_type internal when a
+ *   destination is stored, none otherwise (no migration; bonded-pair tokens
+ *   untouched by the resolver fallback). Legacy Single Image keys
+ *   (image_id/image_link_*) are dropped to empty on save: the carousel is
+ *   the sole administrative source for hero images.
  * - Type switching retention: sanitizer stores link_page_id AND link_url
  *   regardless of the active link_type.
  * - pfoa_get_hero_slide_link(): internal (revalidated eligibility),
  *   external (headline/fallback/host title, external flag), none/invalid
  *   (empty destination).
- * - pfoa_find_hero_invalid_external_links(): flags 'single' and 1-based
+ * - pfoa_find_hero_invalid_external_links(): flags 1-based
  *   slide numbers with invalid external URLs.
  * - pfoa_get_hero_pinned_slide_id(): active timed, indefinite, expired,
  *   out-of-range, and invalid-image pins (expired/invalid resolve to 0 so
@@ -27,7 +29,7 @@
  *   change/indefinite-to-timed change/missing future expiry; preserved
  *   expires_at + created_at on unrelated saves with unchanged pin+mode and
  *   a valid future expires_at in the hidden field.
-  * - style.css version 0.1.227; no DB writes.
+  * - style.css version 0.1.228; no DB writes.
  *
  * Run with:
  *   php tests/theme-homepage-hero-links-fixture.php
@@ -317,9 +319,12 @@ fixture_assert( 'internal' === $legacy['carousel_items'][1]['link_type'], 'legac
 fixture_assert( 'none' === $legacy['carousel_items'][2]['link_type'], 'legacy: row without destination resolves none' );
 fixture_assert( 0 === $legacy['carousel_items'][2]['link_page_id'], 'legacy: row without destination keeps 0' );
 
-$legacy_single = pfoa_sanitize_hero( fixture_hero_base( array( 'image_link_page_id' => 102 ) ) );
-fixture_assert( 102 === $legacy_single['image_link_page_id'], 'legacy single: image_link_page_id preserved' );
-fixture_assert( 'internal' === $legacy_single['image_link_type'], 'legacy single: resolves internal' );
+$legacy_single = pfoa_sanitize_hero( fixture_hero_base( array( 'image_id' => 11, 'image_link_page_id' => 102, 'image_link_type' => 'internal' ) ) );
+fixture_assert( 0 === $legacy_single['image_id'], 'legacy single: image_id dropped (carousel is sole source)' );
+fixture_assert( 0 === $legacy_single['image_link_page_id'], 'legacy single: image_link_page_id dropped' );
+fixture_assert( 'none' === $legacy_single['image_link_type'], 'legacy single: image_link_type dropped to none' );
+fixture_assert( '' === $legacy_single['image_link_url'], 'legacy single: image_link_url dropped' );
+fixture_assert( 'carousel' === $legacy_single['mode'], 'legacy single: mode normalizes to carousel' );
 
 $legacy_draft = pfoa_sanitize_hero(
 	fixture_hero_base( array( 'carousel_items' => array( array( 'id' => 11, 'link_page_id' => 103 ) ) ) )
@@ -365,8 +370,8 @@ fixture_assert( 101 === $retained['carousel_items'][0]['link_page_id'], 'retenti
 fixture_assert( 'https://b.example/kept' === $retained['carousel_items'][1]['link_url'], 'retention: internal row keeps url for later switch' );
 fixture_assert( 'https://c.example/kept' === $retained['carousel_items'][2]['link_url'], 'retention: none row keeps url for later switch' );
 fixture_assert( 101 === $retained['carousel_items'][2]['link_page_id'], 'retention: none row keeps internal destination' );
-fixture_assert( 'https://single.example/kept' === $retained['image_link_url'], 'retention: single image keeps url' );
-fixture_assert( 101 === $retained['image_link_page_id'], 'retention: single image keeps internal destination' );
+fixture_assert( '' === $retained['image_link_url'], 'retention: legacy single image url dropped' );
+fixture_assert( 0 === $retained['image_link_page_id'], 'retention: legacy single image destination dropped' );
 
 $invalid_external = pfoa_sanitize_hero(
 	fixture_hero_base(
@@ -379,7 +384,7 @@ $invalid_external = pfoa_sanitize_hero(
 		)
 	)
 );
-fixture_assert( '' === $invalid_external['image_link_url'], 'invalid external single: sanitizes to empty (no link)' );
+fixture_assert( '' === $invalid_external['image_link_url'], 'invalid external single: legacy single url always empty' );
 fixture_assert( '' === $invalid_external['carousel_items'][0]['link_url'], 'invalid external slide: sanitizes to empty (no link)' );
 
 // --- Link type resolver. ---
@@ -443,7 +448,7 @@ $flagged = pfoa_find_hero_invalid_external_links(
 		),
 	)
 );
-fixture_assert( array( 'single', '2' ) === $flagged, 'invalid finder: flags single + slide 2 only' );
+fixture_assert( array( '2' ) === $flagged, 'invalid finder: flags slide 2 only (legacy single keys ignored)' );
 fixture_assert( array() === pfoa_find_hero_invalid_external_links( array() ), 'invalid finder: clean input empty' );
 
 // --- Featured pin resolution. ---
@@ -567,11 +572,11 @@ fixture_assert( 101 === $stored_hero['carousel_items'][0]['link_page_id'], 'get_
 fixture_assert( 'none' === $stored_hero['carousel_items'][1]['link_type'], 'get_hero: stored unlinked row resolves none' );
 fixture_assert( 'none' === $stored_hero['featured_pin']['mode'], 'get_hero: missing pin defaults to none' );
 
-	// style.css: version 0.1.227.
+	// style.css: version 0.1.228.
 $css = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' );
-	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.227/', $css ), 'css: theme version 0.1.227' );
+	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.228/', $css ), 'css: theme version 0.1.228' );
 
 // No writes during helper evaluation.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during hero evaluation' );
 
-fwrite( STDOUT, "PASS: theme homepage hero links fixture (external accept/reject, legacy internal compat, type retention, slide-link resolver, invalid-link finder, pin resolve/save semantics, css 0.1.227, no writes)\n" );
+fwrite( STDOUT, "PASS: theme homepage hero links fixture (external accept/reject, legacy internal compat, type retention, slide-link resolver, invalid-link finder, pin resolve/save semantics, css 0.1.228, no writes)\n" );
