@@ -11,6 +11,23 @@
 	var frame = null;
 	var targetCell = null;
 
+	function refreshSummaryThumb( cell ) {
+		var item = cell.closest( '.pfoa-homepage-cards-item' );
+		if ( ! item.length ) {
+			return;
+		}
+		var thumb = item.find( '.pfoa-homepage-card-thumb' );
+		if ( ! thumb.length ) {
+			return;
+		}
+		var img = cell.find( '.pfoa-cards-image-preview img' ).first();
+		if ( img.length && img.attr( 'src' ) ) {
+			thumb.html( '<img src="' + img.attr( 'src' ) + '" width="44" height="44" alt="" />' );
+		} else {
+			thumb.html( '<span class="pfoa-homepage-card-empty" aria-hidden="true"></span>' );
+		}
+	}
+
 	function setCellImage( cell, attachment ) {
 		var idInput = cell.find( '.pfoa-cards-image-id' );
 		var preview = cell.find( '.pfoa-cards-image-preview' );
@@ -32,6 +49,7 @@
 			selectButton.text( selectButton.data( 'select-label' ) || 'Select Image' );
 			removeButton.hide();
 		}
+		refreshSummaryThumb( cell );
 	}
 
 	$( document ).on( 'click', '.pfoa-cards-image-select', function ( event ) {
@@ -68,5 +86,41 @@
 		if ( cell.length ) {
 			setCellImage( cell, null );
 		}
+	} );
+
+	$( document ).on( 'input', '.pfoa-homepage-card-title-input', function () {
+		var item = $( this ).closest( '.pfoa-homepage-cards-item' );
+		var label = item.find( '.pfoa-homepage-card-title' ).first();
+		if ( ! label.length ) {
+			return;
+		}
+		var value = $( this ).val();
+		label.text( value && $.trim( value ) !== '' ? value : '— No title —' );
+	} );
+
+	$( document ).on( 'input', '.pfoa-homepage-card-button-input', function () {
+		var item = $( this ).closest( '.pfoa-homepage-cards-item' );
+		var label = item.find( '.pfoa-homepage-card-button' ).first();
+		if ( ! label.length ) {
+			return;
+		}
+		var value = $( this ).val();
+		label.text( value && $.trim( value ) !== '' ? value : '—' );
+	} );
+
+	$( document ).on( 'change', '.pfoa-homepage-cards-list select', function () {
+		var item = $( this ).closest( '.pfoa-homepage-cards-item' );
+		var label = item.find( '.pfoa-homepage-card-destination' ).first();
+		if ( ! label.length ) {
+			return;
+		}
+		var selected = $( this ).find( 'option:selected' ).first();
+		var value = $( this ).val();
+		if ( ( '0' === value || 0 === value ) || ! selected.length ) {
+			label.text( '— No link —' );
+			return;
+		}
+		var text = $.trim( selected.text() );
+		label.text( text !== '' ? text : '— No link —' );
 	} );
 } )( jQuery );

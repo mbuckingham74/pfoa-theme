@@ -1137,65 +1137,106 @@ function pfoa_homepage_cards_section() {
 		<?php settings_errors( 'pfoa_homepage_cards_messages' ); ?>
 		<form method="post" action="">
 			<?php wp_nonce_field( 'pfoa_homepage_cards_save', 'pfoa_homepage_cards_nonce' ); ?>
-			<table class="widefat striped">
-				<thead>
-					<tr>
-						<th scope="col"><?php esc_html_e( 'Order', 'pfoa-theme' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Title', 'pfoa-theme' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Mark', 'pfoa-theme' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Image', 'pfoa-theme' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Destination Page', 'pfoa-theme' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Button', 'pfoa-theme' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Actions', 'pfoa-theme' ); ?></th>
-					</tr>
-				</thead>
-				<tbody>
+			<style>
+.pfoa-homepage-cards-list{list-style:none;margin:0 0 12px;padding:0;max-width:100%;}
+.pfoa-homepage-cards-list .pfoa-homepage-cards-item{margin:0 0 12px;padding:0;max-width:100%;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-card{background:#fff;border:1px solid #c8c0b5;border-radius:6px;max-width:100%;box-sizing:border-box;overflow:hidden;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-summary{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:0;cursor:pointer;list-style:none;max-width:100%;box-sizing:border-box;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-summary::-webkit-details-marker{display:none;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-summary::before{content:"\25b8";flex:none;color:#50575e;font-size:14px;line-height:1;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-card[open] .pfoa-homepage-card-summary::before{content:"\25be";}
+.pfoa-homepage-cards-list .pfoa-homepage-card-summary:focus-visible{outline:2px solid #2271b1;outline-offset:2px;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-badge{flex:none;font-weight:600;white-space:nowrap;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-thumb{flex:none;width:44px;height:44px;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-thumb img{width:44px;height:44px;object-fit:cover;display:block;border-radius:4px;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-empty{display:block;width:44px;height:44px;box-sizing:border-box;border:1px dashed #c8c0b5;border-radius:4px;background:#f6f5f2;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-title{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-destination{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#50575e;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-legacy{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#50575e;font-style:italic;font-size:12px;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-button{flex:none;font-size:12px;line-height:1.6;padding:2px 10px;border-radius:999px;border:1px solid #dcdcde;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-body{padding:4px 12px 12px;border-top:1px solid #dcdcde;max-width:100%;box-sizing:border-box;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-section{padding:10px 0;max-width:100%;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-section + .pfoa-homepage-card-section{border-top:1px solid #dcdcde;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-heading{margin:0 0 8px;font-size:13px;line-height:1.4;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 12px;max-width:100%;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-body label{display:block;margin:8px 0;max-width:100%;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-grid label{margin:0;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-body input[type="text"],.pfoa-homepage-cards-list .pfoa-homepage-card-body select{max-width:100%;box-sizing:border-box;}
+.pfoa-homepage-cards-list .pfoa-homepage-card-actions{display:flex;gap:8px;flex-wrap:wrap;max-width:100%;}
+</style>
+			<ul class="pfoa-homepage-cards-list">
 					<?php foreach ( $cards as $index => $card ) : ?>
 					<?php
 					$card_image_id = isset( $card['image_id'] ) ? absint( $card['image_id'] ) : 0;
 					$card_preview  = $card_image_id ? wp_get_attachment_image( $card_image_id, array( 80, 80 ) ) : '';
 					$card_page_id  = isset( $card['page_id'] ) ? absint( $card['page_id'] ) : 0;
 					$card_legacy_url = isset( $card['url'] ) ? trim( (string) $card['url'] ) : '';
+					$card_summary_thumb = $card_preview ? $card_preview : '<span class="pfoa-homepage-card-empty" aria-hidden="true"></span>';
+					$card_summary_title = '' !== trim( (string) $card['title'] ) ? $card['title'] : __( '— No title —', 'pfoa-theme' );
+					$card_summary_destination = __( '— No link —', 'pfoa-theme' );
+					if ( $card_page_id ) {
+						$card_linked_title = get_the_title( $card_page_id );
+						if ( '' !== trim( (string) $card_linked_title ) ) {
+							$card_summary_destination = $card_linked_title;
+						}
+					}
+					$card_summary_button = isset( $card['button'] ) && '' !== trim( (string) $card['button'] ) ? $card['button'] : '—';
 					?>
-						<tr>
-							<td><?php echo esc_html( (string) ( $index + 1 ) ); ?></td>
-							<td>
-								<input type="hidden" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][key]" value="<?php echo esc_attr( isset( $card['key'] ) ? $card['key'] : '' ); ?>" />
-								<input type="text" class="regular-text" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][title]" value="<?php echo esc_attr( $card['title'] ); ?>" />
-							</td>
-							<td>
-								<input type="text" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][mark]" value="<?php echo esc_attr( $card['mark'] ); ?>" size="2" maxlength="1" />
-							</td>
-							<td class="pfoa-cards-image-cell">
-								<input type="hidden" class="pfoa-cards-image-id" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][image_id]" value="<?php echo esc_attr( (string) $card_image_id ); ?>" />
-								<span class="pfoa-cards-image-preview"><?php echo $card_preview ? $card_preview : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
-								<button type="button" class="button pfoa-cards-image-select" data-select-label="<?php esc_attr_e( 'Select Image', 'pfoa-theme' ); ?>" data-replace-label="<?php esc_attr_e( 'Replace', 'pfoa-theme' ); ?>"><?php echo $card_preview ? esc_html__( 'Replace', 'pfoa-theme' ) : esc_html__( 'Select Image', 'pfoa-theme' ); ?></button>
-								<button type="button" class="button pfoa-cards-image-remove"<?php echo $card_preview ? '' : ' style="display:none;"'; ?>><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
-							</td>
-							<td>
-								<?php pfoa_render_page_selector( PFOA_HOMEPAGE_CARDS_OPTION . '[' . $index . '][page_id]', $card_page_id ); ?>
-								<?php if ( 0 === $card_page_id && '' !== $card_legacy_url ) : ?>
-									<p class="description"><?php printf( esc_html__( 'Legacy URL: %s — select a page to migrate.', 'pfoa-theme' ), esc_html( $card_legacy_url ) ); ?></p>
-									<input type="hidden" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][url]" value="<?php echo esc_attr( $card_legacy_url ); ?>" />
-								<?php endif; ?>
-							</td>
-							<td>
-								<input type="text" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][button]" value="<?php echo esc_attr( $card['button'] ); ?>" />
-							</td>
-							<td>
-								<button type="submit" class="button" name="pfoa_cards_up[<?php echo esc_attr( (string) $index ); ?>]" value="1"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
-								<button type="submit" class="button" name="pfoa_cards_down[<?php echo esc_attr( (string) $index ); ?>]" value="1"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
-								<button type="submit" class="button" name="pfoa_cards_remove[<?php echo esc_attr( (string) $index ); ?>]" value="1"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
-							</td>
-						</tr>
+						<li class="pfoa-homepage-cards-item">
+							<details class="pfoa-homepage-card-card"<?php echo 0 === $index ? ' open' : ''; ?>>
+								<summary class="pfoa-homepage-card-summary">
+									<span class="pfoa-homepage-card-badge"><?php printf( esc_html__( 'Card %d', 'pfoa-theme' ), $index + 1 ); ?></span>
+									<span class="pfoa-homepage-card-thumb"><?php echo $card_summary_thumb; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
+									<span class="pfoa-homepage-card-title"><?php echo esc_html( $card_summary_title ); ?></span>
+									<span class="pfoa-homepage-card-destination"><?php echo esc_html( $card_summary_destination ); ?></span>
+									<?php if ( 0 === $card_page_id && '' !== $card_legacy_url ) : ?>
+										<span class="pfoa-homepage-card-legacy"><?php printf( esc_html__( 'Legacy URL: %s', 'pfoa-theme' ), esc_html( $card_legacy_url ) ); ?></span>
+									<?php endif; ?>
+									<span class="pfoa-homepage-card-button"><?php echo esc_html( $card_summary_button ); ?></span>
+								</summary>
+								<div class="pfoa-homepage-card-body">
+									<div class="pfoa-homepage-card-grid">
+										<div>
+											<input type="hidden" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][key]" value="<?php echo esc_attr( isset( $card['key'] ) ? $card['key'] : '' ); ?>" />
+											<label><?php esc_html_e( 'Title', 'pfoa-theme' ); ?><br />
+												<input type="text" class="regular-text pfoa-homepage-card-title-input" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][title]" value="<?php echo esc_attr( $card['title'] ); ?>" />
+											</label>
+											<label><?php esc_html_e( 'Mark', 'pfoa-theme' ); ?><br />
+												<input type="text" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][mark]" value="<?php echo esc_attr( $card['mark'] ); ?>" size="2" maxlength="1" />
+											</label>
+											<label><?php esc_html_e( 'Button', 'pfoa-theme' ); ?><br />
+												<input type="text" class="pfoa-homepage-card-button-input" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][button]" value="<?php echo esc_attr( $card['button'] ); ?>" />
+											</label>
+										</div>
+										<div class="pfoa-cards-image-cell">
+											<strong><?php esc_html_e( 'Image', 'pfoa-theme' ); ?></strong><br />
+											<input type="hidden" class="pfoa-cards-image-id" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][image_id]" value="<?php echo esc_attr( (string) $card_image_id ); ?>" />
+											<span class="pfoa-cards-image-preview"><?php echo $card_preview ? $card_preview : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
+											<button type="button" class="button pfoa-cards-image-select" data-select-label="<?php esc_attr_e( 'Select Image', 'pfoa-theme' ); ?>" data-replace-label="<?php esc_attr_e( 'Replace', 'pfoa-theme' ); ?>"><?php echo $card_preview ? esc_html__( 'Replace', 'pfoa-theme' ) : esc_html__( 'Select Image', 'pfoa-theme' ); ?></button>
+											<button type="button" class="button pfoa-cards-image-remove"<?php echo $card_preview ? '' : ' style="display:none;"'; ?>><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+										</div>
+										<div>
+											<strong><?php esc_html_e( 'Destination Page', 'pfoa-theme' ); ?></strong><br />
+											<?php pfoa_render_page_selector( PFOA_HOMEPAGE_CARDS_OPTION . '[' . $index . '][page_id]', $card_page_id ); ?>
+											<?php if ( 0 === $card_page_id && '' !== $card_legacy_url ) : ?>
+												<p class="description"><?php printf( esc_html__( 'Legacy URL: %s — select a page to migrate.', 'pfoa-theme' ), esc_html( $card_legacy_url ) ); ?></p>
+												<input type="hidden" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][url]" value="<?php echo esc_attr( $card_legacy_url ); ?>" />
+											<?php endif; ?>
+										</div>
+									</div>
+									<p class="pfoa-homepage-card-actions">
+										<button type="submit" class="button" name="pfoa_cards_up[<?php echo esc_attr( (string) $index ); ?>]" value="1"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
+										<button type="submit" class="button" name="pfoa_cards_down[<?php echo esc_attr( (string) $index ); ?>]" value="1"><?php esc_html_e( 'Move Down', 'pfoa-theme' ); ?></button>
+										<button type="submit" class="button" name="pfoa_cards_remove[<?php echo esc_attr( (string) $index ); ?>]" value="1"><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
+									</p>
+								</div>
+							</details>
+						</li>
 					<?php endforeach; ?>
 					<?php if ( array() === $cards ) : ?>
-						<tr>
-							<td colspan="7"><?php esc_html_e( 'No cards saved. Add one below or save to restore the defaults.', 'pfoa-theme' ); ?></td>
-						</tr>
+						<li class="pfoa-homepage-cards-item"><?php esc_html_e( 'No cards saved. Add one below or save to restore the defaults.', 'pfoa-theme' ); ?></li>
 					<?php endif; ?>
-				</tbody>
-			</table>
+			</ul>
 			<p class="submit">
 				<button type="submit" class="button" name="pfoa_cards_add" value="1"><?php esc_html_e( 'Add', 'pfoa-theme' ); ?></button>
 				<button type="submit" class="button button-primary" name="pfoa_cards_save" value="1"><?php esc_html_e( 'Save Cards', 'pfoa-theme' ); ?></button>
