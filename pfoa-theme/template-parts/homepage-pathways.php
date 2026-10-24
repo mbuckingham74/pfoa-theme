@@ -35,10 +35,11 @@ $pathways = pfoa_get_homepage_cards();
 					'aria-hidden' => 'true',
 				)
 			) : '';
+			$pathway_url = function_exists( 'pfoa_get_homepage_card_url' ) ? pfoa_get_homepage_card_url( $pathway ) : ( isset( $pathway['url'] ) ? $pathway['url'] : '' );
 			?>
 				<li class="homepage-pathways__item">
-					<?php if ( $pathway['url'] ) : ?>
-						<a class="homepage-pathway homepage-pathway--<?php echo esc_attr( $pathway_key ); ?> homepage-pathway__link" href="<?php echo esc_url( $pathway['url'] ); ?>">
+					<?php if ( $pathway_url ) : ?>
+						<a class="homepage-pathway homepage-pathway--<?php echo esc_attr( $pathway_key ); ?> homepage-pathway__link" href="<?php echo esc_url( $pathway_url ); ?>">
 					<?php else : ?>
 						<div class="homepage-pathway homepage-pathway--<?php echo esc_attr( $pathway_key ); ?> homepage-pathway--unavailable">
 					<?php endif; ?>
@@ -51,7 +52,7 @@ $pathways = pfoa_get_homepage_cards();
 							<?php endif; ?>
 						</span>
 						<h3 class="homepage-pathway__title"><?php echo esc_html( $pathway['title'] ); ?></h3>
-						<?php if ( $pathway['url'] ) : ?>
+						<?php if ( $pathway_url ) : ?>
 							<span class="homepage-pathway__action">
 								<span><?php echo esc_html( $pathway['button'] ); ?></span>
 								<span class="homepage-pathway__arrow" aria-hidden="true">→</span>
@@ -60,7 +61,7 @@ $pathways = pfoa_get_homepage_cards();
 							<span class="homepage-pathway__status"><?php esc_html_e( 'Destination to be configured', 'pfoa-theme' ); ?></span>
 						<?php endif; ?>
 
-					<?php if ( $pathway['url'] ) : ?>
+					<?php if ( $pathway_url ) : ?>
 						</a>
 					<?php else : ?>
 						</div>

@@ -461,6 +461,365 @@ function pfoa_get_page_by_paths( $paths ) {
 }
 
 /**
+ * Whether a post ID is an eligible internal page-link destination.
+ *
+ * Eligible: a published WordPress Page. Drafts, trashed pages, and
+ * non-page post types are rejected so selectors can never persist an
+ * unusable destination.
+ *
+ * @param mixed $post_id Candidate destination.
+ * @return bool
+ */
+function pfoa_is_page_link_eligible( $post_id ) {
+	$post_id = absint( $post_id );
+
+	if ( ! $post_id ) {
+		return false;
+	}
+
+	if ( function_exists( 'get_post_status' ) && 'publish' !== get_post_status( $post_id ) ) {
+		return false;
+	}
+
+	if ( function_exists( 'get_post_type' ) && 'page' !== get_post_type( $post_id ) ) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Sanitize a page-selector destination.
+ *
+ * Accepts only a published Page ID; anything else becomes 0 (no link).
+ *
+ * @param mixed $value Raw submitted value.
+ * @return int
+ */
+function pfoa_sanitize_page_link_id( $value ) {
+	$page_id = absint( $value );
+
+	if ( ! pfoa_is_page_link_eligible( $page_id ) ) {
+		return 0;
+	}
+
+	return $page_id;
+}
+
+/**
+ * Map a legacy internal URL to its published Page ID.
+ *
+ * Same-host (or relative) URLs resolve through url_to_postid() when
+ * available with a get_page_by_path() fallback so child-page paths
+ * (parent/child) keep working. External hosts return 0. Full-path
+ * mismatches return 0 rather than guessing a last-segment match so
+ * ambiguous selectors are reported instead of silently remapped.
+ *
+ * @param mixed $url Raw stored URL.
+ * @return int Published Page ID, or 0 when external/unmatched.
+ */
+function pfoa_migrate_url_to_page_id( $url ) {
+	if ( ! is_string( $url ) ) {
+		return 0;
+	}
+
+	$url = trim( $url );
+
+	if ( '' === $url ) {
+		return 0;
+	}
+
+	if ( function_exists( 'url_to_postid' ) ) {
+		$mapped = (int) url_to_postid( $url );
+
+		if ( $mapped && pfoa_is_page_link_eligible( $mapped ) ) {
+			return $mapped;
+		}
+	}
+
+	$parts = parse_url( $url );
+
+	if ( ! is_array( $parts ) ) {
+		return 0;
+	}
+
+	if ( isset( $parts['host'] ) && '' !== $parts['host'] ) {
+		$url_host = strtolower( (string) $parts['host'] );
+		$home_host = '';
+
+		if ( function_exists( 'home_url' ) ) {
+			$home = home_url( '/' );
+			$parsed_home = parse_url( $home );
+			if ( is_array( $parsed_home ) && isset( $parsed_home['host'] ) ) {
+				$home_host = strtolower( (string) $parsed_home['host'] );
+			}
+		}
+
+		$known_hosts = array( 'dev.safehavenpfoa.org', 'safehavenpfoa.org', 'www.safehavenpfoa.org' );
+
+		if ( '' !== $home_host ) {
+			if ( $url_host !== $home_host && ! in_array( $url_host, $known_hosts, true ) ) {
+				return 0;
+			}
+		} elseif ( ! in_array( $url_host, $known_hosts, true ) ) {
+			return 0;
+		}
+	}
+
+	$path = isset( $parts['path'] ) ? (string) $parts['path'] : $url;
+	$path = trim( $path, '/' );
+
+	if ( '' === $path ) {
+		if ( function_exists( 'get_option' ) ) {
+			$front = (int) get_option( 'page_on_front' );
+
+			if ( $front && pfoa_is_page_link_eligible( $front ) ) {
+				return $front;
+			}
+		}
+
+		return 0;
+	}
+
+	if ( ! function_exists( 'get_page_by_path' ) ) {
+		return 0;
+	}
+
+	$page = get_page_by_path( $path, OBJECT, 'page' );
+
+	if ( $page instanceof WP_Post && 'publish' === $page->post_status ) {
+		return (int) $page->ID;
+	}
+
+	return 0;
+}
+
+/**
+ * Return published Pages as hierarchical selector choices.
+ *
+ * Siblings order by menu_order then title; children follow their parent
+ * in depth-first order. Labels use the full ancestor breadcrumb
+ * ("Parent / Child") so child pages are clearly distinguished by title
+ * and hierarchy even when leaf titles collide.
+ *
+ * @return array[] Each item: array( 'id' => int, 'label' => string, 'depth' => int ).
+ */
+function pfoa_get_page_selector_choices() {
+	if ( ! function_exists( 'get_pages' ) ) {
+		return array();
+	}
+
+	$pages = get_pages(
+		array(
+			'sort_column' => 'menu_order, post_title',
+		)
+	);
+
+	if ( ! is_array( $pages ) ) {
+		return array();
+	}
+
+	$by_id = array();
+
+	foreach ( $pages as $page ) {
+		if ( ! $page instanceof WP_Post ) {
+			continue;
+		}
+
+		if ( 'publish' !== $page->post_status ) {
+			continue;
+		}
+
+		if ( isset( $page->post_type ) && '' !== $page->post_type && 'page' !== $page->post_type ) {
+			continue;
+		}
+
+		$by_id[ (int) $page->ID ] = $page;
+	}
+
+	if ( array() === $by_id ) {
+		return array();
+	}
+
+	$children = array();
+
+	foreach ( $by_id as $id => $page ) {
+		$parent = isset( $page->post_parent ) ? (int) $page->post_parent : 0;
+
+		if ( ! isset( $by_id[ $parent ] ) ) {
+			$parent = 0;
+		}
+
+		$children[ $parent ][] = $page;
+	}
+
+	foreach ( $children as $parent_id => $siblings ) {
+		usort(
+			$children[ $parent_id ],
+			function ( $a, $b ) {
+				$a_order = isset( $a->menu_order ) ? (int) $a->menu_order : 0;
+				$b_order = isset( $b->menu_order ) ? (int) $b->menu_order : 0;
+
+				if ( $a_order !== $b_order ) {
+					return $a_order <=> $b_order;
+				}
+
+				$a_title = isset( $a->post_title ) ? (string) $a->post_title : '';
+				$b_title = isset( $b->post_title ) ? (string) $b->post_title : '';
+
+				return strcasecmp( $a_title, $b_title );
+			}
+		);
+	}
+
+	$choices = array();
+
+	$walk = null;
+	$walk = function ( $parent_id, $breadcrumb, $depth ) use ( &$walk, &$children, &$choices ) {
+		if ( empty( $children[ $parent_id ] ) ) {
+			return;
+		}
+
+		foreach ( $children[ $parent_id ] as $page ) {
+			$title = isset( $page->post_title ) ? (string) $page->post_title : '';
+
+			if ( '' === trim( $title ) ) {
+				$title = sprintf( __( '(no title) #%d', 'pfoa-theme' ), (int) $page->ID );
+			}
+
+			$label = '' !== $breadcrumb ? $breadcrumb . ' / ' . $title : $title;
+
+			$choices[] = array(
+				'id'    => (int) $page->ID,
+				'label' => $label,
+				'depth' => (int) $depth,
+			);
+
+			$walk( (int) $page->ID, $label, $depth + 1 );
+		}
+	};
+
+	$walk( 0, '', 0 );
+
+	return $choices;
+}
+
+/**
+ * Render a pages-only destination selector.
+ *
+ * Published Pages only (no Cat Profiles, no bonded pairs): internal
+ * navigation destinations resolve to Page IDs and permalinks are derived
+ * with get_permalink() at render time so slug changes apply automatically.
+ *
+ * @param string $name     Select field name.
+ * @param int    $selected Currently selected Page ID (0 = no link).
+ * @param string $id       Optional select element ID.
+ * @return void
+ */
+function pfoa_render_page_selector( $name, $selected = 0, $id = '' ) {
+	$selected = absint( $selected );
+	$choices  = pfoa_get_page_selector_choices();
+	?>
+	<select name="<?php echo esc_attr( $name ); ?>"<?php echo '' !== $id ? ' id="' . esc_attr( $id ) . '"' : ''; ?>>
+		<option value="0"<?php selected( $selected, 0 ); ?>><?php echo esc_html__( '— No link —', 'pfoa-theme' ); ?></option>
+		<?php foreach ( $choices as $choice ) : ?>
+			<option value="<?php echo esc_attr( (string) $choice['id'] ); ?>"<?php selected( $selected, $choice['id'] ); ?>><?php echo esc_html( $choice['label'] ); ?></option>
+		<?php endforeach; ?>
+	</select>
+	<?php
+}
+
+/**
+ * Return the effective destination URL for a homepage card.
+ *
+ * Page-ID destinations resolve dynamically with get_permalink() so page
+ * slug changes apply automatically. Legacy stored URLs keep rendering
+ * (with an in-memory URL-to-ID migration first) so pre-migration rows
+ * never go blank; unmatched/external legacy URLs fall back to the stored
+ * URL verbatim.
+ *
+ * @param mixed $card Card row.
+ * @return string
+ */
+function pfoa_get_homepage_card_url( $card ) {
+	if ( ! is_array( $card ) ) {
+		return '';
+	}
+
+	$page_id = isset( $card['page_id'] ) ? absint( $card['page_id'] ) : 0;
+
+	if ( $page_id && pfoa_is_page_link_eligible( $page_id ) ) {
+		$url = get_permalink( $page_id );
+
+		if ( $url ) {
+			return $url;
+		}
+	}
+
+	$legacy_url = isset( $card['url'] ) ? trim( (string) $card['url'] ) : '';
+
+	if ( '' !== $legacy_url ) {
+		$migrated = pfoa_migrate_url_to_page_id( $legacy_url );
+
+		if ( $migrated && pfoa_is_page_link_eligible( $migrated ) ) {
+			$migrated_url = get_permalink( $migrated );
+
+			if ( $migrated_url ) {
+				return $migrated_url;
+			}
+		}
+
+		return $legacy_url;
+	}
+
+	return '';
+}
+
+/**
+ * Return the effective destination URL for a hero shortcut button (CTA).
+ *
+ * Same dynamic-resolution contract as homepage cards: Page IDs resolve
+ * with get_permalink(); legacy URLs migrate in memory; unmatched legacy
+ * URLs fall back verbatim so nothing breaks before migration.
+ *
+ * @param mixed $cta CTA row.
+ * @return string
+ */
+function pfoa_get_hero_cta_url( $cta ) {
+	if ( ! is_array( $cta ) ) {
+		return '';
+	}
+
+	$page_id = isset( $cta['page_id'] ) ? absint( $cta['page_id'] ) : 0;
+
+	if ( $page_id && pfoa_is_page_link_eligible( $page_id ) ) {
+		$url = get_permalink( $page_id );
+
+		if ( $url ) {
+			return $url;
+		}
+	}
+
+	$legacy_url = isset( $cta['url'] ) ? trim( (string) $cta['url'] ) : '';
+
+	if ( '' !== $legacy_url ) {
+		$migrated = pfoa_migrate_url_to_page_id( $legacy_url );
+
+		if ( $migrated && pfoa_is_page_link_eligible( $migrated ) ) {
+			$migrated_url = get_permalink( $migrated );
+
+			if ( $migrated_url ) {
+				return $migrated_url;
+			}
+		}
+
+		return $legacy_url;
+	}
+
+	return '';
+}
+
+/**
  * Option name storing the editable homepage pathway cards.
  *
  * @var string
@@ -489,7 +848,8 @@ function pfoa_get_homepage_card_defaults() {
 			'key'      => 'adoptable-cats',
 			'title'    => __( 'Adoptable Cats', 'pfoa-theme' ),
 			'mark'     => 'A',
-			'url'      => $adoptable_cats_page ? get_permalink( $adoptable_cats_page ) : '',
+			'page_id'  => $adoptable_cats_page ? (int) $adoptable_cats_page->ID : 0,
+			'url'      => '',
 			'button'   => __( 'Explore', 'pfoa-theme' ),
 			'image_id' => 0,
 		),
@@ -497,7 +857,8 @@ function pfoa_get_homepage_card_defaults() {
 			'key'      => 'home-front',
 			'title'    => __( 'From the Home Front', 'pfoa-theme' ),
 			'mark'     => 'F',
-			'url'      => $home_front_page ? get_permalink( $home_front_page ) : '',
+			'page_id'  => $home_front_page ? (int) $home_front_page->ID : 0,
+			'url'      => '',
 			'button'   => __( 'Explore', 'pfoa-theme' ),
 			'image_id' => 0,
 		),
@@ -505,7 +866,8 @@ function pfoa_get_homepage_card_defaults() {
 			'key'      => 'potholders',
 			'title'    => __( 'Pot Holders', 'pfoa-theme' ),
 			'mark'     => 'P',
-			'url'      => $potholders_page ? get_permalink( $potholders_page ) : '',
+			'page_id'  => $potholders_page ? (int) $potholders_page->ID : 0,
+			'url'      => '',
 			'button'   => __( 'Explore', 'pfoa-theme' ),
 			'image_id' => 0,
 		),
@@ -513,7 +875,8 @@ function pfoa_get_homepage_card_defaults() {
 			'key'      => 'pet-tidings',
 			'title'    => __( 'Pet Tidings', 'pfoa-theme' ),
 			'mark'     => 'P',
-			'url'      => $pet_tidings_page ? get_permalink( $pet_tidings_page ) : '',
+			'page_id'  => $pet_tidings_page ? (int) $pet_tidings_page->ID : 0,
+			'url'      => '',
 			'button'   => __( 'Explore', 'pfoa-theme' ),
 			'image_id' => 0,
 		),
@@ -521,7 +884,8 @@ function pfoa_get_homepage_card_defaults() {
 			'key'      => 'wishlist',
 			'title'    => __( 'Wish List', 'pfoa-theme' ),
 			'mark'     => 'W',
-			'url'      => $wishlist_page ? get_permalink( $wishlist_page ) : '',
+			'page_id'  => $wishlist_page ? (int) $wishlist_page->ID : 0,
+			'url'      => '',
 			'button'   => __( 'Explore', 'pfoa-theme' ),
 			'image_id' => 0,
 		),
@@ -549,9 +913,18 @@ function pfoa_sanitize_homepage_cards( $value ) {
 		$title    = isset( $card['title'] ) ? sanitize_text_field( $card['title'] ) : '';
 		$mark     = isset( $card['mark'] ) ? sanitize_text_field( $card['mark'] ) : '';
 		$button   = isset( $card['button'] ) ? sanitize_text_field( $card['button'] ) : '';
-		$url      = isset( $card['url'] ) ? esc_url_raw( $card['url'] ) : '';
+		$page_id  = isset( $card['page_id'] ) ? pfoa_sanitize_page_link_id( $card['page_id'] ) : 0;
+		$url      = isset( $card['url'] ) ? esc_url_raw( trim( (string) $card['url'] ) ) : '';
 		$key      = isset( $card['key'] ) ? sanitize_title( $card['key'] ) : '';
 		$image_id = isset( $card['image_id'] ) ? absint( $card['image_id'] ) : 0;
+
+		if ( 0 === $page_id && '' !== $url ) {
+			$page_id = pfoa_migrate_url_to_page_id( $url );
+		}
+
+		if ( $page_id ) {
+			$url = '';
+		}
 
 		if ( '' === $key ) {
 			$key = sanitize_title( $title );
@@ -567,7 +940,7 @@ function pfoa_sanitize_homepage_cards( $value ) {
 			$mark = substr( $mark, 0, 1 );
 		}
 
-		if ( '' === $title && '' === $url && '' === $button && '' === $mark ) {
+		if ( '' === $title && 0 === $page_id && '' === $url && '' === $button && '' === $mark ) {
 			continue;
 		}
 
@@ -575,6 +948,7 @@ function pfoa_sanitize_homepage_cards( $value ) {
 			'key'      => $key,
 			'title'    => $title,
 			'mark'     => $mark,
+			'page_id'  => $page_id,
 			'url'      => $url,
 			'button'   => '' === $button ? __( 'Explore', 'pfoa-theme' ) : $button,
 			'image_id' => $image_id,
@@ -692,6 +1066,7 @@ function pfoa_homepage_cards_handle_post() {
 			'key'      => '',
 			'title'    => '',
 			'mark'     => '',
+			'page_id'  => 0,
 			'url'      => '',
 			'button'   => __( 'Explore', 'pfoa-theme' ),
 			'image_id' => 0,
@@ -735,11 +1110,13 @@ function pfoa_homepage_cards_handle_post() {
  * Render the Homepage Cards section (PFOA Site > Homepage, below Hero).
  *
  * Same fields and behavior as the former standalone Appearance page: field
- * names pfoa_homepage_cards[N][key/title/mark/image_id/url/button], actions
+ * names pfoa_homepage_cards[N][key/title/mark/image_id/page_id/button], actions
  * pfoa_cards_add/save/up/down/remove, nonce pfoa_homepage_cards_save /
  * pfoa_homepage_cards_nonce, storage via update_option() in
  * pfoa_homepage_cards_handle_post(). Separate save form from the Hero
- * Section is intentional.
+ * Section is intentional. Legacy stored URLs migrate in memory to Page IDs;
+ * unmatched legacy URLs render as a note with a hidden fallback so saving
+ * never silently drops them.
  *
  * Capability is still edit_theme_options, so page editors without that cap
  * simply do not see this section (see consolidated-location note above).
@@ -767,7 +1144,7 @@ function pfoa_homepage_cards_section() {
 						<th scope="col"><?php esc_html_e( 'Title', 'pfoa-theme' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'Mark', 'pfoa-theme' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'Image', 'pfoa-theme' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'URL', 'pfoa-theme' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Destination Page', 'pfoa-theme' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'Button', 'pfoa-theme' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'Actions', 'pfoa-theme' ); ?></th>
 					</tr>
@@ -777,6 +1154,8 @@ function pfoa_homepage_cards_section() {
 					<?php
 					$card_image_id = isset( $card['image_id'] ) ? absint( $card['image_id'] ) : 0;
 					$card_preview  = $card_image_id ? wp_get_attachment_image( $card_image_id, array( 80, 80 ) ) : '';
+					$card_page_id  = isset( $card['page_id'] ) ? absint( $card['page_id'] ) : 0;
+					$card_legacy_url = isset( $card['url'] ) ? trim( (string) $card['url'] ) : '';
 					?>
 						<tr>
 							<td><?php echo esc_html( (string) ( $index + 1 ) ); ?></td>
@@ -794,7 +1173,11 @@ function pfoa_homepage_cards_section() {
 								<button type="button" class="button pfoa-cards-image-remove"<?php echo $card_preview ? '' : ' style="display:none;"'; ?>><?php esc_html_e( 'Remove', 'pfoa-theme' ); ?></button>
 							</td>
 							<td>
-								<input type="url" class="regular-text" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][url]" value="<?php echo esc_attr( $card['url'] ); ?>" />
+								<?php pfoa_render_page_selector( PFOA_HOMEPAGE_CARDS_OPTION . '[' . $index . '][page_id]', $card_page_id ); ?>
+								<?php if ( 0 === $card_page_id && '' !== $card_legacy_url ) : ?>
+									<p class="description"><?php printf( esc_html__( 'Legacy URL: %s — select a page to migrate.', 'pfoa-theme' ), esc_html( $card_legacy_url ) ); ?></p>
+									<input type="hidden" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][url]" value="<?php echo esc_attr( $card_legacy_url ); ?>" />
+								<?php endif; ?>
 							</td>
 							<td>
 								<input type="text" name="<?php echo esc_attr( PFOA_HOMEPAGE_CARDS_OPTION ); ?>[<?php echo esc_attr( (string) $index ); ?>][button]" value="<?php echo esc_attr( $card['button'] ); ?>" />
@@ -857,7 +1240,7 @@ function pfoa_homepage_cards_page() {
  *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
  *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int|string (page/Cat Profile post ID or 'pair:<a>:<b>' bonded-pair token), 'link_type' => 'internal'|'external'|'none' (missing legacy rows resolve as internal when link_page_id is non-zero, else none), 'link_url' => string (absolute http/https URL used when link_type is 'external'), 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 50|60|70|80|90|100|110|120, 'headline_color' => 'white'|'black', 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
  *   'carousel_interval_ms' => 3500|5000|7000 (ms each carousel image stays visible; missing/invalid resolves to 5000),
- *   'ctas'               => array[] of array( 'label' => string, 'url' => string ),
+ *   'ctas'               => array[] of array( 'label' => string, 'page_id' => int (published Page ID; 0 = no link), 'url' => string (legacy fallback only when page_id is 0; '' otherwise) ),
  * ).
  *
  * @var string
@@ -876,22 +1259,22 @@ define( 'PFOA_HERO_META_KEY', '_pfoa_hero' );
 function pfoa_get_hero_defaults() {
 	$adoption_page     = pfoa_get_page_by_paths( array( 'adoptablecats2' ) );
 	$volunteering_page = pfoa_get_page_by_paths( array( 'volunteering' ) );
-	$adoption_url      = $adoption_page ? get_permalink( $adoption_page ) : '';
-	$volunteering_url  = $volunteering_page ? get_permalink( $volunteering_page ) : '';
 
 	$ctas = array();
 
-	if ( $adoption_url ) {
+	if ( $adoption_page ) {
 		$ctas[] = array(
-			'label' => __( 'Adopt', 'pfoa-theme' ),
-			'url'   => $adoption_url,
+			'label'   => __( 'Adopt', 'pfoa-theme' ),
+			'page_id' => (int) $adoption_page->ID,
+			'url'     => '',
 		);
 	}
 
-	if ( $volunteering_url ) {
+	if ( $volunteering_page ) {
 		$ctas[] = array(
-			'label' => __( 'Volunteer', 'pfoa-theme' ),
-			'url'   => $volunteering_url,
+			'label'   => __( 'Volunteer', 'pfoa-theme' ),
+			'page_id' => (int) $volunteering_page->ID,
+			'url'     => '',
 		);
 	}
 
@@ -1613,15 +1996,7 @@ function pfoa_render_hero_link_selector( $name, $selected = 0, $id = '' ) {
 		$selected = 0;
 	}
 
-	$pages = get_pages(
-		array(
-			'sort_column' => 'menu_order, post_title',
-		)
-	);
-
-	if ( ! is_array( $pages ) ) {
-		$pages = array();
-	}
+	$page_choices = pfoa_get_page_selector_choices();
 
 	$cats  = pfoa_get_hero_link_cat_profiles();
 	$pairs = pfoa_get_hero_bonded_pairs();
@@ -1629,11 +2004,8 @@ function pfoa_render_hero_link_selector( $name, $selected = 0, $id = '' ) {
 	<select name="<?php echo esc_attr( $name ); ?>"<?php echo '' !== $id ? ' id="' . esc_attr( $id ) . '"' : ''; ?>>
 		<option value="0"<?php selected( $selected, 0 ); ?>><?php echo esc_html__( '— No link —', 'pfoa-theme' ); ?></option>
 		<optgroup label="<?php esc_attr_e( 'Pages', 'pfoa-theme' ); ?>">
-			<?php foreach ( $pages as $page ) : ?>
-				<?php if ( ! $page instanceof WP_Post || 'publish' !== $page->post_status ) : ?>
-					<?php continue; ?>
-				<?php endif; ?>
-				<option value="<?php echo esc_attr( (string) $page->ID ); ?>"<?php selected( $selected, $page->ID ); ?>><?php echo esc_html( $page->post_title ); ?></option>
+			<?php foreach ( $page_choices as $choice ) : ?>
+				<option value="<?php echo esc_attr( (string) $choice['id'] ); ?>"<?php selected( $selected, $choice['id'] ); ?>><?php echo esc_html( $choice['label'] ); ?></option>
 			<?php endforeach; ?>
 		</optgroup>
 		<?php if ( array() !== $cats ) : ?>
@@ -2441,16 +2813,26 @@ function pfoa_sanitize_hero( $value ) {
 				continue;
 			}
 
-			$label = isset( $cta['label'] ) ? sanitize_text_field( $cta['label'] ) : '';
-			$url   = isset( $cta['url'] ) ? esc_url_raw( $cta['url'] ) : '';
+			$label   = isset( $cta['label'] ) ? sanitize_text_field( $cta['label'] ) : '';
+			$page_id = isset( $cta['page_id'] ) ? pfoa_sanitize_page_link_id( $cta['page_id'] ) : 0;
+			$url     = isset( $cta['url'] ) ? esc_url_raw( trim( (string) $cta['url'] ) ) : '';
 
-			if ( '' === $label && '' === $url ) {
+			if ( 0 === $page_id && '' !== $url ) {
+				$page_id = pfoa_migrate_url_to_page_id( $url );
+			}
+
+			if ( $page_id ) {
+				$url = '';
+			}
+
+			if ( '' === $label && 0 === $page_id && '' === $url ) {
 				continue;
 			}
 
 			$hero['ctas'][] = array(
-				'label' => $label,
-				'url'   => $url,
+				'label'   => $label,
+				'page_id' => $page_id,
+				'url'     => $url,
 			);
 		}
 	}
@@ -3956,23 +4338,35 @@ function pfoa_site_homepage_page() {
 			</td>
 		</tr>
 	</table>
-	<h4><?php esc_html_e( 'Shortcut buttons', 'pfoa-theme' ); ?></h4>
+ 	<h4><?php esc_html_e( 'Shortcut buttons', 'pfoa-theme' ); ?></h4>
 	<table class="widefat striped">
 		<thead>
 			<tr>
 				<th scope="col"><?php esc_html_e( 'Label', 'pfoa-theme' ); ?></th>
-				<th scope="col"><?php esc_html_e( 'Destination URL', 'pfoa-theme' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Destination Page', 'pfoa-theme' ); ?></th>
 				<th scope="col"><?php esc_html_e( 'Actions', 'pfoa-theme' ); ?></th>
 			</tr>
 		</thead>
 		<tbody class="pfoa-hero-ctas-body" data-next-index="<?php echo esc_attr( (string) count( $ctas ) ); ?>">
 			<?php foreach ( $ctas as $index => $cta ) : ?>
+				<?php
+				$cta_page_id    = isset( $cta['page_id'] ) ? absint( $cta['page_id'] ) : 0;
+				$cta_legacy_url = isset( $cta['url'] ) ? trim( (string) $cta['url'] ) : '';
+
+				if ( 0 === $cta_page_id && '' !== $cta_legacy_url ) {
+					$cta_page_id = pfoa_migrate_url_to_page_id( $cta_legacy_url );
+				}
+				?>
 				<tr class="pfoa-hero-cta-row">
 					<td>
 						<input type="text" class="regular-text" name="pfoa_hero[ctas][<?php echo esc_attr( (string) $index ); ?>][label]" value="<?php echo esc_attr( isset( $cta['label'] ) ? $cta['label'] : '' ); ?>" />
 					</td>
 					<td>
-						<input type="url" class="regular-text" name="pfoa_hero[ctas][<?php echo esc_attr( (string) $index ); ?>][url]" value="<?php echo esc_attr( isset( $cta['url'] ) ? $cta['url'] : '' ); ?>" />
+						<?php pfoa_render_page_selector( 'pfoa_hero[ctas][' . $index . '][page_id]', $cta_page_id ); ?>
+						<?php if ( 0 === $cta_page_id && '' !== $cta_legacy_url ) : ?>
+							<p class="description"><?php printf( esc_html__( 'Legacy URL: %s — select a page to migrate.', 'pfoa-theme' ), esc_html( $cta_legacy_url ) ); ?></p>
+							<input type="hidden" name="pfoa_hero[ctas][<?php echo esc_attr( (string) $index ); ?>][url]" value="<?php echo esc_attr( $cta_legacy_url ); ?>" />
+						<?php endif; ?>
 					</td>
 					<td>
 						<button type="button" class="button pfoa-hero-cta-up"><?php esc_html_e( 'Move Up', 'pfoa-theme' ); ?></button>
@@ -4042,6 +4436,8 @@ function pfoa_hero_admin_assets( $hook ) {
 				'newSlotHomepage'  => __( 'This is a new slide. Click Save Homepage first to add it, then edit it per-slide.', 'pfoa-theme' ),
 				'conflictHomepage' => __( 'Slides changed elsewhere. Reload the page and use Save Homepage to keep every change.', 'pfoa-theme' ),
 				'linkWarning'      => __( '— External URL was invalid, so its link was removed.', 'pfoa-theme' ),
+				'noLinkLabel'      => __( '— No link —', 'pfoa-theme' ),
+				'ctaPages'         => pfoa_get_page_selector_choices(),
 			)
 		);
 	}

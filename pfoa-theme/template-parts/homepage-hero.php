@@ -383,13 +383,13 @@ if ( ! function_exists( 'pfoa_is_dine_out_promo_slide' ) ) {
 				<div class="homepage-hero__actions">
 					<?php $cta_position = 0; ?>
 					<?php foreach ( $hero_ctas as $hero_cta ) : ?>
-						<?php
-						$cta_label = isset( $hero_cta['label'] ) ? $hero_cta['label'] : '';
-						$cta_url   = isset( $hero_cta['url'] ) ? $hero_cta['url'] : '';
+					<?php
+					$cta_label = isset( $hero_cta['label'] ) ? $hero_cta['label'] : '';
+					$cta_url   = function_exists( 'pfoa_get_hero_cta_url' ) ? pfoa_get_hero_cta_url( $hero_cta ) : ( isset( $hero_cta['url'] ) ? $hero_cta['url'] : '' );
 
-						if ( '' === $cta_label || '' === $cta_url ) {
-							continue;
-						}
+					if ( '' === $cta_label || '' === $cta_url ) {
+						continue;
+					}
 
 						$cta_class = 0 === $cta_position ? 'pfoa-button homepage-hero__primary' : 'pfoa-button homepage-hero__secondary';
 						$cta_position++;

@@ -345,7 +345,7 @@ foreach ( array( '24653', '24654', '24655', '24559' ) as $live_id ) {
 	fixture_assert( false === strpos( $functions_source, "'_pfoa_event_date', " . $live_id ), 'source: no hardcoded event ID ' . $live_id );
 }
 $css = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' );
-	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.225/', $css ), 'css: theme version 0.1.225' );
+	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.226/', $css ), 'css: theme version 0.1.226' );
 $block_pos = strpos( $css, 'body.page-id-20323 .pfoa-recently-adopted' );
 fixture_assert( false !== $block_pos, 'css: page-id-20323 scoped recently-adopted block' );
 $css_block = substr( $css, (int) $block_pos, 15000 );

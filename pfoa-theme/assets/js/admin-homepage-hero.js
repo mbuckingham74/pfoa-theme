@@ -874,6 +874,23 @@
 		refreshInactiveSlots();
 	} );
 
+	function ctaNoLinkLabel() {
+		return labels.noLinkLabel || labels.noLink || '\u2014 No link \u2014';
+	}
+
+	function ctaPageOptions( selectedId ) {
+		var pages = labels.ctaPages || [];
+		var html = '<option value="0">' + ctaNoLinkLabel() + '</option>';
+		for ( var i = 0; i < pages.length; i++ ) {
+			var page = pages[i];
+			var id = page && null != page.id ? String( page.id ) : '0';
+			var label = page && null != page.label ? String( page.label ) : id;
+			var selected = String( selectedId || 0 ) === id ? ' selected="selected"' : '';
+			html += '<option value="' + id.replace( /"/g, '&quot;' ) + '"' + selected + '>' + $( '<div/>' ).text( label ).html() + '</option>';
+		}
+		return html;
+	}
+
 	$( document ).on( 'click', '.pfoa-hero-cta-add', function ( event ) {
 		event.preventDefault();
 
@@ -889,7 +906,7 @@
 		body.append(
 			'<tr class="pfoa-hero-cta-row">' +
 			'<td><input type="text" class="regular-text" name="pfoa_hero[ctas][' + index + '][label]" value="" /></td>' +
-			'<td><input type="url" class="regular-text" name="pfoa_hero[ctas][' + index + '][url]" value="" /></td>' +
+			'<td><select name="pfoa_hero[ctas][' + index + '][page_id]">' + ctaPageOptions( 0 ) + '</select></td>' +
 			'<td>' +
 			'<button type="button" class="button pfoa-hero-cta-up">' + moveUpLabel() + '</button> ' +
 			'<button type="button" class="button pfoa-hero-cta-down">' + moveDownLabel() + '</button> ' +
