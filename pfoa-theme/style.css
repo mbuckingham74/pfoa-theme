@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-         Version: 0.1.224
+         Version: 0.1.225
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -7402,32 +7402,55 @@ body.page-id-11290 .page-content .entry-content span.pfoa-hf-archive__sep {
 	}
 }
 
-/* PFOA 0.1.224 — Roadster editorial floats (page-id-25515 ONLY).
- * Scoped strictly to body.page-id-25515; global align/float rules
- * (lines ~741-754) and the 720px mobile float-stack (~2365-2370)
- * are untouched. Widens the shell to 1000px, sets a 760px prose
- * measure, sizes floated figures, and clears quote/buttons below
- * the floats. Mobile stacks page-scoped at 781px (global 720px
- * rule already stacks; no conflict).
+/* PFOA 0.1.225 — Roadster justified continuous flow (page-id-25515 ONLY).
+ * 860px article measure, justified narrative with hyphenation, true floats
+ * with 24px gutters, clears at story transitions. Global align/float rules
+ * and the 720px mobile stack are untouched (outranked by page scope).
+ * Reuse pattern: wrap a future story article in a Gutenberg Group with class
+ * "pfoa-story-editorial", then re-scope this block from body.page-id-25515
+ * to .pfoa-story-editorial. Content (wording/captions/order) untouched.
  */
 body.page-id-25515 .content-shell {
 	max-width: 1000px;
 }
+body.page-id-25515 .page-content .entry-header {
+	max-width: 860px;
+	margin-inline: auto;
+}
+body.page-id-25515 .entry-content {
+	max-width: 860px;
+	margin-inline: auto;
+	padding-inline: 20px;
+}
+body.page-id-25515 .entry-content > h1,
 body.page-id-25515 .entry-content > p,
 body.page-id-25515 .entry-content > h2,
 body.page-id-25515 .entry-content > blockquote {
-	max-width: 760px;
-	margin-inline: auto;
+	max-width: 100%;
+}
+body.page-id-25515 .entry-content > p:not(.has-text-align-center):not(.has-small-font-size):not(:has(+ blockquote)) {
+	text-align: justify;
+	-moz-text-align-last: left;
+	text-align-last: left;
+	hyphens: auto;
+	-webkit-hyphens: auto;
+	overflow-wrap: break-word;
+	hyphenate-limit-chars: 6 3 2;
+	-webkit-hyphenate-limit-before: 3;
+	-webkit-hyphenate-limit-after: 2;
+	hyphenate-limit-lines: 2;
 }
 body.page-id-25515 .entry-content .alignright {
+	float: right;
 	width: 300px;
 	max-width: 42%;
-	margin: 0.35rem 0 1.25rem 1.75rem;
+	margin: 0.25rem 0 1rem 1.5rem;
 }
 body.page-id-25515 .entry-content .alignleft {
+	float: left;
 	width: 320px;
 	max-width: 42%;
-	margin: 0.35rem 1.75rem 1.25rem 0;
+	margin: 0.25rem 1.5rem 1rem 0;
 }
 body.page-id-25515 .entry-content figure:has(img[src*="roadster-new-home"]) {
 	width: 250px;
@@ -7439,11 +7462,16 @@ body.page-id-25515 .entry-content img {
 body.page-id-25515 .entry-content figcaption {
 	font-size: 0.82rem;
 	font-style: italic;
+	text-align: left;
 	color: var(--pfoa-text-muted);
 }
 body.page-id-25515 .entry-content > h2 {
 	clear: both;
-	padding-top: 1rem;
+	padding-top: 1.5rem;
+}
+body.page-id-25515 .entry-content > p:has(+ blockquote) {
+	clear: both;
+	padding-top: 0.5rem;
 }
 body.page-id-25515 .entry-content > blockquote {
 	clear: both;
@@ -7456,21 +7484,42 @@ body.page-id-25515 .entry-content > blockquote {
 	line-height: 1.65;
 	margin: 2rem auto;
 }
-body.page-id-25515 .entry-content > p:has(+ blockquote) {
-	clear: both;
-	padding-top: 0.5rem;
-}
 body.page-id-25515 .entry-content .wp-block-buttons {
 	clear: both;
 	padding-top: 1.5rem;
 }
 @media (max-width: 781px) {
-	body.page-id-25515 .entry-content .alignleft,
 	body.page-id-25515 .entry-content .alignright {
+		float: right;
+		width: 240px;
+		max-width: 44%;
+		margin: 0.25rem 0 1rem 1rem;
+	}
+	body.page-id-25515 .entry-content .alignleft {
+		float: left;
+		width: 240px;
+		max-width: 44%;
+		margin: 0.25rem 1rem 1rem 0;
+	}
+	body.page-id-25515 .entry-content figure:has(img[src*="roadster-new-home"]) {
+		width: 200px;
+	}
+}
+@media (max-width: 600px) {
+	body.page-id-25515 .entry-content .alignleft,
+	body.page-id-25515 .entry-content .alignright,
+	body.page-id-25515 .entry-content figure:has(img[src*="roadster-new-home"]) {
 		float: none;
 		width: 100%;
-		max-width: 100%;
-		margin: 1.25rem auto;
+		max-width: 420px;
+		margin: 1rem auto;
+	}
+	body.page-id-25515 .entry-content > p {
+		text-align: left;
+		-moz-text-align-last: auto;
+		text-align-last: auto;
+		hyphens: none;
+		-webkit-hyphens: none;
 	}
 }
 
