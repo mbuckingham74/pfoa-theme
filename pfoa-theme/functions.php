@@ -1236,7 +1236,7 @@ function pfoa_homepage_cards_page() {
  *   'image_link_page_id' => int|string (legacy Single Image destination, stored-shape BC only; always 0 after save, no longer edited),
  *   'image_link_type'    => 'internal' | 'external' | 'none' (legacy Single Image link type, stored-shape BC only; always 'none' after save, no longer edited),
  *   'image_link_url'     => string (legacy Single Image external URL, stored-shape BC only; always '' after save, no longer edited),
- *   'featured_pin'       => array( 'slide' => 0|1-5 (1-based position at save; 0 = normal rotation), 'attachment_id' => int (snapshot), 'mode' => 'none'|'timed'|'indefinite', 'expires_at' => int (UTC timestamp, site-local via current_time), 'created_at' => int ),
+ *   'featured_pin'       => array( 'slide' => 0|1-8 (1-based position at save; 0 = normal rotation), 'attachment_id' => int (snapshot), 'mode' => 'none'|'timed'|'indefinite', 'expires_at' => int (UTC timestamp, site-local via current_time), 'created_at' => int ),
  *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
  *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int|string (page/Cat Profile post ID or 'pair:<a>:<b>' bonded-pair token), 'link_type' => 'internal'|'external'|'none' (missing legacy rows resolve as internal when link_page_id is non-zero, else none), 'link_url' => string (absolute http/https URL used when link_type is 'external'), 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 50|60|70|80|90|100|110|120, 'headline_color' => 'white'|'black', 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
  *   'carousel_interval_ms' => 3500|5000|7000 (ms each carousel image stays visible; missing/invalid resolves to 5000),
@@ -2258,7 +2258,7 @@ function pfoa_get_hero_slide_link( $item, $fallback_headline = '' ) {
 /**
  * Sanitize the featured-pin portion of the hero value (structural only).
  *
- * Slide clamps to 0-5 (0 = normal rotation); mode allows none/timed/
+ * Slide clamps to 0-8 (0 = normal rotation); mode allows none/timed/
  * indefinite. A zero slide or 'none' mode normalizes to the all-zero pin.
  * Expiry/creation timestamps pass through as integers here; save-time
  * semantics (fresh vs. preserved expiry) are applied by
@@ -2283,7 +2283,7 @@ function pfoa_sanitize_hero_featured_pin( $value ) {
 
 	$slide = isset( $value['slide'] ) ? absint( $value['slide'] ) : 0;
 
-	if ( $slide < 0 || $slide > 5 ) {
+	if ( $slide < 0 || $slide > 8 ) {
 		$slide = 0;
 	}
 
@@ -2644,7 +2644,7 @@ function pfoa_sanitize_hero_carousel_interval_ms( $value ) {
 function pfoa_sanitize_hero_carousel_slide_count( $value ) {
 	$count = absint( $value );
 
-	if ( ! in_array( $count, array( 2, 3, 4, 5 ), true ) ) {
+	if ( ! in_array( $count, array( 2, 3, 4, 5, 6, 7, 8 ), true ) ) {
 		return 3;
 	}
 
@@ -2790,9 +2790,9 @@ function pfoa_sanitize_hero( $value ) {
 		}
 	}
 
-	// Cap at 5 slots (first 5 in submitted order). Inactive slides beyond
+	// Cap at 8 slots (first 8 in submitted order). Inactive slides beyond
 	// the selected carousel_slide_count are preserved, not dropped.
-	$carousel_items = array_slice( $carousel_items, 0, 5 );
+	$carousel_items = array_slice( $carousel_items, 0, 8 );
 
 	$hero['carousel_items'] = $carousel_items;
 	$hero['carousel_ids']   = array();
@@ -3749,11 +3749,11 @@ function pfoa_site_homepage_page() {
 		}
 	}
 
-	// Always show max(N, stored) editable rows (capped at 5): empty slots
+	// Always show max(N, stored) editable rows (capped at 8): empty slots
 	// render as image-less rows with their own picker. Imageless rows submit
 	// id=0, which the sanitizer drops, so storage keeps only valid slides
 	// while the form re-expands to N on every load.
-	while ( count( $carousel_items ) < $carousel_slide_count && count( $carousel_items ) < 5 ) {
+	while ( count( $carousel_items ) < $carousel_slide_count && count( $carousel_items ) < 8 ) {
 		$carousel_items[] = array(
 			'id'             => 0,
 			'link_page_id'   => 0,
@@ -3804,8 +3804,11 @@ function pfoa_site_homepage_page() {
 					<option value="3"<?php selected( $carousel_slide_count, 3 ); ?>><?php esc_html_e( '3 slides', 'pfoa-theme' ); ?></option>
 					<option value="4"<?php selected( $carousel_slide_count, 4 ); ?>><?php esc_html_e( '4 slides', 'pfoa-theme' ); ?></option>
 					<option value="5"<?php selected( $carousel_slide_count, 5 ); ?>><?php esc_html_e( '5 slides', 'pfoa-theme' ); ?></option>
+					<option value="6"<?php selected( $carousel_slide_count, 6 ); ?>><?php esc_html_e( '6 slides', 'pfoa-theme' ); ?></option>
+					<option value="7"<?php selected( $carousel_slide_count, 7 ); ?>><?php esc_html_e( '7 slides', 'pfoa-theme' ); ?></option>
+					<option value="8"<?php selected( $carousel_slide_count, 8 ); ?>><?php esc_html_e( '8 slides', 'pfoa-theme' ); ?></option>
 				</select>
-				<p class="description"><?php esc_html_e( 'How many of the carousel slots below show on the homepage (2–5). Slots beyond this count are kept — they will show if the count is increased.', 'pfoa-theme' ); ?></p>
+				<p class="description"><?php esc_html_e( 'How many of the carousel slots below show on the homepage (2–8). Slots beyond this count are kept — they will show if the count is increased.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
 		<tr>
@@ -4230,8 +4233,8 @@ function pfoa_site_homepage_page() {
 					</li>
 				</template>
 				<button type="button" class="button pfoa-hero-carousel-add"><?php esc_html_e( 'Add Images', 'pfoa-theme' ); ?></button>
-				<p class="description"><?php esc_html_e( 'Shown in order, up to the Number of Carousel Slides above (max 5 slots). Empty slots have their own Select Image button. Use Move Up and Move Down to reorder; the buttons stay the same on every image. Lowering the slide count only dims the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
-				<p class="pfoa-hero-carousel-limit-notice" style="display:none;color:#b32d2e;" role="status"><?php esc_html_e( 'Maximum 5 carousel slots. Remove a slot before adding another.', 'pfoa-theme' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Shown in order, up to the Number of Carousel Slides above (max 8 slots). Empty slots have their own Select Image button. Use Move Up and Move Down to reorder; the buttons stay the same on every image. Lowering the slide count only dims the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
+				<p class="pfoa-hero-carousel-limit-notice" style="display:none;color:#b32d2e;" role="status"><?php esc_html_e( 'Maximum 8 carousel slots. Remove a slot before adding another.', 'pfoa-theme' ); ?></p>
 			</td>
 		</tr>
 		<tr>

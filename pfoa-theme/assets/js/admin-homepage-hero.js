@@ -81,7 +81,7 @@
 		return labels.linkWarning || '— External URL was invalid, so its link was removed.';
 	}
 
-	var PFOA_HERO_MAX_SLIDES = 5;
+	var PFOA_HERO_MAX_SLIDES = 8;
 
 	function getSlideCount() {
 		var select = $( '#pfoa-hero-carousel-slide-count' );

@@ -89,8 +89,8 @@ $carousel_slide_count = isset( $hero['carousel_slide_count'] ) ? pfoa_sanitize_h
 			'position'       => $slide_position,
 		);
 
-		// Cap at 5 stored slots, render only the first N selected.
-		if ( count( $carousel_slides ) >= 5 ) {
+		// Cap at 8 stored slots, render only the first N selected.
+		if ( count( $carousel_slides ) >= 8 ) {
 			break;
 		}
 	}
