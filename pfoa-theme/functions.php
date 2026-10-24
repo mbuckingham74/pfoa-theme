@@ -3830,17 +3830,32 @@ function pfoa_site_homepage_page() {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="pfoa_homepage_hero_save" />
 			<?php wp_nonce_field( 'pfoa_hero_save', 'pfoa_hero_nonce' ); ?>
-			<h2><?php esc_html_e( 'Hero Section', 'pfoa-theme' ); ?></h2>
-			<h3><?php esc_html_e( 'Hero Media', 'pfoa-theme' ); ?></h3>
-		<p><?php esc_html_e( 'Edit the hero section shown at the top of the site homepage. Each carousel image has its own headline; images without one show no headline. The buttons stay fixed while carousel images change behind them.', 'pfoa-theme' ); ?></p>
-		<p class="submit">
-			<button type="submit" class="button button-primary" name="pfoa_hero_save" value="1"><?php esc_html_e( 'Save Homepage', 'pfoa-theme' ); ?></button>
-		</p>
-	<table class="form-table" role="presentation">
-		<tr>
-			<th scope="row"><label for="pfoa-hero-carousel-slide-count"><?php esc_html_e( 'Number of Carousel Slides', 'pfoa-theme' ); ?></label></th>
-			<td>
-				<select id="pfoa-hero-carousel-slide-count" name="pfoa_hero[carousel_slide_count]">
+			<h2><?php esc_html_e( 'Hero', 'pfoa-theme' ); ?></h2>
+			<style>
+			.pfoa-hero-topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 10px;}
+			.pfoa-hero-topbar .pfoa-hero-display-summary{color:#50575e;}
+			.pfoa-hero-display{border:1px solid #c8c0b5;border-radius:6px;background:#fff;margin:0 0 12px;max-width:100%;box-sizing:border-box;}
+			.pfoa-hero-display > summary{padding:10px 12px;cursor:pointer;font-weight:600;}
+			.pfoa-hero-display > summary .pfoa-hero-display-summary{font-weight:400;color:#50575e;}
+			.pfoa-hero-display-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 16px;padding:4px 12px 12px;border-top:1px solid #dcdcde;}
+			.pfoa-hero-display-grid .pfoa-hero-field{min-width:0;}
+			.pfoa-hero-display-grid .pfoa-hero-field > label{font-weight:600;display:block;margin:8px 0 4px;}
+			.pfoa-hero-display-grid .pfoa-hero-field select{max-width:100%;}
+			.pfoa-hero-display-grid .description{margin:4px 0 0;}
+			.pfoa-hero-display-grid .pfoa-hero-pin-mode{margin-top:8px;}
+			@media (max-width:782px){.pfoa-hero-display-grid{grid-template-columns:1fr;}}
+			</style>
+		<p class="description"><?php esc_html_e( 'Carousel images, headlines, and buttons shown at the top of the homepage.', 'pfoa-theme' ); ?></p>
+			<div class="pfoa-hero-topbar">
+				<button type="submit" class="button button-primary" name="pfoa_hero_save" value="1"><?php esc_html_e( 'Save Homepage', 'pfoa-theme' ); ?></button>
+				<span class="pfoa-hero-display-summary" role="status"></span>
+			</div>
+			<details class="pfoa-hero-display">
+				<summary><?php esc_html_e( 'Display Settings', 'pfoa-theme' ); ?> <span class="pfoa-hero-display-summary"></span></summary>
+				<div class="pfoa-hero-display-grid">
+					<div class="pfoa-hero-field">
+						<label for="pfoa-hero-carousel-slide-count"><?php esc_html_e( 'Number of Carousel Slides', 'pfoa-theme' ); ?></label>
+						<select id="pfoa-hero-carousel-slide-count" name="pfoa_hero[carousel_slide_count]">
 					<option value="2"<?php selected( $carousel_slide_count, 2 ); ?>><?php esc_html_e( '2 slides', 'pfoa-theme' ); ?></option>
 					<option value="3"<?php selected( $carousel_slide_count, 3 ); ?>><?php esc_html_e( '3 slides', 'pfoa-theme' ); ?></option>
 					<option value="4"<?php selected( $carousel_slide_count, 4 ); ?>><?php esc_html_e( '4 slides', 'pfoa-theme' ); ?></option>
@@ -3849,25 +3864,16 @@ function pfoa_site_homepage_page() {
 					<option value="7"<?php selected( $carousel_slide_count, 7 ); ?>><?php esc_html_e( '7 slides', 'pfoa-theme' ); ?></option>
 					<option value="8"<?php selected( $carousel_slide_count, 8 ); ?>><?php esc_html_e( '8 slides', 'pfoa-theme' ); ?></option>
 				</select>
-				<p class="description"><?php esc_html_e( 'How many of the carousel slots below show on the homepage (2–8). Slots beyond this count are kept — they will show if the count is increased.', 'pfoa-theme' ); ?></p>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php esc_html_e( 'Featured slide', 'pfoa-theme' ); ?></th>
-			<td>
-				<fieldset>
-					<legend class="screen-reader-text"><?php esc_html_e( 'Featured slide', 'pfoa-theme' ); ?></legend>
-					<label>
-						<input type="radio" name="pfoa_hero[featured_pin][slide]" value="0"<?php checked( $featured_pin['slide'], 0 ); ?> />
-						<?php esc_html_e( 'Normal Carousel Rotation', 'pfoa-theme' ); ?>
-					</label><br />
-					<?php for ( $pin_option = 1; $pin_option <= $carousel_slide_count; $pin_option++ ) : ?>
-						<label>
-							<input type="radio" name="pfoa_hero[featured_pin][slide]" value="<?php echo esc_attr( (string) $pin_option ); ?>"<?php checked( $featured_pin['slide'], $pin_option ); ?> />
-							<?php printf( esc_html__( 'Pin Slide %d', 'pfoa-theme' ), $pin_option ); ?>
-						</label><br />
-					<?php endfor; ?>
-				</fieldset>
+						<p class="description"><?php esc_html_e( 'Slots shown on the homepage (2–8). Extra slots are kept.', 'pfoa-theme' ); ?></p>
+					</div>
+					<div class="pfoa-hero-field">
+						<label for="pfoa-hero-featured-slide"><?php esc_html_e( 'Featured slide', 'pfoa-theme' ); ?></label>
+						<select id="pfoa-hero-featured-slide" name="pfoa_hero[featured_pin][slide]">
+							<option value="0"<?php selected( $featured_pin['slide'], 0 ); ?>><?php esc_html_e( 'Normal Carousel Rotation', 'pfoa-theme' ); ?></option>
+							<?php for ( $pin_option = 1; $pin_option <= 8; $pin_option++ ) : ?>
+								<option value="<?php echo esc_attr( (string) $pin_option ); ?>"<?php selected( $featured_pin['slide'], $pin_option ); ?>><?php printf( esc_html__( 'Pin Slide %d', 'pfoa-theme' ), $pin_option ); ?></option>
+							<?php endfor; ?>
+						</select>
 				<div class="pfoa-hero-pin-mode"<?php echo $featured_pin['slide'] ? '' : ' hidden'; ?>>
 					<fieldset>
 						<legend class="screen-reader-text"><?php esc_html_e( 'Pin duration', 'pfoa-theme' ); ?></legend>
@@ -3912,11 +3918,19 @@ function pfoa_site_homepage_page() {
 						<?php esc_html_e( 'Pinned slide has no valid image — rotation continues normally.', 'pfoa-theme' ); ?>
 					<?php endif; ?>
 				</p>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php esc_html_e( 'Carousel images', 'pfoa-theme' ); ?></th>
-			<td>
+					</div>
+					<div class="pfoa-hero-field">
+						<label for="pfoa-hero-carousel-interval"><?php esc_html_e( 'Carousel timing', 'pfoa-theme' ); ?></label>
+						<select id="pfoa-hero-carousel-interval" name="pfoa_hero[carousel_interval_ms]">
+							<option value="3500"<?php selected( $carousel_interval_ms, 3500 ); ?>><?php esc_html_e( '3.5 seconds', 'pfoa-theme' ); ?></option>
+							<option value="5000"<?php selected( $carousel_interval_ms, 5000 ); ?>><?php esc_html_e( '5 seconds', 'pfoa-theme' ); ?></option>
+							<option value="7000"<?php selected( $carousel_interval_ms, 7000 ); ?>><?php esc_html_e( '7 seconds', 'pfoa-theme' ); ?></option>
+						</select>
+						<p class="description"><?php esc_html_e( 'Time each slide shows before advancing.', 'pfoa-theme' ); ?></p>
+					</div>
+				</div>
+			</details>
+			<h3><?php esc_html_e( 'Carousel slides', 'pfoa-theme' ); ?></h3>
 				<style>
 .pfoa-hero-carousel-list{list-style:none;margin:0 0 12px;padding:0;max-width:100%;}
 .pfoa-hero-carousel-list .pfoa-hero-carousel-item{margin:0 0 12px;padding:0;max-width:100%;}
@@ -4127,7 +4141,7 @@ function pfoa_site_homepage_page() {
 								<option value="bottom right"<?php selected( $carousel_position, 'bottom right' ); ?>><?php esc_html_e( 'Bottom right', 'pfoa-theme' ); ?></option>
 							</select>
 						</label>
-									<p class="description"><?php esc_html_e( 'Lowering the slide count only dims the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
+									<p class="description"><?php esc_html_e( 'Extra slots stay inactive until the count is increased.', 'pfoa-theme' ); ?></p>
 								</div>
 							</section>
 							<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide actions', 'pfoa-theme' ); ?>">
@@ -4255,7 +4269,7 @@ function pfoa_site_homepage_page() {
 						<option value="bottom right"><?php esc_html_e( 'Bottom right', 'pfoa-theme' ); ?></option>
 					</select>
 				</label>
-						<p class="description"><?php esc_html_e( 'Lowering the slide count only dims the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Extra slots stay inactive until the count is increased.', 'pfoa-theme' ); ?></p>
 							</div>
 						</section>
 						<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide actions', 'pfoa-theme' ); ?>">
@@ -4273,21 +4287,7 @@ function pfoa_site_homepage_page() {
 						</details>
 					</li>
 				</template>
-				<p class="description"><?php esc_html_e( 'Shown in order, up to the Number of Carousel Slides above (max 8 slots). Empty slots have their own Select Image button. Use Move Up and Move Down to reorder; the buttons stay the same on every image. Lowering the slide count only dims the extra slots — removing a row deletes it.', 'pfoa-theme' ); ?></p>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><label for="pfoa-hero-carousel-interval"><?php esc_html_e( 'Carousel timing', 'pfoa-theme' ); ?></label></th>
-			<td>
-				<select id="pfoa-hero-carousel-interval" name="pfoa_hero[carousel_interval_ms]">
-					<option value="3500"<?php selected( $carousel_interval_ms, 3500 ); ?>><?php esc_html_e( '3.5 seconds', 'pfoa-theme' ); ?></option>
-					<option value="5000"<?php selected( $carousel_interval_ms, 5000 ); ?>><?php esc_html_e( '5 seconds', 'pfoa-theme' ); ?></option>
-					<option value="7000"<?php selected( $carousel_interval_ms, 7000 ); ?>><?php esc_html_e( '7 seconds', 'pfoa-theme' ); ?></option>
-				</select>
-				<p class="description"><?php esc_html_e( 'Time each carousel image remains visible before advancing automatically.', 'pfoa-theme' ); ?></p>
-			</td>
-		</tr>
-	</table>
+				<p class="description"><?php esc_html_e( 'Shown in order, up to the slide count above (max 8). Use Move Up and Move Down to reorder.', 'pfoa-theme' ); ?></p>
  	<h4><?php esc_html_e( 'Shortcut buttons', 'pfoa-theme' ); ?></h4>
 	<table class="widefat striped">
 		<thead>
@@ -4383,6 +4383,10 @@ function pfoa_hero_admin_assets( $hook ) {
 				'saved'            => __( 'Saved.', 'pfoa-theme' ),
 				'saveFailed'       => __( 'Save failed. Please try again.', 'pfoa-theme' ),
 				'unsavedChanges'   => __( 'Unsaved changes', 'pfoa-theme' ),
+				'normalRotation'   => __( 'Normal Carousel Rotation', 'pfoa-theme' ),
+				'pinSlide'         => __( 'Pin Slide', 'pfoa-theme' ),
+				'slidesWord'       => __( 'slides', 'pfoa-theme' ),
+				'rotatingWord'     => __( 'Rotating', 'pfoa-theme' ),
 				'newSlotHomepage'  => __( 'This is a new slide. Click Save Homepage first to add it, then edit it per-slide.', 'pfoa-theme' ),
 				'conflictHomepage' => __( 'Slides changed elsewhere. Reload the page and use Save Homepage to keep every change.', 'pfoa-theme' ),
 				'linkWarning'      => __( '— External URL was invalid, so its link was removed.', 'pfoa-theme' ),

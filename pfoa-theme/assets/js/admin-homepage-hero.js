@@ -173,6 +173,99 @@
 		refreshSummaryLink( item );
 	}
 
+	function getPinSlide() {
+		var select = $( '#pfoa-hero-featured-slide' );
+
+		if ( select.length ) {
+			return String( select.val() );
+		}
+
+		var checked = $( 'input[name="pfoa_hero[featured_pin][slide]"]:checked' );
+
+		return checked.length ? String( checked.val() ) : '0';
+	}
+
+	function normalRotationLabel() {
+		return labels.normalRotation || 'Normal Carousel Rotation';
+	}
+
+	function pinSlideLabel( number ) {
+		var base = labels.pinSlide || 'Pin Slide';
+
+		return base + ' ' + number;
+	}
+
+	function slidesWord() {
+		return labels.slidesWord || 'slides';
+	}
+
+	function rotatingWord() {
+		return labels.rotatingWord || 'Rotating';
+	}
+
+	function intervalSummaryLabel() {
+		var interval = $( '#pfoa-hero-carousel-interval' );
+
+		if ( ! interval.length ) {
+			return '';
+		}
+
+		var selected = interval.find( 'option:selected' );
+		var label = selected.length ? String( selected.text() ).trim() : String( interval.val() );
+
+		return label || '';
+	}
+
+	function refreshDisplaySummary() {
+		var summaries = $( '.pfoa-hero-display-summary' );
+
+		if ( ! summaries.length ) {
+			return;
+		}
+
+		var count = getSlideCount();
+		var pin = getPinSlide();
+		var pinText = ( pin && '0' !== pin ) ? pinSlideLabel( pin ) : rotatingWord();
+		var timing = intervalSummaryLabel();
+
+		summaries.text( count + ' ' + slidesWord() + ' · ' + pinText + ( timing ? ' · ' + timing : '' ) );
+	}
+
+	// Keep the Featured Slide dropdown in step with the slide count: options
+	// for 0..count, plus the saved selection when it sits beyond the count so
+	// a stored pin is never lost on save.
+	function rebuildPinOptions( count ) {
+		var select = $( '#pfoa-hero-featured-slide' );
+
+		if ( ! select.length ) {
+			return;
+		}
+
+		if ( isNaN( count ) || count < 2 ) {
+			count = 2;
+		}
+
+		if ( count > PFOA_HERO_MAX_SLIDES ) {
+			count = PFOA_HERO_MAX_SLIDES;
+		}
+
+		var current = String( select.val() );
+		var keep = parseInt( current, 10 );
+
+		select.empty();
+		select.append( $( '<option></option>' ).attr( 'value', '0' ).text( normalRotationLabel() ) );
+
+		for ( var i = 1; i <= count; i++ ) {
+			select.append( $( '<option></option>' ).attr( 'value', String( i ) ).text( pinSlideLabel( i ) ) );
+		}
+
+		if ( ! isNaN( keep ) && keep > count && keep <= PFOA_HERO_MAX_SLIDES ) {
+			select.append( $( '<option></option>' ).attr( 'value', String( keep ) ).text( pinSlideLabel( keep ) ) );
+		}
+
+		select.val( current );
+	}
+
 	function refreshPinMode() {
 		var mode = $( '.pfoa-hero-pin-mode' );
 
@@ -180,9 +273,9 @@
 			return;
 		}
 
-		var selected = $( 'input[name="pfoa_hero[featured_pin][slide]"]:checked' ).val();
+		var selected = getPinSlide();
 
-		if ( selected && '0' !== String( selected ) ) {
+		if ( selected && '0' !== selected ) {
 			mode.show();
 		} else {
 			mode.hide();
@@ -238,8 +331,13 @@
 	}
 
 	$( document ).on( 'change', '#pfoa-hero-carousel-slide-count', function () {
-		ensureRowCount( getSlideCount() );
+		var count = getSlideCount();
+
+		ensureRowCount( count );
+		rebuildPinOptions( count );
 		refreshInactiveSlots();
+		refreshPinMode();
+		refreshDisplaySummary();
 	} );
 
 	// Per-slide save (Lane B): dirty tracking + AJAX save for one card.
@@ -477,12 +575,16 @@
 	} );
 
 	$( function () {
-		ensureRowCount( getSlideCount() );
+		var count = getSlideCount();
+
+		ensureRowCount( count );
+		rebuildPinOptions( count );
 		refreshInactiveSlots();
 		$( '.pfoa-hero-carousel-item' ).each( function () {
 			refreshLinkType( $( this ) );
 		} );
 		refreshPinMode();
+		refreshDisplaySummary();
 	} );
 
 	// Live-sync the card summary while editing; the summary is display-only
@@ -519,8 +621,13 @@
 		}
 	} );
 
-	$( document ).on( 'change', 'input[name="pfoa_hero[featured_pin][slide]"]', function () {
+	$( document ).on( 'change', '#pfoa-hero-featured-slide, input[name="pfoa_hero[featured_pin][slide]"]', function () {
 		refreshPinMode();
+		refreshDisplaySummary();
+	} );
+
+	$( document ).on( 'change', '#pfoa-hero-carousel-interval', function () {
+		refreshDisplaySummary();
 	} );
 
 	function nextCarouselIndex( list ) {
