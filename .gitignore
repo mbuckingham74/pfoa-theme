@@ -4,5 +4,12 @@
 # Deployment receipts, retained packages/backups, and per-run logs.
 /deployments/
 
+# Generated run evidence and QA evidence (per-run artifacts; never source).
+/evidence/
+/qa-evidence/
+
+# Node dependencies are reproducible via npm install; never source.
+/node_modules/
+
 # Operating-system metadata does not belong in the repository or theme ZIP.
 .DS_Store
