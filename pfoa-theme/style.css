@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-           Version: 0.1.234
+              Version: 0.1.246
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -649,6 +649,26 @@ input[type="radio"] {
 	accent-color: var(--pfoa-color-brand);
 }
 
+/* B5 keyboard focus (forms): native checkbox/radio keep brand
+ * accent-color and UA size; guarantee a visible 3px ring with
+ * offset so :focus-visible never renders ring-less if a UA or
+ * plugin stylesheet suppresses outlines. Global :focus-visible
+ * (L134) already covers these; this explicit rule is a guard.
+ * Offset is >= 0 so overflow-x clipping guard (body L94) is safe. */
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+	outline: 3px solid var(--pfoa-focus-ring);
+	outline-offset: 2px;
+}
+
+/* Keep the form ring legible on dark structural surfaces. */
+.site-header input[type="checkbox"]:focus-visible,
+.site-header input[type="radio"]:focus-visible,
+.site-footer input[type="checkbox"]:focus-visible,
+.site-footer input[type="radio"]:focus-visible {
+	outline-color: var(--pfoa-text-on-structural);
+}
+
 input[type="range"] {
 	accent-color: var(--pfoa-color-brand);
 }
@@ -1093,16 +1113,8 @@ body.page-id-22514 .entry-content .gallery > .gallery-item .gallery-caption {
 /* PFOA 0.1.162 — Staff roster (page-id-4968, #staff-roster): remove persistent
  * underlines. Color is owned by page content (navy #000080); hover/focus
  * underline and theme focus ring preserve keyboard visibility. Scoped to
- * Staff only; ordinary content links keep global underline styling. */
-body.page-id-4968 #staff-roster a {
-	text-decoration: none;
-}
-
-body.page-id-4968 #staff-roster a:hover,
-body.page-id-4968 #staff-roster a:focus-visible {
-	text-decoration: underline;
-}
-
+ * Staff only; ordinary content links keep global underline styling.
+ * Consolidated in B3: decoration now owned by the 0.1.235 sitewide rule. */
 body.page-id-4968 #staff-roster a:focus-visible {
 	outline: 3px solid var(--pfoa-focus-ring);
 	outline-offset: 3px;
@@ -2417,6 +2429,24 @@ body.page-id-4968 #staff-roster a:focus-visible {
 		padding: 0;
 	}
 
+	/* B5 keyboard reachability (desktop): the toggle stays
+	 * display:none by design — dropdowns open via :hover AND
+	 * :focus-within on the parent item (L1532-1539), so Tab reaches
+	 * every submenu link through its top-level link with the white
+	 * header ring (L1863) and no button is needed. Widening the
+	 * 32px toggle to 44px would distort the floating-tab geometry,
+	 * so it keeps a spacing-adjacent exception (WCAG 2.5.8).
+	 * Safety net only: if a desktop toggle ever becomes focusable
+	 * (JS/breakpoint edge), expose it at 44px min-target with the
+	 * legible header ring instead of leaving it hidden-but-focused.
+	 * No impact on mouse layout at rest. */
+	.primary-menu .submenu-toggle:focus-visible {
+		display: inline-flex;
+		width: auto;
+		min-width: 2.75rem;
+		min-height: 2.75rem;
+	}
+
 	.site-header {
 		position: sticky;
 		top: 0;
@@ -2660,6 +2690,16 @@ body.page-id-4968 #staff-roster a:focus-visible {
 	border-color: #ffffff;
 	background: #ffffff;
 	color: var(--pfoa-color-text);
+}
+
+/* PFOA 0.1.245 — Carousel CTA dual-ring keyboard focus. Green-only ring
+ * measured 1.17-1.35:1 on dark photos; white inner + black outer stays
+ * visible on light and dark regions. Scoped to carousel CTAs only; resting
+ * appearance, global focus tokens, and unrelated buttons untouched. */
+.front-page-content .homepage-hero--carousel .homepage-hero__actions .pfoa-button:focus-visible {
+	outline: 3px solid #ffffff;
+	outline-offset: 3px;
+	box-shadow: 0 0 0 6px #000000;
 }
 
 /* Hero carousel. Single-image layout above is unchanged; these rules only
@@ -6030,13 +6070,15 @@ body.page-id-4799 .entry-content span.pfoa-pt-archive__links {
 	gap: 0.25rem 1.25rem;
 	min-width: 0;
 }
-/* Underlined text links with 44px targets; no seasonal pills. */
+/* PFOA 0.1.235 — sitewide hyperlink standard: text links rest without a
+ * permanent underline (rest none + underline on hover/focus-visible, matching
+ * Staff 4968 / In Memoriam 5421); no seasonal pills. Consolidated in B3:
+ * decoration now owned by the 0.1.235 sitewide rule. */
 body.page-id-4799 .entry-content span.pfoa-pt-archive__links a {
 	display: inline-flex;
 	align-items: center;
 	min-height: 44px;
 	font-size: 1rem;
-	text-decoration: underline;
 	text-underline-offset: 0.15em;
 	overflow-wrap: anywhere;
 }
@@ -6125,7 +6167,9 @@ body.page-id-4799 .entry-content div.pfoa-pt-about.is-layout-flow > :first-child
 	body.page-id-4799 .entry-content div.wp-block-group.pfoa-pt-page,
 	body.page-id-4799 .entry-content div.pfoa-pt-page {
 		max-width: 100%;
-		overflow-x: clip;
+		overflow-x: visible;
+		box-sizing: border-box;
+		min-width: 0;
 	}
 	body.page-id-4799 .entry-content figure.pfoa-pt-intro__photo {
 		flex-basis: 80px;
@@ -6563,7 +6607,8 @@ body.page-id-25036 .entry-content .gca-column.one-third iframe[src*="youtube-noc
  * navy color and theme font-weight:600 for distinguishability, restore
  * underline on hover/focus-visible, and leave the global focus-ring
  * outline intact for keyboard visibility. Desktop grid and mobile 600px
- * reflow (0.1.161) untouched. */
+ * reflow (0.1.161) untouched. Consolidated in B3: decoration now owned by
+ * the 0.1.235 sitewide rule. */
 body.page-id-5421 .page-content .entry-content > h1:first-of-type {
 	max-width: 100%;
 	margin-top: 0;
@@ -6571,15 +6616,6 @@ body.page-id-5421 .page-content .entry-content > h1:first-of-type {
 	border-bottom: 2px solid var(--pfoa-color-gold);
 	padding-bottom: var(--pfoa-space-4);
 	text-align: center;
-}
-
-body.page-id-5421 .page-content .entry-content table.aligncenter td span a {
-	text-decoration: none;
-}
-
-body.page-id-5421 .page-content .entry-content table.aligncenter td span a:hover,
-body.page-id-5421 .page-content .entry-content table.aligncenter td span a:focus-visible {
-	text-decoration: underline;
 }
 
 /* PFOA 0.1.178 — Standardized page title presentation (recommendations A + C).
@@ -6762,7 +6798,8 @@ body.page-id-4799 .entry-content details.pfoa-pt-range[open] > summary::after {
 	margin-inline-start: 0.5rem;
 }
 /* Compact wrapping issue list: modest gaps, natural line wrapping, no
- * large row heights, no empty slots, no nested scrolling. */
+ * large row heights, no empty slots, no nested scrolling. Consolidated in
+ * B3: decoration now owned by the 0.1.235 sitewide rule. */
 body.page-id-4799 .entry-content p.pfoa-pt-archive__list {
 	display: flex;
 	flex-wrap: wrap;
@@ -6777,11 +6814,11 @@ body.page-id-4799 .entry-content p.pfoa-pt-archive__list a {
 	display: inline-flex;
 	align-items: center;
 	min-height: 44px;
-	text-decoration: underline;
 	text-underline-offset: 0.15em;
 	overflow-wrap: break-word;
 }
-body.page-id-4799 .entry-content p.pfoa-pt-archive__list a:hover {
+body.page-id-4799 .entry-content p.pfoa-pt-archive__list a:hover,
+body.page-id-4799 .entry-content p.pfoa-pt-archive__list a:focus-visible {
 	text-underline-offset: 0.25em;
 }
 body.page-id-4799 .entry-content p.pfoa-pt-archive__list a:focus-visible {
@@ -6891,8 +6928,11 @@ body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list {
 	margin-block: 0 1rem;
 }
 
+/* PFOA 0.1.235 — sitewide hyperlink standard: rest without a permanent
+ * underline; hover/focus-visible underline is owned by the 0.1.221 rules
+ * below (plain-list path) and the 0.1.233 card-grid rules (JS grid path).
+ * Consolidated in B3: decoration now owned by the 0.1.235 sitewide rule. */
 body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a {
-	text-decoration: underline;
 	display: inline-flex;
 	align-items: center;
 	min-height: 44px;
@@ -7364,11 +7404,11 @@ body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a {
 	display: inline-flex;
 	align-items: center;
 	min-height: 44px;
-	text-decoration: underline;
 	text-underline-offset: 0.15em;
 	overflow-wrap: break-word;
 }
-body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:hover {
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:hover,
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:focus-visible {
 	text-underline-offset: 0.25em;
 }
 body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:focus-visible {
@@ -7445,7 +7485,17 @@ body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a {
 body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:hover {
 	background: var(--pfoa-color-background);
 }
-body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:hover span.pfoa-hf-title {
+/* PFOA 0.1.235 — sitewide hyperlink standard, card-grid path: a JS-enhanced
+ * row (a:has(span.pfoa-hf-title)) never underlines the whole card on
+ * hover/focus (badge + arrow stay clean); only the title underlines, on both
+ * hover and keyboard focus. Plain-list rows without spans keep the full-link
+ * hover/focus underline from the 0.1.221 rules above. */
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:has(span.pfoa-hf-title):hover,
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:has(span.pfoa-hf-title):focus-visible {
+	text-decoration: none;
+}
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:hover span.pfoa-hf-title,
+body.page-id-11290 .page-content .entry-content p.pfoa-hf-archive__list a:focus-visible span.pfoa-hf-title {
 	text-decoration: underline;
 	text-underline-offset: 0.2em;
 }
@@ -7618,5 +7668,356 @@ body.page-id-25515 .entry-content .wp-block-buttons {
 		hyphens: none;
 		-webkit-hyphens: none;
 	}
+}
+
+/* PFOA 0.1.235 — Sitewide hyperlink standard (visitor content only).
+ * Root cause: the global `a` rule sets color/thickness/offset but never
+ * `text-decoration-line`, so the UA permanent underline survives on ordinary
+ * body links. Following the accepted Staff (page-id-4968 #staff-roster) and
+ * In Memoriam (page-id-5421) precedents, ordinary visitor-content links rest
+ * without an underline and underline on :hover and :focus-visible.
+ * Scope is strictly article.page-content prose (.page-content
+ * .entry-content), so wp-admin, SeedProd, header/nav, footer, dialogs, and
+ * form controls are untouched. Buttons (.pfoa-button/.button/
+ * .wp-element-button/.wp-block-button__link), arrow links
+ * (.pfoa-text-link/.text-link), and image/lightbox links (:has(img)) are
+ * structurally excluded, so button/nav/card/pill presentation is preserved.
+ * :where() keeps the added specificity at zero, so page-scoped component
+ * rules (e.g. the 0.1.233 Home Front card grid) still outrank this default.
+ * Link colors/contrast (vars --pfoa-action-*), the :hover color shift, and
+ * the global focus ring are unchanged; thickness/offset come from the global
+ * `a` rule. Content-authored inline style="text-decoration:underline" (e.g.
+ * page 20323 backup) is content-owned and out of scope — reported, not
+ * overridden.
+ * PFOA 0.1.243 (B4/N4) — heading-anchor completion: h2/h3 join the context
+ * list so linked article/teaser headings (e.g. the /adoptionstories/ h3
+ * teaser, previously resting underlined on the UA default) follow the same
+ * rest-none / hover+focus-underline topology as prose links (Role 9). The
+ * adoptable card-title resting state is unchanged (its 0.1.91
+ * a:not(:focus-visible) rule already rests none and outranks this default);
+ * card hover keeps the intentional card-lift affordance (no forced hover
+ * underline — that rule still wins where it applies). */
+.page-content .entry-content :where(p, li, blockquote, dd, dt, td, th, figcaption, span, h2, h3) a:where(:not(.pfoa-button):not(.button):not(.wp-element-button):not(.wp-block-button__link):not(.pfoa-text-link):not(.text-link):not(:has(img))) {
+	text-decoration: none;
+}
+.page-content .entry-content :where(p, li, blockquote, dd, dt, td, th, figcaption, span, h2, h3) a:where(:not(.pfoa-button):not(.button):not(.wp-element-button):not(.wp-block-button__link):not(.pfoa-text-link):not(.text-link):not(:has(img))):hover,
+.page-content .entry-content :where(p, li, blockquote, dd, dt, td, th, figcaption, span, h2, h3) a:where(:not(.pfoa-button):not(.button):not(.wp-element-button):not(.wp-block-button__link):not(.pfoa-text-link):not(.text-link):not(:has(img))):focus-visible {
+	text-decoration: underline;
+}
+
+/* PFOA 0.1.235 — Facilities thumbnail consistency (directory 4419 + detail
+ * pages 25066-25070; one shared standard, theme tokens only).
+ * Directory 4419 is custom flex markup (div#facilities-directory >
+ * div.pfoa-facility > a>img + span.pfoa-facility-name>a); the details are
+ * legacy [gallery columns=N link=file] (.gallery.gallery-columns-N >
+ * .gallery-item > .gallery-icon>a>img + .gallery-caption). Column counts are
+ * preserved: the directory keeps its flex 5-across wrap (2-across at
+ * <=600px, 1-across at <=400px) and each detail gallery keeps its shortcode
+ * columns (25066: 4, 25067: 5, 25068: 5, 25069: 4, 25070: 5) — there are no
+ * grid-template-columns rules here, and the page-id-22514 square
+ * aspect-ratio/object-fit treatment is deliberately NOT applied. What is
+ * standardized: horizontal gutters and vertical row spacing
+ * (var(--pfoa-space-3), tightened to var(--pfoa-space-2) at <=600px),
+ * image-to-caption separation (var(--pfoa-space-1), keeping captions glued
+ * to their photos), caption typography/alignment (0.875rem/1.5 body rhythm,
+ * centered), and image sizing (width-bounded with height:auto — no stretch,
+ * distortion, cropping, or forced fixed heights, so mixed ratios render
+ * naturally). The hooks are facilities-unique and the selectors outrank the
+ * content-embedded <style> blocks; the legacy table bridge (:has(td img))
+ * is unused by this markup and is left untouched. */
+.page-content .entry-content #facilities-directory {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--pfoa-space-3);
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+	margin: var(--pfoa-space-2) 0;
+}
+.page-content .entry-content #facilities-directory .pfoa-facility {
+	flex: 1 1 150px;
+	max-width: 200px;
+	min-width: 140px;
+	box-sizing: border-box;
+	text-align: center;
+}
+.page-content .entry-content #facilities-directory .pfoa-facility img {
+	display: block;
+	width: 200px;
+	max-width: 100%;
+	height: auto;
+	margin-inline: auto;
+	box-sizing: border-box;
+}
+.page-content .entry-content #facilities-directory .pfoa-facility-name {
+	display: block;
+	margin-top: var(--pfoa-space-1);
+	text-align: center;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	font-weight: 600;
+}
+.page-content .entry-content .pfoa-facility-detail .gallery {
+	gap: var(--pfoa-space-3);
+	max-width: 100%;
+	margin: 0 auto var(--pfoa-space-3);
+}
+.page-content .entry-content .pfoa-facility-detail .gallery .gallery-item {
+	min-width: 0;
+}
+.page-content .entry-content .pfoa-facility-detail .gallery-icon img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+.page-content .entry-content .pfoa-facility-detail .gallery-caption {
+	margin-top: var(--pfoa-space-1);
+	text-align: center;
+	font-size: 0.875rem;
+	line-height: 1.5;
+}
+/* PFOA 0.1.237 — R2 interactive photograph label (Facilities directory 4419
+ * + Safe Haven detail 25066 only; shared source + two thin adapters).
+ * Shared semantic source: .pfoa-photo-label owns the full interactive-label
+ * contract — system-ui body stack, 1rem (16px, up from 0.875rem/14px), 600,
+ * never italic, 1.5 rhythm, action-primary rest, centered, rest
+ * text-decoration none; hover/focus-visible underline + hover color. The
+ * global :focus-visible 3px var(--pfoa-focus-ring) outline is untouched (no
+ * outline removal here). Image-to-label gap stays on the containers above
+ * (margin-top var(--pfoa-space-1) = 8px on .pfoa-facility-name and
+ * .gallery-caption), NOT on the shared label, and typography/alignment of
+ * static figcaptions without anchors is unchanged (still italic 0.875rem via
+ * :691-701 and the containers above — Role 3 preserved). The label activates
+ * the same target as the photo (directory anchor / runtime
+ * a.pfoa-facility-caption-link wrapping, Photobox-owned); no JS click owner
+ * is added here. Hooks are facilities-unique; no page-ID selectors, no
+ * .pfoa-cat-gallery changes, no Georgia (page 22514) title changes. */
+.page-content .entry-content .pfoa-photo-label {
+	font-family: var(--pfoa-font-body);
+	font-size: 1rem;
+	font-weight: 600;
+	font-style: normal;
+	line-height: 1.5;
+	color: var(--pfoa-action-primary);
+	text-align: center;
+	text-decoration: none;
+}
+.page-content .entry-content .pfoa-photo-label:hover,
+.page-content .entry-content .pfoa-photo-label:focus-visible {
+	color: var(--pfoa-action-hover);
+	text-decoration: underline;
+}
+/* Adapter 1/2 — directory 4419 label anchor (div#facilities-directory >
+ * div.pfoa-facility > span.pfoa-facility-name > a). .page-content prefix beats
+ * the :691-701 italic cascade without !important; font-style normal + full
+ * 16px/600 metrics live on the ANCHOR so the container keeps its gap/center
+ * role. */
+/* PFOA 0.1.238 — B1 directory photo-anchor block: the content-embedded
+ * `#facilities-directory .pfoa-facility a { display:inline-block; }` leaves
+ * ~7.4px inline baseline leading below the thumbnail, so margin-top:8px on
+ * `.pfoa-facility-name` rendered as 15.4px. Block removes the leading so the
+ * rendered img-bottom → label-top geometry is the canonical 8px. Scoped to
+ * the direct photo child only; the label anchor below is untouched. */
+.page-content .entry-content #facilities-directory .pfoa-facility > a {
+	display: block;
+}
+.page-content .entry-content #facilities-directory .pfoa-facility-name a {
+	font-family: var(--pfoa-font-body);
+	font-size: 1rem;
+	font-weight: 600;
+	font-style: normal;
+	line-height: 1.5;
+	color: var(--pfoa-action-primary);
+	text-align: center;
+	text-decoration: none;
+}
+.page-content .entry-content #facilities-directory .pfoa-facility-name a:hover,
+.page-content .entry-content #facilities-directory .pfoa-facility-name a:focus-visible {
+	color: var(--pfoa-action-hover);
+	text-decoration: underline;
+}
+/* Adapter 2/2 — Safe Haven detail caption anchor (legacy gallery
+ * figcaption.gallery-caption > a.pfoa-facility-caption-link, wrapped at
+ * runtime with the sibling thumbnail href). Supersedes the 0.1.236
+ * color/weight-only rule with the full 16px non-italic contract on the
+ * ANCHOR; the figcaption container above stays italic 0.875rem so static
+ * captions without anchors are unaffected. */
+.page-content .entry-content .pfoa-facility-detail .gallery-caption a.pfoa-facility-caption-link {
+	font-family: var(--pfoa-font-body);
+	font-size: 1rem;
+	font-weight: 600;
+	font-style: normal;
+	line-height: 1.5;
+	color: var(--pfoa-action-primary);
+	text-align: center;
+	text-decoration: none;
+	cursor: pointer;
+}
+.page-content .entry-content .pfoa-facility-detail .gallery-caption a.pfoa-facility-caption-link:hover,
+.page-content .entry-content .pfoa-facility-detail .gallery-caption a.pfoa-facility-caption-link:focus-visible {
+	color: var(--pfoa-action-hover);
+	text-decoration: underline;
+}
+@media (max-width: 600px) {
+	.page-content .entry-content #facilities-directory .pfoa-facility {
+		flex: 1 1 40%;
+		max-width: 46%;
+		min-width: 0;
+	}
+	.page-content .entry-content .pfoa-facility-detail .gallery {
+		gap: var(--pfoa-space-2);
+	}
+}
+@media (max-width: 400px) {
+	.page-content .entry-content #facilities-directory .pfoa-facility {
+		flex: 1 1 100%;
+		max-width: min(280px, 100%);
+	}
+}
+/* PFOA 0.1.239 — B2 interactive photograph labels, Adapter 3/4 (Staff
+ * page-id-4968 #staff-roster) + Adapter 4/4 (In Memoriam page-id-5421
+ * table.aligncenter). Shared .pfoa-photo-label source at :7761-7775; these
+ * are thin adapters only, no independent visual definitions.
+ * Each label anchor shares its destination with the sibling photo anchor
+ * (same bio / memorial href), so the label carries the canonical R2
+ * contract: system-ui body stack, 1rem (16px), 600, never italic, 1.5
+ * rhythm, action-primary rest, centered, rest text-decoration none;
+ * hover/focus-visible hover color + underline. Geometry stays on the
+ * wrappers, not the shared label. The global :focus-visible 3px
+ * var(--pfoa-focus-ring) outline is untouched (no outline removal here),
+ * and photo proportions are untouched (no width/height/object-fit changes;
+ * height:auto from the legacy table bridge is preserved).
+ * Scope is label anchors ONLY: photo anchors (td > a wrapping img),
+ * static spans without anchors (e.g. Priya img+span cell), the Wills
+ * editorial line, memorial detail pages, and In Memoriam body typography
+ * are all outside these selectors and render unchanged. Table/grid
+ * arrangements are preserved: no grid-template-columns, column-count, or
+ * width rules here, so desktop 6-col (memoriam) / fixed 4-col (staff) and
+ * the 0.1.161 <=600px 3-col memoriam reflow are untouched. */
+/* PFOA 0.1.239 — B2 photo-anchor block (B1 0.1.238 precedent): an inline
+ * photo anchor leaves inline baseline leading below the thumbnail, so the
+ * label gap would render larger than declared. Block removes the leading
+ * so the rendered img-bottom → label-top geometry is the canonical 8px.
+ * Scoped to the direct photo child only (td > a:has(> img)); label anchors
+ * below are untouched by this rule. The legacy table bridge (:1087-1091)
+ * already gives the img itself display:block + margin-inline:auto +
+ * height:auto and is reused, not repeated. */
+body.page-id-4968 .page-content .entry-content #staff-roster td > a:has(> img),
+body.page-id-5421 .page-content .entry-content table.aligncenter td > a:has(> img) {
+	display: block;
+}
+/* PFOA 0.1.239 — B2 label gap lives on the label wrapper span
+ * (display:block + margin-top var(--pfoa-space-1) = 8px), NOT on the
+ * anchor, mirroring the facilities .pfoa-facility-name / .gallery-caption
+ * containers. :has(> a) limits the gap to spans that own a label anchor,
+ * so static spans without anchors keep their existing rendering. */
+body.page-id-4968 .page-content .entry-content #staff-roster td span:has(> a),
+body.page-id-5421 .page-content .entry-content table.aligncenter td span:has(> a[href*="/inmemoriam/"]) {
+	display: block;
+	margin-top: var(--pfoa-space-1);
+}
+/* Adapter 3/4 — Staff roster label anchors (page-id-4968 #staff-roster td
+ * span a: text labels sharing the photo destination). .page-content
+ * .entry-content prefix outranks the legacy 0.1.162 navy/underline rules
+ * (:1093-1109, left in place — superseded, not deleted) without
+ * !important; the full 16px non-italic contract lives on the ANCHOR.
+ * Bare photo anchors (td > a > img), the static Priya img+span cell (no
+ * anchor), and the Wills editorial line are outside td span a and are
+ * unaffected. */
+body.page-id-4968 .page-content .entry-content #staff-roster td span a {
+	font-family: var(--pfoa-font-body);
+	font-size: 1rem;
+	font-weight: 600;
+	font-style: normal;
+	line-height: 1.5;
+	color: var(--pfoa-action-primary);
+	text-align: center;
+	text-decoration: none;
+}
+body.page-id-4968 .page-content .entry-content #staff-roster td span a:hover,
+body.page-id-4968 .page-content .entry-content #staff-roster td span a:focus-visible {
+	color: var(--pfoa-action-hover);
+	text-decoration: underline;
+}
+/* Adapter 4/4 — In Memoriam parent-gallery label anchors (page-id-5421
+ * table.aligncenter td span a[href*="/inmemoriam/"]: text labels sharing
+ * the photo destination to a memorial detail page). The href filter +
+ * .page-content prefix outrank the legacy 0.1.177 navy/underline rules
+ * (:6582-6589, left in place — superseded, not deleted) without
+ * !important. Image boxes (td > a), bare static span cells (no anchor),
+ * memorial detail pages, and body typography are outside this selector
+ * and render unchanged. */
+body.page-id-5421 .page-content .entry-content table.aligncenter td span a[href*="/inmemoriam/"] {
+	font-family: var(--pfoa-font-body);
+	font-size: 1rem;
+	font-weight: 600;
+	font-style: normal;
+	line-height: 1.5;
+	color: var(--pfoa-action-primary);
+	text-align: center;
+	text-decoration: none;
+}
+body.page-id-5421 .page-content .entry-content table.aligncenter td span a[href*="/inmemoriam/"]:hover,
+body.page-id-5421 .page-content .entry-content table.aligncenter td span a[href*="/inmemoriam/"]:focus-visible {
+	color: var(--pfoa-action-hover);
+	text-decoration: underline;
+}
+/* PFOA 0.1.240 — B2 live-DEV follow-up (Staff page-id-4968 + In Memoriam
+ * page-id-5421). Two genuine deviations found on synced 0.1.239; this block
+ * adjusts ONLY the B2 label color (In Memoriam) and the B2 label-gap
+ * declarations (same selectors as 0.1.239). B1 blocks, legacy rules, the
+ * global :focus-visible ring, static selectors, and detail pages are NOT
+ * altered here. Content bytes are untouched — presentation-only CSS. */
+/* PFOA 0.1.240 — Fix 1, In Memoriam label color: live DOM carries
+ * content-authored inline style="color:#000080" directly on the label
+ * ANCHOR (e.g. <span style="color:#000080;..."><a style="color:#000080;"
+ * href="/inmemoriam/...">), which outranks every non-!important stylesheet
+ * rule at rest, hover, AND focus (inline style has no pseudo-class
+ * awareness). That is why labels stayed navy rgb(0,0,128) while Staff —
+ * whose anchors carry NO inline color (verified: bare <a href="/staff-2/…">
+ * under a styled span) — normalized fine and needs no change here.
+ * Fix: re-state color with !important, scoped STRICTLY to the Adapter 4/4
+ * label selector + hover/focus-visible. A stylesheet !important beats a
+ * non-!important inline style, so rest renders action-primary #434EBE and
+ * hover/focus-visible render action-hover #303873 + underline. !important
+ * appears ONLY on these color declarations (typography, gap, and geometry
+ * stay !important-free); static spans, image boxes, detail pages, and body
+ * typography are outside the selector and unchanged. */
+body.page-id-5421 .page-content .entry-content table.aligncenter td span a[href*="/inmemoriam/"] {
+	color: var(--pfoa-action-primary) !important;
+}
+body.page-id-5421 .page-content .entry-content table.aligncenter td span a[href*="/inmemoriam/"]:hover,
+body.page-id-5421 .page-content .entry-content table.aligncenter td span a[href*="/inmemoriam/"]:focus-visible {
+	color: var(--pfoa-action-hover) !important;
+}
+/* PFOA 0.1.241 — Correction A, structural 8px image-to-label geometry:
+ * the wrapper span keeps margin-top: var(--pfoa-space-1) = 8px (container
+ * top exactly 8px below the photo) and stays display:block, matching the
+ * 0.1.239 baseline (:7880-7884). A column-flex wrapper was rejected here:
+ * it blockifies the authored <a>Name</a><br>Title into three flex items
+ * and the empty <br> item plus the td font strut renders as a blank line
+ * between name and title. Block preserves the normal <br> line-break, so
+ * the name sits directly above the title with no blank line. Same two
+ * span:has() selectors, later position wins; supersedes the 0.1.240 calc()
+ * baseline compensation (deleted, no magic numbers). */
+body.page-id-4968 .page-content .entry-content #staff-roster td span:has(> a),
+body.page-id-5421 .page-content .entry-content table.aligncenter td span:has(> a[href*="/inmemoriam/"]) {
+	margin-top: var(--pfoa-space-1);
+	display: block;
+}
+/* PFOA 0.1.242 — Staff roster row separation (page-id-4968 #staff-roster):
+ * add ~32px clear vertical space between the first-row titles and the
+ * second-row photographs. Applied at the row boundary (tr + tr td
+ * padding-top) so all eight photo positions and horizontal alignment are
+ * preserved, the compact name/title <br> stacking is untouched, the approved
+ * 8px photo-to-name gap and R2 label typography above are untouched, and In
+ * Memoriam (page-id-5421) is outside the selector. Table layout stays
+ * collapsed/fixed 4-col; second-row top padding replaces the generic 4px
+ * with the 32px token (var(--pfoa-space-5) = 2rem), yielding ~36px clear
+ * (4px row-1 bottom + 32px row-2 top). Responsive-safe: tr-based, no
+ * per-cell or per-label rules, no width/column changes. */
+body.page-id-4968 .page-content .entry-content #staff-roster tr + tr td {
+	padding-top: var(--pfoa-space-5);
 }
 
