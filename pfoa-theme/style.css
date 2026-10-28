@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-              Version: 0.1.246
+                   Version: 0.1.266
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -6668,6 +6668,29 @@ body.page-id-20323 .pfoa-adoptable-intro .pfoa-adoptable-heading {
 	padding-bottom: var(--pfoa-space-4);
 	font-size: clamp(2.25rem, 4vw, 3rem);
 	line-height: 1.1;
+}
+
+/* PFOA 0.1.266 — Adoptable Cats leading-spacer collapse (page-id-20323 only).
+ * Root cause: template_builder suppresses the theme title and page content
+ * owns <div class="pfoa-adoptable-intro"><p>&nbsp;</p><h1 ...>; the stray
+ * leading <p> holds a &nbsp; so it is NOT :empty (the shared
+ * .entry-content>:first-child null misses it — it is not a direct child)
+ * and it contributes a ~27px line box plus paragraph bottom margin stacked
+ * on the shared 32px body.page .content-shell top padding. Collapse that
+ * leading spacer to zero height and pin the heading top so the gap matches
+ * theme-titled pages (e.g. /volunteering/). Scoped strictly to
+ * body.page-id-20323 .pfoa-adoptable-intro; heading typography/alignment/
+ * divider (above), body copy, header, hero, and mobile rules untouched. */
+body.page-id-20323 .pfoa-adoptable-intro > p:first-child {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 0;
+	line-height: 0;
+	min-height: 0;
+}
+body.page-id-20323 .pfoa-adoptable-intro > h1.pfoa-adoptable-heading {
+	margin-top: 0;
 }
 
 body.page-id-22514 .page-content .entry-content > h1:first-child {
