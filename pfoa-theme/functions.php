@@ -9,6 +9,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/inc/footer-map.php';
+
 if ( ! defined( 'PFOA_THEME_PASSIVE_RESOLVER_LOADED' ) ) {
 	$resolver_file = __DIR__ . '/inc/theme-passive-resolver.php';
 	if ( file_exists( $resolver_file ) ) {
@@ -8911,4 +8913,541 @@ function pfoa_potholders_content_compat( $content ) {
 
 if ( function_exists( 'add_filter' ) ) {
 	add_filter( 'the_content', 'pfoa_potholders_content_compat', 1002 );
+}
+
+/**
+ * PFOA 0.1.250 — Shared photo-grid caption normalization (structural, no page-ID).
+ *
+ * Render-time only; stored post_content is never modified. For legacy
+ * photo-grid tables (structural: contains td img, no th/thead, no
+ * border="1", outside wp-block-table), strip per-cell inline presentation
+ * from caption markup so the shared photo-grid caption CSS owns all
+ * captions uniformly:
+ *   - td: remove text-align declarations (theme bridge already centers);
+ *     width attributes, table layout, padding, and borders untouched.
+ *   - td span / td a: remove color, font-size, font-weight, font-family,
+ *     font-style, line-height, text-align, text-decoration, letter-spacing
+ *     declarations; hrefs, aria-labels, order, <br> structure, photos, and
+ *     lightbox hooks untouched.
+ * Fail-closed: returns $content unchanged outside the loop, in admin/feeds,
+ * without DOM support, or when no photo-grid table is present. Future
+ * captions with the same bare span/br structure automatically inherit the
+ * shared 16px/600 system-ui centered convention.
+ *
+ * @param string $content Post content.
+ * @return string Possibly-normalized content.
+ */
+function pfoa_normalize_photo_grid_captions( $content ) {
+	if ( ! is_string( $content ) || '' === $content ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_admin' ) && is_admin() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_feed' ) && is_feed() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'in_the_loop' ) && ! in_the_loop() ) {
+		return $content;
+	}
+
+	if ( false === strpos( $content, '<table' ) || false === strpos( $content, '<img' ) ) {
+		return $content;
+	}
+
+	if ( ! class_exists( 'DOMDocument' ) || ! class_exists( 'DOMXPath' ) ) {
+		return $content;
+	}
+
+	$prev_libxml = libxml_use_internal_errors( true );
+
+	$dom = new DOMDocument( '1.0', 'UTF-8' );
+
+	if ( function_exists( 'mb_encode_numericentity' ) ) {
+		$fragment = mb_encode_numericentity( $content, array( 0x80, 0x10FFFF, 0, 0x1FFFFF ), 'UTF-8' );
+	} else {
+		$fragment = $content;
+	}
+
+	$loaded = $dom->loadHTML(
+		'<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body><div id="pfoa-photo-grid-wrapper">' . $fragment . '</div></body></html>'
+	);
+
+	if ( ! $loaded ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$xpath = new DOMXPath( $dom );
+
+	$wrapper_list = $xpath->query( '//div[@id="pfoa-photo-grid-wrapper"]' );
+
+	if ( ! $wrapper_list instanceof DOMNodeList || 0 === $wrapper_list->length ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$wrapper = $wrapper_list->item( 0 );
+
+	$table_list = $xpath->query(
+		'.//table[.//td//img and not(.//th) and not(.//thead)][not(@border="1")][not(ancestor::*[contains(concat(" ", normalize-space(@class), " "), " wp-block-table ")])]',
+		$wrapper
+	);
+
+	if ( ! $table_list instanceof DOMNodeList || 0 === $table_list->length ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$typography_props = array(
+		'color',
+		'font-size',
+		'font-weight',
+		'font-family',
+		'font-style',
+		'line-height',
+		'text-align',
+		'text-decoration',
+		'letter-spacing',
+	);
+
+	$changed = false;
+
+	foreach ( $table_list as $table_node ) {
+		if ( ! $table_node instanceof DOMElement ) {
+			continue;
+		}
+
+		$td_list = $xpath->query( './/td', $table_node );
+
+		if ( ! $td_list instanceof DOMNodeList || 0 === $td_list->length ) {
+			continue;
+		}
+
+		foreach ( $td_list as $td_node ) {
+			if ( ! $td_node instanceof DOMElement ) {
+				continue;
+			}
+
+			// td: drop text-align only; preserve width/layout/padding.
+			if ( $td_node->hasAttribute( 'style' ) ) {
+				$td_style = (string) $td_node->getAttribute( 'style' );
+				$td_parts = explode( ';', $td_style );
+				$td_kept  = array();
+
+				foreach ( $td_parts as $td_part ) {
+					$td_part = trim( $td_part );
+
+					if ( '' === $td_part || false === strpos( $td_part, ':' ) ) {
+						continue;
+					}
+
+					list( $td_prop ) = explode( ':', $td_part, 2 );
+					$td_prop = strtolower( trim( (string) $td_prop ) );
+
+					if ( 'text-align' === $td_prop ) {
+						continue;
+					}
+
+					$td_kept[] = $td_part;
+				}
+
+				if ( array() === $td_kept ) {
+					$td_node->removeAttribute( 'style' );
+					$changed = true;
+				} elseif ( count( $td_kept ) !== count( array_filter( array_map( 'trim', $td_parts ) ) ) ) {
+					$td_node->setAttribute( 'style', implode( '; ', $td_kept ) );
+					$changed = true;
+				}
+			}
+
+			// Caption spans + anchors: drop typography presentation only.
+			$caption_list = $xpath->query( './/span | .//a', $td_node );
+
+			if ( ! $caption_list instanceof DOMNodeList || 0 === $caption_list->length ) {
+				continue;
+			}
+
+			foreach ( $caption_list as $caption_node ) {
+				if ( ! $caption_node instanceof DOMElement ) {
+					continue;
+				}
+
+				if ( ! $caption_node->hasAttribute( 'style' ) ) {
+					continue;
+				}
+
+				$raw_style = (string) $caption_node->getAttribute( 'style' );
+				$decls     = explode( ';', $raw_style );
+				$kept      = array();
+
+				foreach ( $decls as $decl ) {
+					$decl = trim( $decl );
+
+					if ( '' === $decl || false === strpos( $decl, ':' ) ) {
+						continue;
+					}
+
+					list( $prop ) = explode( ':', $decl, 2 );
+					$prop = strtolower( trim( (string) $prop ) );
+
+					if ( in_array( $prop, $typography_props, true ) ) {
+						continue;
+					}
+
+					$kept[] = $decl;
+				}
+
+				if ( array() === $kept ) {
+					$caption_node->removeAttribute( 'style' );
+					$changed = true;
+				} else {
+					$rebuilt = implode( '; ', $kept );
+
+					if ( $rebuilt !== trim( $raw_style ) ) {
+						$caption_node->setAttribute( 'style', $rebuilt );
+						$changed = true;
+					}
+				}
+			}
+		}
+	}
+
+	if ( ! $changed ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$output = '';
+
+	foreach ( $wrapper->childNodes as $child ) {
+		$output .= $dom->saveHTML( $child );
+	}
+
+	libxml_clear_errors();
+	libxml_use_internal_errors( $prev_libxml );
+
+	return $output;
+}
+
+if ( function_exists( 'add_filter' ) ) {
+	add_filter( 'the_content', 'pfoa_normalize_photo_grid_captions', 30 );
+}
+
+/**
+ * PFOA 0.1.255 — Shared legacy inline-typography normalization (T-03, structural, no page-ID).
+ *
+ * Render-time only; stored post_content is never modified. Ordinary CSS needs
+ * no change: removing the obsolete inline declarations below lets theme
+ * tokens own the text (body system-ui 16px/400/1.65 #302D2B; links #434EBE
+ * 600 rest with hover/focus underline; Georgia heading hierarchy).
+ *
+ * Strips ONLY these obsolete inline declarations from ordinary content
+ * elements (span, a, p, h1-h6, li, strong, em, td):
+ *   - color: navy #000080 only (any case/spacing; rgb(0,0,128) forms match
+ *     too) on any element; magenta #993366 only when the element is an `a`
+ *     or has an ancestor/descendant anchor relationship (the FAQ link-child
+ *     pattern `<a><span>Top</span></a>`). Standalone magenta dates, greens,
+ *     whites, browns, and all other colors are preserved.
+ *   - font-size: only exactly 17px, 18px, or 24px (the documented legacy
+ *     body/heading sizes). 16px, 12px, 11px, 15px, 19px, 20px, 26px, 90%,
+ *     100%, and all other sizes are preserved.
+ *   - font-family: only when the declaration does NOT contain `comic sans`
+ *     (case-insensitive); gotmail-letter and promo-box contexts are already
+ *     exempt (E2/E5), so in practice this strips stray georgia/palatino/serif
+ *     and Arial body declarations while authored letters keep theirs.
+ *   - line-height: only exactly `1.2` or `18px` (legacy body values). `.9`,
+ *     `1.5`, `0`, and all other values are preserved.
+ *   - text-decoration: only on `a` elements, and on `span` elements that
+ *     contain a descendant anchor (link-wrapping underline spans).
+ *     Standalone underline emphasis spans with no anchor inside are
+ *     preserved.
+ * Never touches font-weight, font-style, text-align, padding, margin,
+ * display, width, background, border, float/clear helpers, image sizing,
+ * ARIA/data attributes, hrefs, content, or element structure. A style
+ * attribute is removed only when every declaration in it was removed by the
+ * rules above; elements with no obsolete declarations keep their style
+ * byte-identical.
+ *
+ * Exemptions (the element is skipped entirely — style left byte-identical —
+ * when ANY holds):
+ *   E1: inside a photo-grid table as defined by
+ *       pfoa_normalize_photo_grid_captions() (contains td img, no th/thead,
+ *       no border="1", outside .wp-block-table) — owned by that normalizer.
+ *   E2: inside .pfoa-gotmail-letter (historical correspondence preserved
+ *       as-written; only the H2/intro outside such letters normalizes).
+ *   E3: the element's own style contains `comic sans` (case-insensitive) —
+ *       the 25years authored letter, uncertain variant per audit.
+ *   E4: the element's own style contains `font-size:12px` (any spacing) —
+ *       benefit-event sponsor captions, uncertain variant per audit.
+ *   E5: the element is, or is inside, a div whose inline style contains
+ *       `background` (Chewy promo badge box plus its white link).
+ *   E6: anchors with no href that only carry name/id (document
+ *       destinations such as `<a name="top">` / `<a id="Top">`).
+ *
+ * Fail-closed: returns $content unchanged outside the loop, in admin/feeds,
+ * without DOM support, when no style attribute is present, or when no
+ * element needed normalization.
+ *
+ * @param string $content Post content.
+ * @return string Possibly-normalized content.
+ */
+function pfoa_normalize_legacy_typography( $content ) {
+	if ( ! is_string( $content ) || '' === $content ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_admin' ) && is_admin() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'is_feed' ) && is_feed() ) {
+		return $content;
+	}
+
+	if ( function_exists( 'in_the_loop' ) && ! in_the_loop() ) {
+		return $content;
+	}
+
+	if ( false === strpos( $content, '<' ) || false === stripos( $content, 'style' ) ) {
+		return $content;
+	}
+
+	if ( ! class_exists( 'DOMDocument' ) || ! class_exists( 'DOMXPath' ) ) {
+		return $content;
+	}
+
+	$prev_libxml = libxml_use_internal_errors( true );
+
+	$dom = new DOMDocument( '1.0', 'UTF-8' );
+
+	if ( function_exists( 'mb_encode_numericentity' ) ) {
+		$fragment = mb_encode_numericentity( $content, array( 0x80, 0x10FFFF, 0, 0x1FFFFF ), 'UTF-8' );
+	} else {
+		$fragment = $content;
+	}
+
+	$loaded = $dom->loadHTML(
+		'<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body><div id="pfoa-legacy-typography-wrapper">' . $fragment . '</div></body></html>'
+	);
+
+	if ( ! $loaded ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$xpath = new DOMXPath( $dom );
+
+	$wrapper_list = $xpath->query( '//div[@id="pfoa-legacy-typography-wrapper"]' );
+
+	if ( ! $wrapper_list instanceof DOMNodeList || 0 === $wrapper_list->length ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$wrapper = $wrapper_list->item( 0 );
+
+	$element_list = $xpath->query(
+		'.//span | .//a | .//p | .//h1 | .//h2 | .//h3 | .//h4 | .//h5 | .//h6 | .//li | .//strong | .//em | .//td',
+		$wrapper
+	);
+
+	if ( ! $element_list instanceof DOMNodeList || 0 === $element_list->length ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$changed = false;
+
+	foreach ( $element_list as $node ) {
+		if ( ! $node instanceof DOMElement ) {
+			continue;
+		}
+
+		if ( ! $node->hasAttribute( 'style' ) ) {
+			continue;
+		}
+
+		$raw_style = (string) $node->getAttribute( 'style' );
+		$tag       = strtolower( $node->nodeName );
+
+		// E3: authored Comic Sans letter styling is preserved as-written.
+		if ( false !== stripos( $raw_style, 'comic sans' ) ) {
+			continue;
+		}
+
+		// E4: benefit-event 12px sponsor captions are preserved as-written.
+		if ( 1 === preg_match( '/font-size\s*:\s*12px/i', $raw_style ) ) {
+			continue;
+		}
+
+		// E6: destination anchors with no href carry no obsolete styles.
+		if ( 'a' === $tag && ! $node->hasAttribute( 'href' ) && ( $node->hasAttribute( 'name' ) || $node->hasAttribute( 'id' ) ) ) {
+			continue;
+		}
+
+		// E1: photo-grid captions are owned by pfoa_normalize_photo_grid_captions().
+		$in_photo_grid = $xpath->query(
+			'ancestor::table[.//td//img and not(.//th) and not(.//thead)][not(@border="1")][not(ancestor::*[contains(concat(" ", normalize-space(@class), " "), " wp-block-table ")])]',
+			$node
+		);
+
+		if ( $in_photo_grid instanceof DOMNodeList && 0 !== $in_photo_grid->length ) {
+			continue;
+		}
+
+		// E5: walk self + ancestors for promo background boxes (the box
+		// itself and its inner styling are preserved as-written).
+		$exempt_context = false;
+
+		if ( 'div' === $tag && false !== stripos( $raw_style, 'background' ) ) {
+			$exempt_context = true;
+		}
+
+		$ancestor       = $node->parentNode;
+
+		while ( $ancestor instanceof DOMElement ) {
+			if ( $ancestor->hasAttribute( 'class' ) ) {
+				$padded = ' ' . (string) preg_replace( '/\s+/', ' ', (string) $ancestor->getAttribute( 'class' ) ) . ' ';
+
+				if ( false !== strpos( $padded, ' pfoa-gotmail-letter ' ) ) {
+					$exempt_context = true;
+					break;
+				}
+			}
+
+			if ( 'div' === strtolower( $ancestor->nodeName ) && $ancestor->hasAttribute( 'style' ) && false !== stripos( (string) $ancestor->getAttribute( 'style' ), 'background' ) ) {
+				$exempt_context = true;
+				break;
+			}
+
+			$ancestor = $ancestor->parentNode;
+		}
+
+		if ( $exempt_context ) {
+			continue;
+		}
+
+		$decls       = explode( ';', $raw_style );
+		$kept        = array();
+		$removed_any = false;
+
+		foreach ( $decls as $decl ) {
+			$decl = trim( $decl );
+
+			if ( '' === $decl ) {
+				continue;
+			}
+
+			if ( false === strpos( $decl, ':' ) ) {
+				$kept[] = $decl;
+				continue;
+			}
+
+			$pieces = explode( ':', $decl, 2 );
+			$prop   = strtolower( trim( (string) $pieces[0] ) );
+			$value  = isset( $pieces[1] ) ? (string) $pieces[1] : '';
+			$strip  = false;
+
+			if ( 'color' === $prop ) {
+				$norm_color = strtolower( (string) preg_replace( '/\s+/', '', $value ) );
+
+				if ( '#000080' === $norm_color || 'rgb(0,0,128)' === $norm_color || 1 === preg_match( '/^rgba\(0,0,128,(1|1\.0+)\)$/', $norm_color ) ) {
+					$strip = true;
+				} elseif ( '#993366' === $norm_color ) {
+					if ( 'a' === $tag ) {
+						$strip = true;
+					} else {
+						$has_anchor_ancestor = false;
+						$walk                = $node->parentNode;
+
+						while ( $walk instanceof DOMElement ) {
+							if ( 'a' === strtolower( $walk->nodeName ) ) {
+								$has_anchor_ancestor = true;
+								break;
+							}
+
+							$walk = $walk->parentNode;
+						}
+
+						if ( $has_anchor_ancestor || 0 !== $node->getElementsByTagName( 'a' )->length ) {
+							$strip = true;
+						}
+					}
+				}
+			} elseif ( 'font-size' === $prop ) {
+				$norm_size = strtolower( (string) preg_replace( '/\s+/', '', $value ) );
+
+				if ( in_array( $norm_size, array( '17px', '18px', '24px' ), true ) ) {
+					$strip = true;
+				}
+			} elseif ( 'font-family' === $prop ) {
+				if ( false === stripos( $value, 'comic sans' ) ) {
+					$strip = true;
+				}
+			} elseif ( 'line-height' === $prop ) {
+				$norm_height = strtolower( trim( $value ) );
+
+				if ( '1.2' === $norm_height || '18px' === $norm_height ) {
+					$strip = true;
+				}
+			} elseif ( 'text-decoration' === $prop ) {
+				if ( 'a' === $tag ) {
+					$strip = true;
+				} elseif ( 'span' === $tag && 0 !== $node->getElementsByTagName( 'a' )->length ) {
+					$strip = true;
+				}
+			}
+
+			if ( $strip ) {
+				$removed_any = true;
+				continue;
+			}
+
+			$kept[] = $decl;
+		}
+
+		if ( ! $removed_any ) {
+			continue;
+		}
+
+		if ( array() === $kept ) {
+			$node->removeAttribute( 'style' );
+			$changed = true;
+		} else {
+			$node->setAttribute( 'style', implode( '; ', $kept ) );
+			$changed = true;
+		}
+	}
+
+	if ( ! $changed ) {
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev_libxml );
+		return $content;
+	}
+
+	$output = '';
+
+	foreach ( $wrapper->childNodes as $child ) {
+		$output .= $dom->saveHTML( $child );
+	}
+
+	libxml_clear_errors();
+	libxml_use_internal_errors( $prev_libxml );
+
+	return $output;
+}
+
+if ( function_exists( 'add_filter' ) ) {
+	add_filter( 'the_content', 'pfoa_normalize_legacy_typography', 31 );
 }

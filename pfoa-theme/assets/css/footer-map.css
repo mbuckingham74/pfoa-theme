@@ -1,0 +1,77 @@
+/* Shared footer map only; preserve the existing column layout and typography. */
+.pfoa-footer-map {
+	min-width: 0;
+}
+
+.pfoa-footer-map__canvas {
+	width: 100%;
+	height: 190px;
+	margin-bottom: 0.5rem;
+	border-radius: 4px;
+	background: #e8edf0;
+	color: #1f2933;
+}
+
+.pfoa-footer-map [hidden] {
+	display: none !important;
+}
+
+.site-footer--compact .pfoa-footer-map__details,
+.site-footer--compact .pfoa-footer-map__status {
+	font-size: 0.8125rem;
+}
+
+.pfoa-footer-map address {
+	margin: 0;
+	font-style: normal;
+}
+
+.pfoa-footer-map__details a {
+	color: inherit;
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+}
+
+.pfoa-footer-map__popup {
+	color: #1f2933;
+	font: 12px/1.4 Arial, sans-serif;
+}
+
+.pfoa-footer-map__popup a {
+	color: #002894;
+	text-decoration: underline;
+}
+
+.pfoa-footer-map .mapboxgl-popup-content {
+	padding: 10px 22px 10px 10px;
+}
+
+.pfoa-footer-map .mapboxgl-popup-close-button {
+	min-width: 24px;
+	min-height: 24px;
+	padding: 0;
+	color: #1f2933;
+	background: transparent;
+	font: 20px/1 Arial, sans-serif;
+}
+
+.pfoa-footer-map .mapboxgl-ctrl-group button {
+	width: 32px;
+	height: 32px;
+	min-width: 0;
+	min-height: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background-color: #fff;
+}
+
+.pfoa-footer-map .mapboxgl-marker {
+	cursor: pointer;
+}
+
+.site-footer .pfoa-footer-map :where(a, button, canvas, [tabindex]):focus-visible {
+	outline: 2px solid #e09b16;
+	outline-offset: 2px;
+	box-shadow: none;
+}

@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                   Version: 0.1.266
+                   Version: 0.1.267
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -1426,7 +1426,6 @@ body.page-id-4968 #staff-roster a:focus-visible {
 .primary-menu > .menu-item > a:hover,
 .primary-menu > .menu-item > a:focus-visible,
 .primary-menu .current-menu-item > a,
-.primary-menu .current-menu-ancestor > a,
 .primary-menu > .menu-item:hover > a,
 .primary-menu > .menu-item:focus-within > a,
 .primary-menu > .menu-item.is-open > a {
@@ -1435,8 +1434,7 @@ body.page-id-4968 #staff-roster a:focus-visible {
 }
 
 @media (min-width: 1320px) {
-	.primary-menu > .menu-item.current-menu-item > a,
-	.primary-menu > .menu-item.current-menu-ancestor > a {
+	.primary-menu > .menu-item.current-menu-item > a {
 		padding-inline: 0.35rem;
 	}
 }
@@ -1453,12 +1451,19 @@ body.page-id-4968 #staff-roster a:focus-visible {
  * the <a>, so <a> margins do not move it. Mobile (<=1319px) untouched.
  * Single-highlight coordination below: while pointer/focus is elsewhere
  * in the nav, the current-page tab rests so exactly one blue tab shows.
+ * PFOA 0.1.248: top-level current-menu-ancestor/parent alone no longer
+ * takes the persistent highlight (Events Calendar lives under both HOW
+ * TO HELP and ABOUT US, so ancestor status would light both parents at
+ * rest). Ancestor selectors are intentionally absent here and in the base
+ * highlight above; hover/focus-within/is-open and directly-current
+ * (.current-menu-item) tabs keep the existing treatment. Sub-menu
+ * ancestor/current highlighting below is unchanged, as are both Events
+ * Calendar placements and the mobile (<=1319px) rules.
  */
 @media (min-width: 1320px) {
 	.primary-menu > .menu-item > a:hover,
 	.primary-menu > .menu-item > a:focus-visible,
 	.primary-menu > .menu-item.current-menu-item > a,
-	.primary-menu > .menu-item.current-menu-ancestor > a,
 	.primary-menu > .menu-item:hover > a,
 	.primary-menu > .menu-item:focus-within > a,
 	.primary-menu > .menu-item.is-open > a {
@@ -1475,9 +1480,7 @@ body.page-id-4968 #staff-roster a:focus-visible {
 	 * the parent <li>. Leaving the nav drops :hover/:focus-within, so the
 	 * current-page highlight returns on its own. */
 	.primary-menu:hover > .menu-item.current-menu-item:not(:hover):not(:focus-within):not(.is-open) > a,
-	.primary-menu:hover > .menu-item.current-menu-ancestor:not(:hover):not(:focus-within):not(.is-open) > a,
-	.primary-menu:focus-within > .menu-item.current-menu-item:not(:hover):not(:focus-within):not(.is-open) > a,
-	.primary-menu:focus-within > .menu-item.current-menu-ancestor:not(:hover):not(:focus-within):not(.is-open) > a {
+	.primary-menu:focus-within > .menu-item.current-menu-item:not(:hover):not(:focus-within):not(.is-open) > a {
 		background: transparent;
 		color: var(--pfoa-text-on-structural);
 		margin-block: 0;
@@ -5034,6 +5037,27 @@ a.pfoa-board-card:focus-visible {
 	color: var(--pfoa-color-muted);
 }
 
+/* PFOA 0.1.256 — Board biography dialogs (T-04): shared .pfoa-board-dialog
+   presentation relocated verbatim from the page-4264 embedded stylesheet.
+   Generic component selectors only: no page-ID scope, no !important. */
+.pfoa-board-bio-trigger{background:none;border:0;padding:0;cursor:pointer;display:inline-block;line-height:0}
+.pfoa-board-bio-trigger img{display:block;max-width:100%;height:auto}
+.pfoa-board-bio-trigger:focus-visible{outline:3px solid #000080;outline-offset:3px}
+dialog.pfoa-board-dialog{border:1px solid #000080;border-radius:8px;padding:0;color:var(--pfoa-text-primary,#302D2B);max-width:min(660px,calc(100vw - 2rem));width:660px}
+dialog.pfoa-board-dialog::backdrop{background:rgba(0,0,0,.55)}
+.pfoa-board-dialog__inner{padding:20px 22px;max-height:80vh;max-height:80dvh;overflow:auto}
+.pfoa-board-dialog__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:0 0 8px}
+.pfoa-board-dialog__title{margin:0;font-family:var(--pfoa-font-display,Georgia,"Times New Roman",serif);font-size:1.25rem;font-weight:700;line-height:1.25;color:var(--pfoa-text-primary,#302D2B)}
+.pfoa-board-dialog__body{font-family:var(--pfoa-font-body,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif);font-size:1rem;font-weight:400;line-height:1.65;color:var(--pfoa-text-primary,#302D2B)}
+.pfoa-board-dialog__close{flex:none;cursor:pointer;background:#fff;border:2px solid #000080;border-radius:4px;color:#000080;font-weight:700;padding:6px 12px;font-size:.95rem}
+.pfoa-board-dialog__close:focus-visible,.pfoa-board-dialog__close:hover{outline:3px solid #000080;outline-offset:2px;background:#000080;color:#fff}
+.pfoa-board-dialog a{color:var(--pfoa-action-primary,#434EBE)}
+.pfoa-board-dialog a:hover{color:var(--pfoa-action-hover,#303873)}
+.pfoa-board-dialog a:focus-visible{outline:3px solid var(--pfoa-focus-ring,#057205);outline-offset:2px}
+.pfoa-board-dialog .pfoa-board-role{margin:0 0 12px}
+.pfoa-board-dialog .pfoa-board-portrait{max-width:225px;width:auto;height:auto;margin:4px 16px 12px 0;float:left}
+@media only screen and (max-width:600px){.pfoa-board-dialog .pfoa-board-portrait{float:none;display:block;margin:0 auto 12px;max-width:65%}}
+
 @media (min-width: 640px) {
 	.pfoa-board-resources {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5813,6 +5837,10 @@ body.page-id-20323 .pfoa-recently-adopted .pfoa-adoption-event-together-badge {
  * stack above the grid. No new button design, no navy.
  * 0.1.133: +48px desktop / +32px mobile top separation from the final
  * Adoptable Cats card row (margin-top calc below; all other gaps untouched).
+ * 0.1.265: center the h2 itself — the global h1..h6 rule sets
+ * text-align:left directly on the element, which beats the inherited
+ * center from .pfoa-recently-adopted-intro; the scoped text-align below
+ * restores the shared heading/CTA centerline with no other changes.
  */
 body.page-id-20323 .pfoa-recently-adopted-intro {
 	margin: calc(var(--pfoa-space-5) + 48px) auto var(--pfoa-space-4);
@@ -5821,6 +5849,7 @@ body.page-id-20323 .pfoa-recently-adopted-intro {
 }
 body.page-id-20323 .pfoa-recently-adopted-intro .pfoa-recently-adopted-heading {
 	margin: 0 0 var(--pfoa-space-3);
+	text-align: center;
 }
 body.page-id-20323 .pfoa-recently-adopted-intro .pfoa-recently-adopted-cta {
 	margin: 0;
@@ -7693,6 +7722,81 @@ body.page-id-25515 .entry-content .wp-block-buttons {
 	}
 }
 
+/* PFOA 0.1.251 RETIRED (superseded by the 0.1.252 shared .pfoa-featured-story
+ * component below) — Recent Adoption Stories featured-story block scoped to
+ * body.page-id-5656. Retired because the content moved to a reusable Group
+ * wrapper (class "pfoa-featured-story", kicker replaces the standalone h2,
+ * 250px photo lane), so page-ID selectors must not compete with the shared
+ * component. No rules from this block remain in effect.
+ */
+
+/* PFOA 0.1.252 — Shared featured-story component (.pfoa-featured-story).
+ * Reusable by editors via duplicate: a Gutenberg Group with class
+ * "pfoa-featured-story" wrapping core wp:columns (photo column first:
+ * is-resized 250px figure; text column second: kicker p, h3 linked title,
+ * excerpt p, Read Story button). Content-owned via the_content(); no
+ * body.page-id-* selectors here, no new colors, no framework/plugin hooks.
+ * Composition: one centered ~860px card on the existing subtle surface
+ * (var(--pfoa-surface-subtle)), 250px photo lane + fluid text lane, locked
+ * 32px gap (existing token --pfoa-space-5), vertically centered text beside
+ * the photo. Kicker is small understated uppercase in the existing muted
+ * tone. The h3 link reuses the global a + h3 rules (size/balance only, no
+ * color override). The image keeps its natural aspect (width 100%, height
+ * auto; no crop, no object-fit lock). Padding/radius use existing tokens.
+ * Mobile (<=781px): core stacks photo above text; the photo centers capped
+ * at 250px so nothing overflows or h-scrolls.
+ */
+.pfoa-featured-story {
+	max-width: 860px;
+	margin-inline: auto;
+	margin-bottom: var(--pfoa-space-4);
+	background: var(--pfoa-surface-subtle);
+	border-radius: var(--pfoa-radius);
+	padding: var(--pfoa-space-4) var(--pfoa-space-5);
+}
+.pfoa-featured-story > .wp-block-columns {
+	margin-bottom: 0;
+	align-items: center;
+	column-gap: var(--pfoa-space-5);
+}
+@media (min-width: 782px) {
+	.pfoa-featured-story > .wp-block-columns > .wp-block-column:first-child {
+		flex: 0 0 250px;
+		max-width: 250px;
+	}
+	.pfoa-featured-story > .wp-block-columns > .wp-block-column:last-child {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+}
+.pfoa-featured-story figure.wp-block-image {
+	margin: 0;
+	max-width: 250px;
+}
+.pfoa-featured-story figure.wp-block-image img {
+	width: 100%;
+	height: auto;
+	display: block;
+}
+.pfoa-featured-story__kicker {
+	margin: 0 0 var(--pfoa-space-1);
+	color: var(--pfoa-text-muted);
+	font-size: 0.8125rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+.pfoa-featured-story h3.wp-block-heading {
+	font-size: 1.375rem;
+	text-wrap: balance;
+}
+@media (max-width: 781px) {
+	.pfoa-featured-story figure.wp-block-image {
+		margin-inline: auto;
+		max-width: 250px;
+	}
+}
+
 /* PFOA 0.1.235 — Sitewide hyperlink standard (visitor content only).
  * Root cause: the global `a` rule sets color/thickness/offset but never
  * `text-decoration-line`, so the UA permanent underline survives on ordinary
@@ -8042,5 +8146,407 @@ body.page-id-5421 .page-content .entry-content table.aligncenter td span:has(> a
  * per-cell or per-label rules, no width/column changes. */
 body.page-id-4968 .page-content .entry-content #staff-roster tr + tr td {
 	padding-top: var(--pfoa-space-5);
+}
+
+/* PFOA 0.1.247 — Fundraisers hub spacing + linked-photo labels
+ * (page-id-4511 only, https://dev.safehavenpfoa.org/fundraisers/).
+ * Pairs with the one-time content edit wrapping each bare tile caption in
+ * <span><a href="same-as-photo">…</a></span> (destinations unchanged).
+ * (1) Vertical section break: the kitties paragraph (p:has(+ table), the
+ * only paragraph directly preceding a table on this page) drops its 20px
+ * bottom margin and the photo-grid table takes margin-top
+ * var(--pfoa-space-7) = 64px, so the rendered paragraph-to-grid gap is
+ * exactly 64px with tokens only (no calc/magic numbers; adjoining margins
+ * collapse to the 64px maximum). Table bottom margin and other pages
+ * untouched. (Nested :has(+ table:has(td img)) is rejected: that compound
+ * relative selector is invalid in Chromium, so the match uses the simple
+ * p:has(+ table) form scoped to this single-table page.)
+ * (2) Horizontal gutters: tile cells go from 4px to 4px vertical +
+ * var(--pfoa-space-2) = 12px horizontal, so adjacent gutters render
+ * 12px + 12px = 24px. The selector repeats the theme photo-grid :not()
+ * chain with the page-id prefix so it outranks the generic photo-grid td
+ * rule (same chain + page class, later order, no !important). Inline
+ * width:100% table-layout:fixed wins over the theme photo-grid auto rule,
+ * so 4 desktop columns, fixed widths, photo proportions (height:auto),
+ * reading order, and destinations are preserved.
+ * The 0.1.167 <=600px 2px !important rule still wins at mobile, keeping the
+ * narrow 4-column fit sensible (accepted mobile correction preserved).
+ * (3) Labels Adapter 5/5: thin mirror of the shared .pfoa-photo-label
+ * contract (system-ui body stack, 1rem/16px, 600, non-italic, 1.5 rhythm,
+ * action-primary rest, centered, rest none; hover/focus-visible hover color
+ * + underline). Photo anchors (td > a:has(img)) are display:block only
+ * (B1 0.1.238 precedent) so the declared 8px gap renders exactly; label gap
+ * lives on the wrapper span (display:block + margin-top var(--pfoa-space-1)
+ * = 8px), NOT on the anchor. Scoped to label anchors only (td span a);
+ * photo boxes, static text, and the global :focus-visible ring are outside
+ * these selectors and unchanged. At <=600px/<=360px the label anchors step
+ * down to the accepted 0.1.167 13px/11.5px sizes (same specificity, later
+ * order) so the longest caption word keeps its verified whole-word fit;
+ * the existing span !important covers the wrapper while these rules cover
+ * the explicitly-sized anchors. */
+body.page-id-4511 .page-content .entry-content > p:has(+ table) {
+	margin-bottom: 0;
+}
+body.page-id-4511 .page-content .entry-content table:has(td img) {
+	margin-top: var(--pfoa-space-7);
+}
+body.page-id-4511 .page-content .entry-content table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)):has(td img) td {
+	padding: 4px var(--pfoa-space-2);
+}
+body.page-id-4511 .page-content .entry-content table:has(td img) {
+	margin-top: var(--pfoa-space-7);
+}
+body.page-id-4511 .page-content .entry-content table:has(td img) td {
+	padding: 4px var(--pfoa-space-2);
+}
+body.page-id-4511 .page-content .entry-content table:has(td img) td > a:has(> img) {
+	display: block;
+}
+body.page-id-4511 .page-content .entry-content table:has(td img) td span:has(> a) {
+	display: block;
+	margin-top: var(--pfoa-space-1);
+}
+body.page-id-4511 .page-content .entry-content table:has(td img) td span a {
+	font-family: var(--pfoa-font-body);
+	font-size: 1rem;
+	font-weight: 600;
+	font-style: normal;
+	line-height: 1.5;
+	color: var(--pfoa-action-primary);
+	text-align: center;
+	text-decoration: none;
+}
+body.page-id-4511 .page-content .entry-content table:has(td img) td span a:hover,
+body.page-id-4511 .page-content .entry-content table:has(td img) td span a:focus-visible {
+	color: var(--pfoa-action-hover);
+	text-decoration: underline;
+}
+@media (max-width: 600px) {
+	body.page-id-4511 .page-content .entry-content table:has(td img) td span a {
+		font-size: 13px;
+	}
+}
+@media (max-width: 360px) {
+	body.page-id-4511 .page-content .entry-content table:has(td img) td span a {
+		font-size: 11.5px;
+	}
+}
+
+/* PFOA 0.1.249 — Volunteers heading + linked-photo labels (page-id-5006
+ * only, https://dev.safehavenpfoa.org/volunteers-2/). Pairs with the
+ * one-time DEV content edit on post 5006: the legacy navy all-caps
+ * `<h4 style="text-align:center;"><span style="color:#000080;"><strong>OUR
+ * VOLUNTEERS</strong></span></h4>` becomes plain `<h2>Our Volunteers</h2>`,
+ * the navy `<span style="color:#000080;">` intro wrapper is removed (plain
+ * `<p>` wording unchanged), the inert gallery `color="#000080"` attribute
+ * is dropped, and each of the 12 native-gallery attachment captions
+ * (post_excerpt on ids 10945,8878,8871,5009,5010,5015,10024,5018,5020,6661,
+ * 6765,7684) is wrapped in `<a href="same-as-sibling-photo-href">`
+ * (destinations unchanged, full-size file URLs, order preserved).
+ * (1) Heading normalize: h2 (plus an h4 fallback in the same selector so
+ * a legacy h4 cannot resurface navy) takes the section-heading treatment
+ * mirroring the page-id-4799 precedent (Georgia, 1.75rem/28px, 1.2, 700,
+ * centered, dark --pfoa-text-primary). Base h2 clamp, grid, lightbox
+ * untouched.
+ * (2) Intro guard: plain system-ui 1rem/16px, 400, 1.65 rhythm, dark
+ * --pfoa-text-primary. Mostly served by the content edit removing the navy
+ * span; this only outranks any residual inline span. Readable width and
+ * alignment preserved (theme prose rules untouched).
+ * (3) Labels Adapter 5/5: thin mirror of the shared .pfoa-photo-label
+ * contract (system-ui --pfoa-font-body, 1rem/16px, 600, non-italic, 1.5
+ * rhythm, action-primary #434EBE rest, centered, rest none; hover/
+ * focus-visible action-hover #303873 + underline). Photo anchors
+ * (.gallery-icon > a) are display:block only (B1 0.1.238 precedent) so the
+ * declared 8px gap renders exactly; the gap lives on the figcaption wrapper
+ * (margin-top var(--pfoa-space-1) = 8px from the theme caption rule),
+ * NOT on the anchor. Scoped to label anchors ONLY (figcaption a); photo
+ * boxes, static text, and the global :focus-visible 3px ring are outside
+ * these selectors and unchanged. No grid-template/width/object-fit changes,
+ * so 4 desktop columns, proportions, grid spacing, and lightbox preserved. */
+body.page-id-5006 .page-content .entry-content h2,
+body.page-id-5006 .page-content .entry-content h4 {
+	font-family: Georgia, "Times New Roman", serif;
+	font-size: 1.75rem;
+	font-weight: 700;
+	line-height: 1.2;
+	color: var(--pfoa-text-primary);
+	text-align: center;
+	text-wrap: balance;
+}
+body.page-id-5006 .page-content .entry-content > p {
+	font-family: var(--pfoa-font-body);
+	font-size: 1rem;
+	font-weight: 400;
+	line-height: 1.65;
+	color: var(--pfoa-text-primary);
+}
+body.page-id-5006 .page-content .entry-content .gallery .gallery-item .gallery-icon > a {
+	display: block;
+}
+body.page-id-5006 .page-content .entry-content .gallery .gallery-item figcaption.gallery-caption {
+	font-style: normal;
+	text-align: center;
+}
+body.page-id-5006 .page-content .entry-content .gallery .gallery-item figcaption.gallery-caption a {
+	font-family: var(--pfoa-font-body);
+	font-size: 1rem;
+	font-weight: 600;
+	font-style: normal;
+	line-height: 1.5;
+	color: var(--pfoa-action-primary);
+	text-align: center;
+	text-decoration: none;
+}
+body.page-id-5006 .page-content .entry-content .gallery .gallery-item figcaption.gallery-caption a:hover,
+body.page-id-5006 .page-content .entry-content .gallery .gallery-item figcaption.gallery-caption a:focus-visible {
+	color: var(--pfoa-action-hover);
+	text-decoration: underline;
+}
+
+/* PFOA 0.1.250 — Shared photo-grid caption standardization (structural, no page-ID).
+ * Root cause: legacy photo-grid captions carry per-cell inline presentation
+ * (span style="color:#000080; font-size:90%; text-align:...; line-height:1.2",
+ * a style="color:#000080", td style="text-align:right/left") so apparently
+ * equivalent text computes differently: linked labels receive the global
+ * .entry-content a 600 weight at 16px while static spans stay 400 at 90%
+ * (~14.4px) navy, with varying alignment/line-height. The render filter
+ * pfoa_normalize_photo_grid_captions() strips those inline presentation
+ * declarations at render (stored bytes untouched) so this shared structural
+ * styling owns every photo-grid caption uniformly.
+ * Contract (mirrors shared .pfoa-photo-label R2): system-ui body stack,
+ * 1rem/16px, 600, normal (never italic), 1.5 rhythm, centered block wrapper
+ * with the canonical 8px image-to-caption gap and word-boundary wrapping.
+ * Interactive labels (span > a, same destination as the sibling photo) use
+ * action-primary rest with hover/focus-visible hover color + underline;
+ * static captions (span without an anchor) use text-primary with no
+ * underline/hover so they stay noninteractive yet typographically
+ * consistent. Photo anchors, grid geometry (columns/widths/padding),
+ * lightbox, order, and editorial figcaption/gallery-caption rules are
+ * outside these selectors and unchanged.
+ * PFOA 0.1.257 — Board exclusion (shared, semantic, no page-ID):
+ * .pfoa-board-member-name/.pfoa-board-member-role stay owned by the
+ * Board component rules (0.1.90); the generic caption contract skips them.
+ */
+.page-content .entry-content table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)):has(td img) td span:not(.pfoa-board-member-name):not(.pfoa-board-member-role):has(> a),
+.page-content .entry-content table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)):has(td img) td span:not(.pfoa-board-member-name):not(.pfoa-board-member-role):not(:has(a)) {
+	display: block;
+	margin-top: var(--pfoa-space-1);
+	font-family: var(--pfoa-font-body);
+	font-size: 1rem;
+	font-weight: 600;
+	font-style: normal;
+	line-height: 1.5;
+	color: var(--pfoa-text-primary);
+	text-align: center;
+	text-decoration: none;
+	overflow-wrap: break-word;
+	word-break: normal;
+}
+/* PFOA 0.1.258 — Shared photo-grid anchor specificity hygiene (T-05, semantic, no page-ID):
+ * shared guards zeroed via :where() so the existing 13px/11.5px mobile exception wins; desktop unchanged. */
+.page-content .entry-content table:where(:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead))):has(td img) td span a {
+	font-family: var(--pfoa-font-body);
+	font-size: 1rem;
+	font-weight: 600;
+	font-style: normal;
+	line-height: 1.5;
+	color: var(--pfoa-action-primary);
+	text-align: center;
+	text-decoration: none;
+	overflow-wrap: break-word;
+	word-break: normal;
+}
+.page-content .entry-content table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)):has(td img) td span a:hover,
+.page-content .entry-content table:not(.wp-block-table table):not([border="1"]):not(:has(th)):not(:has(thead)):has(td img) td span a:focus-visible {
+	color: var(--pfoa-action-hover);
+	text-decoration: underline;
+}
+
+/* PFOA 0.1.255 — Shared legacy inline-typography normalization (T-03, structural, no page-ID).
+ * No new CSS rules here: the render filter pfoa_normalize_legacy_typography()
+ * strips obsolete inline declarations (navy #000080, link-child magenta
+ * #993366, 17/18/24px sizes, stray font-family, 1.2/18px line-height,
+ * link text-decoration) at render time (stored bytes untouched), so the
+ * existing theme tokens already own legacy prose — body system-ui 16px/400
+ * with 1.65 rhythm in #302D2B, links #434EBE 600 rest with hover/focus
+ * underline, and the Georgia heading hierarchy. Photo-grid captions (E1),
+ * gotmail letters (E2), Comic Sans letters (E3), 12px sponsor captions (E4),
+ * promo background boxes (E5), and destination anchors (E6) stay exempt.
+ */
+
+/* PFOA 0.1.261 — We've Got Mail gold letter dividers (DEV only, structural, no page-ID).
+ * Divider-only change: the 1px gray separator becomes the site's established
+ * gold section treatment (3px var(--pfoa-color-gold, #e9ad4e), same as the
+ * sub-menu top edge and Home Front feature top edge). Applies between all
+ * letters, never above the first. Spacing, full-width flow, typography,
+ * photos, captions, and mobile behavior unchanged.
+ */
+.pfoa-gotmail-letter {
+	display: flow-root;
+	min-width: 0;
+	max-width: none;
+	margin-block: 0;
+	padding-block: var(--pfoa-space-lg, 1.5rem);
+	padding-inline: 0;
+	border-top: 3px solid var(--pfoa-color-gold, #e9ad4e);
+	color: var(--pfoa-text-primary, #302D2B);
+	overflow-wrap: break-word;
+}
+.pfoa-gotmail-letter:first-of-type {
+	border-top: 0;
+	padding-block-start: 0;
+}
+.pfoa-gotmail-letter + .pfoa-gotmail-letter {
+	margin-block-start: 0;
+}
+/* PFOA 0.1.262 — Gotmail heading gap fix (DEV only, structural, no page-ID).
+ * The 0.1.259 heading rule used a three-value margin-block, which is not a
+ * valid form — measured computed gap above photos/body text was 0px on all
+ * 14 letters. Replaced with the valid two-value form on the defined
+ * --pfoa-space-3 token: 0 top, 1rem (16px) bottom, inside the 12–16px target.
+ * Nothing else touched.
+ */
+.pfoa-gotmail-letter-heading {
+	font-family: Georgia, 'Times New Roman', serif;
+	font-weight: 700;
+	font-size: clamp(1.35rem, 1.1rem + 1vw, 1.75rem);
+	line-height: 1.25;
+	color: var(--pfoa-text-primary, #302D2B);
+	margin-block: 0 var(--pfoa-space-3, 1rem);
+	text-wrap: balance;
+}
+.pfoa-gotmail-letter-body {
+	display: flow-root;
+	min-width: 0;
+	font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	font-size: 16px;
+	font-weight: 400;
+	line-height: 1.65;
+	color: var(--pfoa-text-primary, #302D2B);
+}
+.pfoa-gotmail-letter-body p {
+	margin-block: 0 var(--pfoa-space-md, 1rem);
+}
+.pfoa-gotmail-letter-body p:last-child {
+	margin-block-end: 0;
+}
+.pfoa-gotmail-letter-body strong {
+	font-weight: 700;
+	color: inherit;
+}
+.pfoa-gotmail-letter-body em {
+	font-style: italic;
+	color: inherit;
+}
+.pfoa-gotmail-letter-body a {
+	color: #434EBE;
+	font-weight: 600;
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+}
+.pfoa-gotmail-letter-body a:hover {
+	color: #303873;
+}
+.pfoa-gotmail-letter-body a:focus-visible,
+.pfoa-gotmail-letter-heading a:focus-visible {
+	outline: 3px solid #057205;
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+.pfoa-gotmail-letter-body img {
+	max-width: 100%;
+	height: auto;
+	border-radius: var(--pfoa-radius-sm, 6px);
+}
+.pfoa-gotmail-letter-body img.alignleft {
+	float: left;
+	width: min(280px, 35%);
+	max-width: 35%;
+	height: auto;
+	margin: 0 var(--pfoa-space-md, 1rem) var(--pfoa-space-md, 1rem) 0;
+}
+.pfoa-gotmail-letter-body img.alignright {
+	float: right;
+	width: min(280px, 35%);
+	max-width: 35%;
+	height: auto;
+	margin: 0 0 var(--pfoa-space-md, 1rem) var(--pfoa-space-md, 1rem);
+}
+.pfoa-gotmail-letter-body img.aligncenter,
+.pfoa-gotmail-letter-body img:not([class*="align"]) {
+	display: block;
+	margin-inline: auto;
+	margin-block: var(--pfoa-space-md, 1rem);
+}
+.pfoa-gotmail-caption {
+	font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	font-size: 14px;
+	font-style: italic;
+	font-weight: 400;
+	line-height: 1.5;
+	color: #525873;
+	margin-block: var(--pfoa-space-sm, 0.75rem) 0;
+}
+.pfoa-gotmail-caption em {
+	font-style: inherit;
+}
+.pfoa-gotmail-caption a {
+	color: inherit;
+}
+@media (max-width: 720px) {
+	.pfoa-gotmail-letter-body img.alignleft,
+	.pfoa-gotmail-letter-body img.alignright {
+		float: none;
+		display: block;
+		width: auto;
+		max-width: 100%;
+		height: auto;
+		margin-inline: auto;
+		margin-block: 0 var(--pfoa-space-md, 1rem);
+	}
+}
+@media (max-width: 390px) {
+	.pfoa-gotmail-letter {
+		padding-block: var(--pfoa-space-md, 1rem);
+	}
+	.pfoa-gotmail-letter-body img {
+		width: auto;
+		max-width: 100%;
+		height: auto;
+	}
+}
+
+/* PFOA 0.1.263 — We've Got Mail duplicate content heading (DEV only).
+ * The stored page content opens with its own centered "WE'VE GOT MAIL!" h2,
+ * which duplicates the theme page title rendered in the title header above
+ * the gold rule. Hide that single content-owned duplicate (first child of the
+ * entry content on page 25080 only) so the page shows one title. Stored
+ * bytes untouched; the theme title, gold rule, intro, and all 14 letters
+ * are unchanged. Page-ID scope is deliberate: the duplicate exists only here.
+ */
+body.page-id-25080 .page-content .entry-content > h2:first-child {
+	display: none;
+}
+
+/* PFOA 0.1.264 — Staff roster role typography (page-id-4968 #staff-roster only,
+ * DEV correction to the Board convention).
+ * Root cause: each Staff cell renders `<span><a>Name</a><br>Title</span>`, so
+ * the bare title text inherits the shared photo-grid wrapper contract
+ * (:8302-8316: 600 weight, dark var(--pfoa-text-primary)). Board roles avoid
+ * this with their own component spans (0.1.90
+ * body.page-id-4264 .pfoa-board-member-role: 400 weight, muted
+ * var(--pfoa-text-muted) #525873, 0.85rem).
+ * Correction: restyle the Staff label wrapper to the equivalent Board
+ * treatment — regular 400 weight, muted var(--pfoa-text-muted) — reusing the
+ * shared theme token (no new color, no !important). The name anchors keep
+ * their own Adapter 3/4 rule (:8027-8041: 600 action-primary, later order
+ * untouched), so names stay bold blue; the #staff-roster ID outranks the
+ * shared wrapper without !important. Font size (1rem), centering,
+ * image-to-label gap, row separation, grid, photos, wrapping, and the Board
+ * component itself are untouched.
+ */
+body.page-id-4968 .page-content .entry-content #staff-roster td span:has(> a) {
+	font-weight: 400;
+	color: var(--pfoa-text-muted);
 }
 
