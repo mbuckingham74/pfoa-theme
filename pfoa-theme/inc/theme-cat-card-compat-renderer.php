@@ -105,7 +105,10 @@ if ( ! function_exists( 'pfoa_theme_render_cat_card_compat' ) ) {
 		}
 
 		$record_status = isset( $profile_data['record_status'] ) ? (string) $profile_data['record_status'] : '';
-		$status        = '' !== $record_status
+		$is_pending_card = function_exists( 'pfoa_cat_is_effectively_pending' )
+			? pfoa_cat_is_effectively_pending( $post_id )
+			: ( 'Pending' === $record_status );
+		$status        = ( '' !== $record_status && ! ( $is_pending_card && 'Pending' === $record_status ) )
 			? '<p class="pfoa-cat-card-status">' . esc_html( $record_status ) . '</p>'
 			: '';
 

@@ -5294,7 +5294,7 @@ function pfoa_present_bonded_pairs( $content ) {
 		$bonded_badge->appendChild( $bonded_sr );
 		$name_heading->appendChild( $bonded_badge );
 
-		// Shared "Pending Adoption" badge (presentation only): show when the
+		// Shared "Pending" badge (presentation only): show when the
 		// shared profile or any merged member is effectively pending.
 		// Fail-closed: missing plugin function or id 0 simply skips.
 		$bonded_pending_ids = array();
@@ -5324,7 +5324,7 @@ function pfoa_present_bonded_pairs( $content ) {
 			$name_heading->appendChild( $dom->createTextNode( ' ' ) );
 			$bonded_pending = $dom->createElement( 'span' );
 			$bonded_pending->setAttribute( 'class', 'pfoa-cat-pending-badge' );
-			$bonded_pending->appendChild( $dom->createTextNode( esc_html__( 'Pending Adoption', 'pfoa-theme' ) ) );
+			$bonded_pending->appendChild( $dom->createTextNode( esc_html__( 'Pending', 'pfoa-theme' ) ) );
 			$bonded_pending_sr = $dom->createElement( 'span' );
 			$bonded_pending_sr->setAttribute( 'class', 'screen-reader-text' );
 			$bonded_pending_sr->appendChild( $dom->createTextNode( ' ' . esc_html__( 'adoption pending — still adoptable', 'pfoa-theme' ) ) );
@@ -5732,7 +5732,7 @@ function pfoa_present_bonded_pairs( $content ) {
 			$structured_badge->appendChild( $structured_sr );
 			$structured_heading->appendChild( $structured_badge );
 
-			// Shared "Pending Adoption" badge (presentation only): show when
+			// Shared "Pending" badge (presentation only): show when
 			// either merged member is effectively pending. Fail-closed:
 			// missing plugin function or id 0 simply skips.
 			$structured_is_pending = false;
@@ -5752,7 +5752,7 @@ function pfoa_present_bonded_pairs( $content ) {
 				$structured_heading->appendChild( $dom->createTextNode( ' ' ) );
 				$structured_pending = $dom->createElement( 'span' );
 				$structured_pending->setAttribute( 'class', 'pfoa-cat-pending-badge' );
-				$structured_pending->appendChild( $dom->createTextNode( esc_html__( 'Pending Adoption', 'pfoa-theme' ) ) );
+				$structured_pending->appendChild( $dom->createTextNode( esc_html__( 'Pending', 'pfoa-theme' ) ) );
 				$structured_pending_sr = $dom->createElement( 'span' );
 				$structured_pending_sr->setAttribute( 'class', 'screen-reader-text' );
 				$structured_pending_sr->appendChild( $dom->createTextNode( ' ' . esc_html__( 'adoption pending — still adoptable', 'pfoa-theme' ) ) );
