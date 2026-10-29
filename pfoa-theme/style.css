@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                   Version: 0.1.271
+                    Version: 0.1.272
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -8579,6 +8579,50 @@ body.page-id-6738 .page-content .entry-content > p,
 body.page-id-6738 .page-content .entry-content > ul,
 body.page-id-6738 .page-content .entry-content > ol {
 	margin-bottom: 1rem;
+}
+
+/* PFOA 0.1.272 — Week 277 structural layout correction (page-id-25816 only,
+ * https://dev.safehavenpfoa.org/from-the-home-front-week-277/).
+ * Root causes confirmed live: (1) the 3-col div.wp-block-columns.pfoa-hf-adopted
+ * and 2-col div.wp-block-columns.pfoa-hf-picasso are direct .entry-content
+ * children, so they use the full 960px shell lane while prose (p/h1/h2)
+ * centers at 720px (var(--pfoa-prose-width)) — photo groups ran wider than
+ * the text; (2) the content-owned h1.pfoa-hf-article__title inherits the
+ * theme default H1 clamp(2.25rem,4vw,3rem), larger than the prior article
+ * heading; (3) the closing paragraph wraps its link in a legacy post-content
+ * <u> that doubles the global underlined-link treatment (removed from post
+ * 25816 content itself, not fought in CSS).
+ * Correction: constrain both column groups to the prose measure (max-width
+ * + margin-inline:auto via existing tokens, no fixed px caps, no
+ * !important), keep images fluid (height:auto, aspect/arrangement/captions
+ * untouched), scale the content-owned H1 down to the normal page-heading
+ * step (Mission h2 clamp 1.35-1.75rem — at/below prior article size, well
+ * under the 2.25-3rem display default; markup stays in content, no
+ * entry-header move), and leave the closing p on ordinary body rhythm
+ * (1rem/1.65, 1.25rem spacing inherited — no pfoa-hf size overrides exist).
+ * Paw-bullet rules from 0.1.271 preserved exactly below (broken 18x18 imgs
+ * hidden, emoji paw via ::before). Mobile: WP core stacks the columns at
+ * <=781px per theme convention; the 720px cap yields to the
+ * 100%-minus-gutters shell so there is no horizontal overflow. Scoped
+ * strictly to body.page-id-25816; no globals, no TEST/prod impact. */
+body.page-id-25816 .page-content .entry-content > div.wp-block-columns.pfoa-hf-adopted,
+body.page-id-25816 .page-content .entry-content > div.wp-block-columns.pfoa-hf-picasso {
+	max-width: var(--pfoa-prose-width);
+	margin-inline: auto;
+}
+body.page-id-25816 .page-content .entry-content > div.wp-block-columns.pfoa-hf-adopted img,
+body.page-id-25816 .page-content .entry-content > div.wp-block-columns.pfoa-hf-picasso img {
+	height: auto;
+}
+body.page-id-25816 .page-content .entry-content > h1.wp-block-heading.pfoa-hf-article__title {
+	font-size: clamp(1.35rem, 2vw, 1.75rem);
+	line-height: 1.25;
+}
+@media (max-width: 781px) {
+	body.page-id-25816 .page-content .entry-content > div.wp-block-columns.pfoa-hf-adopted,
+	body.page-id-25816 .page-content .entry-content > div.wp-block-columns.pfoa-hf-picasso {
+		max-width: 100%;
+	}
 }
 
 /* PFOA 0.1.271 — Week 277 paw bullets only (page-id-25816 only,
