@@ -79,7 +79,7 @@ if ( function_exists( 'pfoa_cat_get_profile_data' ) && function_exists( 'pfoa_th
 			continue;
 		}
 
-		$pfoa_compat_mains    .= '<main class="pfoa-cat-single">' . $compat_html . '</main>';
+		$pfoa_compat_mains    .= '<main id="primary" class="pfoa-cat-single">' . $compat_html . '</main>';
 		$pfoa_compat_rendered = true;
 
 	endwhile;
