@@ -5294,6 +5294,44 @@ function pfoa_present_bonded_pairs( $content ) {
 		$bonded_badge->appendChild( $bonded_sr );
 		$name_heading->appendChild( $bonded_badge );
 
+		// Shared "Pending Adoption" badge (presentation only): show when the
+		// shared profile or any merged member is effectively pending.
+		// Fail-closed: missing plugin function or id 0 simply skips.
+		$bonded_pending_ids = array();
+
+		foreach ( array( $shared_profile_id, $left_profile_id, $right_profile_id ) as $bonded_pending_raw ) {
+			if ( '' !== $bonded_pending_raw && ctype_digit( $bonded_pending_raw ) ) {
+				$bonded_pending_id = (int) $bonded_pending_raw;
+
+				if ( 0 < $bonded_pending_id ) {
+					$bonded_pending_ids[] = $bonded_pending_id;
+				}
+			}
+		}
+
+		$bonded_is_pending = false;
+
+		if ( function_exists( 'pfoa_cat_is_effectively_pending' ) ) {
+			foreach ( $bonded_pending_ids as $bonded_pending_id ) {
+				if ( pfoa_cat_is_effectively_pending( $bonded_pending_id ) ) {
+					$bonded_is_pending = true;
+					break;
+				}
+			}
+		}
+
+		if ( $bonded_is_pending ) {
+			$name_heading->appendChild( $dom->createTextNode( ' ' ) );
+			$bonded_pending = $dom->createElement( 'span' );
+			$bonded_pending->setAttribute( 'class', 'pfoa-cat-pending-badge' );
+			$bonded_pending->appendChild( $dom->createTextNode( esc_html__( 'Pending Adoption', 'pfoa-theme' ) ) );
+			$bonded_pending_sr = $dom->createElement( 'span' );
+			$bonded_pending_sr->setAttribute( 'class', 'screen-reader-text' );
+			$bonded_pending_sr->appendChild( $dom->createTextNode( ' ' . esc_html__( 'adoption pending — still adoptable', 'pfoa-theme' ) ) );
+			$bonded_pending->appendChild( $bonded_pending_sr );
+			$name_heading->appendChild( $bonded_pending );
+		}
+
 		$parent = $left->parentNode;
 
 		if ( ! $parent ) {
@@ -5693,6 +5731,34 @@ function pfoa_present_bonded_pairs( $content ) {
 			$structured_sr->appendChild( $dom->createTextNode( ' ' . esc_html__( 'available together as a bonded pair', 'pfoa-theme' ) ) );
 			$structured_badge->appendChild( $structured_sr );
 			$structured_heading->appendChild( $structured_badge );
+
+			// Shared "Pending Adoption" badge (presentation only): show when
+			// either merged member is effectively pending. Fail-closed:
+			// missing plugin function or id 0 simply skips.
+			$structured_is_pending = false;
+
+			if ( function_exists( 'pfoa_cat_is_effectively_pending' ) ) {
+				foreach ( array( $first_id, $second_id ) as $structured_pending_id ) {
+					$structured_pending_id = (int) $structured_pending_id;
+
+					if ( 0 < $structured_pending_id && pfoa_cat_is_effectively_pending( $structured_pending_id ) ) {
+						$structured_is_pending = true;
+						break;
+					}
+				}
+			}
+
+			if ( $structured_is_pending ) {
+				$structured_heading->appendChild( $dom->createTextNode( ' ' ) );
+				$structured_pending = $dom->createElement( 'span' );
+				$structured_pending->setAttribute( 'class', 'pfoa-cat-pending-badge' );
+				$structured_pending->appendChild( $dom->createTextNode( esc_html__( 'Pending Adoption', 'pfoa-theme' ) ) );
+				$structured_pending_sr = $dom->createElement( 'span' );
+				$structured_pending_sr->setAttribute( 'class', 'screen-reader-text' );
+				$structured_pending_sr->appendChild( $dom->createTextNode( ' ' . esc_html__( 'adoption pending — still adoptable', 'pfoa-theme' ) ) );
+				$structured_pending->appendChild( $structured_pending_sr );
+				$structured_heading->appendChild( $structured_pending );
+			}
 
 			$structured_parent = $first_card->parentNode;
 
