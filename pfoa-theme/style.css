@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                    Version: 0.1.272
+                    Version: 0.1.273
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -8643,4 +8643,45 @@ body.page-id-25816 .entry-content p.pfoa-hf-article__signoff::before {
 	content: "🐾";
 	font-size: 14px;
 	margin-right: 8px;
+}
+
+/* PFOA 0.1.273 — Week 277 Wills signature restoration (page-id-25816 only,
+ * https://dev.safehavenpfoa.org/from-the-home-front-week-277/).
+ * Signoff markup (in post content, untouched): p.pfoa-hf-article__signoff
+ * with text "Wills" + paw-bullet-277.png img already positioned to the RIGHT.
+ * No Ink Free webfont exists (Microsoft/Monotype proprietary, Win10+/Office
+ * bundled, absent on Mac, not on Google Fonts or safe CDNs — never
+ * @font-face/self-host/convert). Handwritten stack names it first so licensed
+ * Windows/Office machines render true Ink Free; all others fall back through
+ * Segoe Print / Bradley Hand / Chalkboard SE / Comic Sans MS / cursive.
+ * Signature blue reuses the theme action token (var(--pfoa-action-primary)
+ * = #434EBE) with hex fallback. Size 1.625rem/1.3 sits between body 1rem and
+ * the content H1 clamp, with top/bottom margins so it sits intentionally in
+ * the flow. The shared LEFT emoji ::before from 0.1.271 is suppressed for the
+ * signoff only (later rule, equal specificity, wins); bullets keep their
+ * emoji treatment untouched. The blanket 0.1.271 img hide
+ * (body.page-id-25816 .entry-content img[src*="paw-bullet-277"]) is overridden
+ * for the signoff img only via higher specificity (extra p class in the
+ * chain — no !important): inline-block, 22px wide, height auto (93x90 source
+ * aspect kept), 8px left margin, baseline-aligned to the handwritten text.
+ * Note: the asset is navy rgb(0,0,128)/#000080 vs signature #434EBE — kept
+ * natural per plan; slight hue delta is expected. Scoped strictly to
+ * body.page-id-25816 signoff; no globals, no bullet changes. */
+body.page-id-25816 .entry-content p.pfoa-hf-article__signoff {
+	font-family: "Ink Free", "Segoe Print", "Bradley Hand", "Chalkboard SE", "Comic Sans MS", cursive;
+	color: var(--pfoa-action-primary, #434EBE);
+	font-size: 1.625rem;
+	line-height: 1.3;
+	margin-top: 0.75rem;
+	margin-bottom: 1.5rem;
+}
+body.page-id-25816 .entry-content p.pfoa-hf-article__signoff::before {
+	content: none;
+}
+body.page-id-25816 .entry-content p.pfoa-hf-article__signoff img[src*="paw-bullet"] {
+	display: inline-block;
+	width: 22px;
+	height: auto;
+	margin-left: 8px;
+	vertical-align: baseline;
 }
