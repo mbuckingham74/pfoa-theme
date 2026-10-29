@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                   Version: 0.1.269
+                   Version: 0.1.271
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -8581,47 +8581,22 @@ body.page-id-6738 .page-content .entry-content > ol {
 	margin-bottom: 1rem;
 }
 
-/* PFOA 0.1.269 — Week 277 article typography refinement (page-id-25816 only,
+/* PFOA 0.1.271 — Week 277 paw bullets only (page-id-25816 only,
  * https://dev.safehavenpfoa.org/from-the-home-front-week-277/).
- * Before (inherited globals): H1 clamp(2.25rem, 4vw, 3rem) = 36-48px;
- * h2.wp-block-heading clamp(1.35rem, 2vw, 1.75rem) = 21.6-28px; body
- * 1rem/1.65; figcaption 0.875rem/1.5 italic. Correction: pin the headline
- * to 30-32px, section headings to 22-24px, body copy to 16px/1.6, captions
- * to 14px, preserving the Georgia display / system-ui body hierarchy
- * (families and weights inherited untouched). Headings get fluid clamp()
- * plus balance/wrap guards and a 600px reduction so nothing overflows on
- * small screens. Every selector below starts with body.page-id-25816 (this
- * article's entry-content lives under .content-shell, not .page-content);
- * no global selectors, no !important, no layout or content changes. */
-body.page-id-25816 .entry-content h1.pfoa-hf-article__title {
-	font-size: clamp(1.875rem, 1.5rem + 1.5vw, 2rem);
-	line-height: 1.2;
-	max-width: 100%;
-	overflow-wrap: break-word;
-	text-wrap: balance;
+ * Replaces the removed 0.1.269 typography pins + 0.1.270 scale pins: H1/H2/p/
+ * figcaption/width/margin now inherit the ordinary theme rhythm (body 1rem/1.65
+ * system-ui, p margin-block 0 1.25rem, Georgia headings, shell 960px / prose
+ * 720px) because the pfoa-hf-page/bullets/ps wrapper divs were removed from post
+ * 25816 so p/h1/h2/columns/figures are direct .entry-content children. Only the
+ * Michael-liked paw-bullet markers remain: broken paw-bullet-277.png imgs hidden,
+ * emoji paw via ::before. Scoped strictly to body.page-id-25816; no globals,
+ * no !important, no pixel caps. */
+body.page-id-25816 .entry-content img[src*="paw-bullet-277"] {
+	display: none;
 }
-body.page-id-25816 .entry-content h2.wp-block-heading {
-	font-size: clamp(1.375rem, 1.25rem + 0.5vw, 1.5rem);
-	line-height: 1.3;
-	max-width: 100%;
-	overflow-wrap: break-word;
-	text-wrap: balance;
+body.page-id-25816 .entry-content p.pfoa-hf-bullet::before,
+body.page-id-25816 .entry-content p.pfoa-hf-article__signoff::before {
+	content: "🐾";
+	font-size: 14px;
+	margin-right: 8px;
 }
-body.page-id-25816 .entry-content p {
-	font-size: 1rem;
-	line-height: 1.6;
-}
-body.page-id-25816 .entry-content figcaption,
-body.page-id-25816 .entry-content .wp-element-caption {
-	font-size: 0.875rem;
-	line-height: 1.5;
-}
-@media (max-width: 600px) {
-	body.page-id-25816 .entry-content h1.pfoa-hf-article__title {
-		font-size: 1.625rem;
-	}
-	body.page-id-25816 .entry-content h2.wp-block-heading {
-		font-size: 1.25rem;
-	}
-}
-
