@@ -29,10 +29,10 @@
  *   change/indefinite-to-timed change/missing future expiry; preserved
  *   expires_at + created_at on unrelated saves with unchanged pin+mode and
   *   a valid future expires_at in the hidden field.
- * - Per-slide Active toggle (0.1.276): header switch with active-only AJAX,
+ * - Per-slide Active toggle (0.1.277): header switch with active-only AJAX,
  *   missing legacy rows default active; explicit 0 hides publicly, pin +
  *   rotation revalidate, config preserved.
- * - style.css version 0.1.276; no DB writes.
+ * - style.css version 0.1.277; no DB writes.
  *
  * Run with:
  *   php tests/theme-homepage-hero-links-fixture.php
@@ -575,7 +575,7 @@ fixture_assert( 101 === $stored_hero['carousel_items'][0]['link_page_id'], 'get_
 fixture_assert( 'none' === $stored_hero['carousel_items'][1]['link_type'], 'get_hero: stored unlinked row resolves none' );
 fixture_assert( 'none' === $stored_hero['featured_pin']['mode'], 'get_hero: missing pin defaults to none' );
 
-// --- Per-slide Active toggle (0.1.276): defaults, sanitizer, persistence, pin. ---
+// --- Per-slide Active toggle (0.1.277): defaults, sanitizer, persistence, pin. ---
 
 fixture_assert( 1 === pfoa_sanitize_hero_slide_active( 1 ), 'active: 1 stays active' );
 fixture_assert( 1 === pfoa_sanitize_hero_slide_active( '1' ), 'active: string 1 stays active' );
@@ -633,11 +633,11 @@ fixture_assert(
 	'active pin: active pinned slide still resolves'
 );
 
- 	// style.css: version 0.1.276.
+ 	// style.css: version 0.1.277.
 $css = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' );
- 	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.276/', $css ), 'css: theme version 0.1.276' );
+ 	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.277/', $css ), 'css: theme version 0.1.277' );
 
 // No writes during helper evaluation.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during hero evaluation' );
 
-fwrite( STDOUT, "PASS: theme homepage hero links fixture (external accept/reject, legacy internal compat, type retention, slide-link resolver, invalid-link finder, pin resolve/save semantics, per-slide active toggle, css 0.1.276, no writes)\n" );
+fwrite( STDOUT, "PASS: theme homepage hero links fixture (external accept/reject, legacy internal compat, type retention, slide-link resolver, invalid-link finder, pin resolve/save semantics, per-slide active toggle, css 0.1.277, no writes)\n" );

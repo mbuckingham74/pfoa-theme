@@ -429,7 +429,19 @@
 		var toggle = $( this );
 
 		if ( ! toggle.prop( 'disabled' ) ) {
-			toggle.prop( 'checked', ! toggle.prop( 'checked' ) ).trigger( 'change' );
+			// Trusted mouse/pointer clicks already toggled the checkbox
+			// natively before this delegated document handler runs, so a
+			// manual flip here would double-toggle back to the old value and
+			// persist stale state (reactivation revert). Only flip for
+			// synthetic clicks (keyboard Enter via .trigger('click')) which
+			// carry no native toggle.
+			var trusted = !! event.isTrusted || !! ( event.originalEvent && event.originalEvent.isTrusted );
+
+			if ( ! trusted ) {
+				toggle.prop( 'checked', ! toggle.prop( 'checked' ) );
+			}
+
+			toggle.trigger( 'change' );
 		}
 	} );
 
