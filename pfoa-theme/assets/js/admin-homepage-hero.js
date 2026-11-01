@@ -304,7 +304,10 @@
 
 		list.children( '.pfoa-hero-carousel-item' ).each( function ( position ) {
 			var item = $( this );
-			var inactive = position >= count;
+			var beyondCount = position >= count;
+			var toggleInput = item.find( '.pfoa-hero-slide-active-input' );
+			var toggleInactive = toggleInput.length ? ! toggleInput.is( ':checked' ) : false;
+			var inactive = beyondCount || toggleInactive;
 
 			item.toggleClass( 'is-inactive', inactive );
 			item.find( '.pfoa-hero-slide-card' ).toggleClass( 'is-inactive', inactive );
@@ -338,6 +341,12 @@
 		refreshInactiveSlots();
 		refreshPinMode();
 		refreshDisplaySummary();
+	} );
+
+	// Per-slide Active toggle: update the header badge immediately; the
+	// generic input/change dirty tracker marks the card unsaved.
+	$( document ).on( 'change', '.pfoa-hero-slide-active-input', function () {
+		refreshInactiveSlots();
 	} );
 
 	// Per-slide save (Lane B): dirty tracking + AJAX save for one card.
@@ -543,6 +552,9 @@
 
 		var editCount = item.data( 'pfoa-slide-edits' ) || 0;
 
+		var activeInput = item.find( '.pfoa-hero-slide-active-input' );
+		var activeValue = activeInput.length ? ( activeInput.is( ':checked' ) ? 1 : 0 ) : 1;
+
 		$.ajax( {
 			url: ajaxUrl,
 			type: 'POST',
@@ -555,6 +567,7 @@
 				position: position,
 				known_ids: knownIds,
 				id: item.find( '.pfoa-hero-carousel-id' ).val(),
+				active: activeValue,
 				link_type: typeInput.length ? String( typeInput.val() ) : 'none',
 				link_page_id: pageValue,
 				link_url: item.find( '.pfoa-hero-link-url-input' ).val() || '',
@@ -676,6 +689,7 @@
 			'<span class="pfoa-hero-link-internal-wrap" style="display:none;"><label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">' + noLinkLabel() + '</option></select></label></span> ' +
 			'<label class="pfoa-hero-link-external-wrap" style="display:none;">External URL <input type="url" class="regular-text pfoa-hero-link-url-input" name="pfoa_hero[carousel_items][' + index + '][link_url]" value="" placeholder="https://" /></label> ' +
 			'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
+			'<label class="pfoa-hero-carousel-active"><input type="hidden" name="pfoa_hero[carousel_items][' + index + '][active]" value="0" /> <input type="checkbox" class="pfoa-hero-slide-active-input" name="pfoa_hero[carousel_items][' + index + '][active]" value="1" checked="checked" /> Display this slide on homepage.</label> ' +
 			'</section>' +
 			'<section class="pfoa-hero-slide-section">' +
 			'<h4 class="pfoa-hero-slide-heading">Appearance</h4>' +

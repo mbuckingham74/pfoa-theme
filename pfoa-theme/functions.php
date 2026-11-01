@@ -1283,7 +1283,7 @@ function pfoa_homepage_cards_page() {
  *   'image_link_url'     => string (legacy Single Image external URL, stored-shape BC only; always '' after save, no longer edited),
  *   'featured_pin'       => array( 'slide' => 0|1-8 (1-based position at save; 0 = normal rotation), 'attachment_id' => int (snapshot), 'mode' => 'none'|'timed'|'indefinite', 'expires_at' => int (UTC timestamp, site-local via current_time), 'created_at' => int ),
  *   'carousel_ids'       => int[] (attachment IDs, display order; derived from carousel_items),
- *   'carousel_items'     => array[] of array( 'id' => int, 'link_page_id' => int|string (page/Cat Profile post ID or 'pair:<a>:<b>' bonded-pair token), 'link_type' => 'internal'|'external'|'none' (missing legacy rows resolve as internal when link_page_id is non-zero, else none), 'link_url' => string (absolute http/https URL used when link_type is 'external'), 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 50|60|70|80|90|100|110|120, 'headline_color' => 'white'|'black', 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
+ *   'carousel_items'     => array[] of array( 'id' => int, 'active' => 0|1 (per-slide visibility; missing legacy rows resolve as active), 'link_page_id' => int|string (page/Cat Profile post ID or 'pair:<a>:<b>' bonded-pair token), 'link_type' => 'internal'|'external'|'none' (missing legacy rows resolve as internal when link_page_id is non-zero, else none), 'link_url' => string (absolute http/https URL used when link_type is 'external'), 'headline' => string, 'brightness' => 100|110|120|130, 'headline_scale' => 50|60|70|80|90|100|110|120, 'headline_color' => 'white'|'black', 'zoom' => 50|60|70|80|90|100|110|120|130|140|150, 'position' => 'top left'|'top center'|'top right'|'center left'|'center center'|'center right'|'bottom left'|'bottom center'|'bottom right' (space-separated CSS object-position values; 'center' alias normalizes to 'center center'; missing/invalid resolves to 'center center') ),
  *   'carousel_interval_ms' => 3500|5000|7000 (ms each carousel image stays visible; missing/invalid resolves to 5000),
  *   'ctas'               => array[] of array( 'label' => string, 'page_id' => int (published Page ID; 0 = no link), 'url' => string (legacy fallback only when page_id is 0; '' otherwise) ),
  * ).
@@ -2426,7 +2426,9 @@ function pfoa_resolve_hero_pin_for_save( $submitted_pin, $stored_pin, $carousel_
  *
  * Evaluated server-side on every request: valid only when the pin mode is
  * not none, the 1-based slide position falls within carousel_slide_count,
- * the stored carousel item at that position holds a valid image, and a
+ * the stored carousel item at that position holds a valid image, is marked
+ * Active (an inactive pinned slide never renders publicly; its stored
+ * configuration stays intact for later reactivation), and a
  * timed pin has not yet expired (expires_at > current_time('timestamp'));
  * indefinite pins carry no expiry. Anything else returns 0 so the template
  * silently falls back to normal rotation with all slides intact.
@@ -2465,6 +2467,10 @@ function pfoa_get_hero_pinned_slide_id( $hero ) {
 	$position = $pin['slide'] - 1;
 
 	if ( ! isset( $items[ $position ] ) || ! is_array( $items[ $position ] ) ) {
+		return 0;
+	}
+
+	if ( ! pfoa_is_hero_slide_active( $items[ $position ] ) ) {
 		return 0;
 	}
 
@@ -2613,6 +2619,70 @@ function pfoa_sanitize_hero_position( $value ) {
 	}
 
 	return $position;
+}
+
+/**
+ * Sanitize a per-slide hero carousel Active flag.
+ *
+ * Explicit '0' (unchecked "Display this slide on homepage" checkbox via the
+ * hidden 0 field, or AJAX 0) sanitizes to 0 (inactive). Any other explicitly
+ * provided value sanitizes to 1 (active). Callers default missing legacy
+ * rows to active; this helper only normalizes provided values.
+ *
+ * @param mixed $value Raw submitted value.
+ * @return int 1 when active, 0 when inactive.
+ */
+function pfoa_sanitize_hero_slide_active( $value ) {
+	if ( is_bool( $value ) ) {
+		return $value ? 1 : 0;
+	}
+
+	if ( is_int( $value ) || is_float( $value ) ) {
+		return (int) $value ? 1 : 0;
+	}
+
+	$text = strtolower( trim( (string) $value ) );
+
+	if ( in_array( $text, array( '1', 'on', 'yes', 'true', 'active', 'checked' ), true ) ) {
+		return 1;
+	}
+
+	if ( in_array( $text, array( '0', 'off', 'no', 'false', 'inactive', '', 'none' ), true ) ) {
+		return 0;
+	}
+
+	return absint( $text ) ? 1 : 0;
+}
+
+/**
+ * Whether a hero carousel slide is active (visible publicly).
+ *
+ * Missing legacy rows without an 'active' key resolve as active for
+ * backward compatibility; only an explicitly stored 0 hides the slide.
+ *
+ * @param mixed $item Hero carousel item array.
+ * @return bool True when the slide should display publicly.
+ */
+function pfoa_is_hero_slide_active( $item ) {
+	if ( ! is_array( $item ) || ! array_key_exists( 'active', $item ) ) {
+		return true;
+	}
+
+	if ( is_bool( $item['active'] ) ) {
+		return (bool) $item['active'];
+	}
+
+	if ( is_int( $item['active'] ) || is_float( $item['active'] ) ) {
+		return 0 !== (int) $item['active'];
+	}
+
+	$text = strtolower( trim( (string) $item['active'] ) );
+
+	if ( in_array( $text, array( '0', 'off', 'no', 'false', 'inactive', '', 'none' ), true ) ) {
+		return false;
+	}
+
+	return true;
 }
 
 /**
@@ -2781,6 +2851,7 @@ function pfoa_sanitize_hero( $value ) {
 
 			$carousel_items[] = array(
 				'id'             => $carousel_id,
+				'active'         => array_key_exists( 'active', $carousel_item ) ? pfoa_sanitize_hero_slide_active( $carousel_item['active'] ) : 1,
 				'link_page_id'   => $item_link_page_id,
 				'link_type'      => pfoa_resolve_hero_link_type(
 					array(
@@ -2822,6 +2893,7 @@ function pfoa_sanitize_hero( $value ) {
 
 			$carousel_items[] = array(
 				'id'             => $carousel_id,
+				'active'         => 1,
 				'link_page_id'   => 0,
 				'link_type'      => 'none',
 				'link_url'       => '',
@@ -3761,6 +3833,7 @@ function pfoa_site_homepage_page() {
 
 			$carousel_items[] = array(
 				'id'             => isset( $carousel_item['id'] ) ? absint( $carousel_item['id'] ) : 0,
+				'active'         => array_key_exists( 'active', $carousel_item ) ? pfoa_sanitize_hero_slide_active( $carousel_item['active'] ) : 1,
 				'link_page_id'   => isset( $carousel_item['link_page_id'] ) ? ( is_string( $carousel_item['link_page_id'] ) ? trim( $carousel_item['link_page_id'] ) : absint( $carousel_item['link_page_id'] ) ) : 0,
 				'link_type'      => pfoa_resolve_hero_link_type(
 					array(
@@ -3781,6 +3854,7 @@ function pfoa_site_homepage_page() {
 		foreach ( $carousel_ids as $carousel_id ) {
 			$carousel_items[] = array(
 				'id'             => absint( $carousel_id ),
+				'active'         => 1,
 				'link_page_id'   => 0,
 				'link_type'      => 'none',
 				'link_url'       => '',
@@ -3801,6 +3875,7 @@ function pfoa_site_homepage_page() {
 	while ( count( $carousel_items ) < $carousel_slide_count && count( $carousel_items ) < 8 ) {
 		$carousel_items[] = array(
 			'id'             => 0,
+			'active'         => 1,
 			'link_page_id'   => 0,
 			'link_type'      => 'none',
 			'link_url'       => '',
@@ -3999,7 +4074,10 @@ function pfoa_site_homepage_page() {
 				$carousel_position = isset( $carousel_item['position'] ) ? pfoa_sanitize_hero_position( $carousel_item['position'] ) : 'center center';
 						$carousel_preview   = $carousel_id ? wp_get_attachment_image( $carousel_id, array( 80, 80 ) ) : '';
 						$carousel_field_base = 'pfoa_hero[carousel_items][' . $carousel_index . ']';
-						$is_inactive_slot = $carousel_index >= $carousel_slide_count;
+						$carousel_active = array_key_exists( 'active', $carousel_item ) ? ( 1 === (int) pfoa_sanitize_hero_slide_active( $carousel_item['active'] ) ) : true;
+						$is_toggle_inactive = ! $carousel_active;
+						$is_beyond_count = $carousel_index >= $carousel_slide_count;
+						$is_inactive_slot = $is_beyond_count || $is_toggle_inactive;
 						?>
 						<li class="pfoa-hero-carousel-item<?php echo $is_inactive_slot ? ' is-inactive' : ''; ?>" data-pfoa-slide-key="<?php echo esc_attr( (string) $carousel_id ); ?>">
 							<?php
@@ -4085,6 +4163,12 @@ function pfoa_site_homepage_page() {
 								<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[headline]" value="<?php echo esc_attr( $carousel_headline ); ?>" />
 							</label>
 								<p class="description"><?php esc_html_e( 'Optional. Leave blank to show no headline.', 'pfoa-theme' ); ?></p>
+							<label class="pfoa-hero-carousel-active">
+								<input type="hidden" name="<?php echo esc_attr( $carousel_field_base ); ?>[active]" value="0" />
+								<input type="checkbox" class="pfoa-hero-slide-active-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[active]" value="1"<?php checked( $carousel_active, true ); ?> />
+								<?php esc_html_e( 'Display this slide on homepage.', 'pfoa-theme' ); ?>
+							</label>
+								<p class="description"><?php esc_html_e( 'Inactive slides stay saved with all settings and are hidden publicly until reactivated.', 'pfoa-theme' ); ?></p>
 							</section>
 							<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide appearance', 'pfoa-theme' ); ?>">
 								<h4 class="pfoa-hero-slide-heading"><?php esc_html_e( 'Appearance', 'pfoa-theme' ); ?></h4>
@@ -4160,7 +4244,7 @@ function pfoa_site_homepage_page() {
 							<button type="button" class="button button-primary pfoa-hero-slide-save"><?php esc_html_e( 'Save Slide', 'pfoa-theme' ); ?></button>
 							<span class="pfoa-hero-slide-save-status" role="status" aria-live="polite"></span>
 								</div>
-								<p class="pfoa-hero-carousel-inactive-note"><?php esc_html_e( 'Inactive — will show if count increased', 'pfoa-theme' ); ?></p>
+								<p class="pfoa-hero-carousel-inactive-note"><?php echo $is_toggle_inactive ? esc_html__( 'Inactive — enable “Display this slide on homepage” to show this slide publicly.', 'pfoa-theme' ) : esc_html__( 'Inactive — will show if count increased', 'pfoa-theme' ); ?></p>
 							</section>
 								</div>
 							</details>
@@ -4213,6 +4297,11 @@ function pfoa_site_homepage_page() {
 						<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][__INDEX__][headline]" value="" />
 					</label>
 							<p class="description"><?php esc_html_e( 'Optional. Leave blank to show no headline.', 'pfoa-theme' ); ?></p>
+							<label class="pfoa-hero-carousel-active">
+								<input type="hidden" name="pfoa_hero[carousel_items][__INDEX__][active]" value="0" />
+								<input type="checkbox" class="pfoa-hero-slide-active-input" name="pfoa_hero[carousel_items][__INDEX__][active]" value="1" checked="checked" />
+								<?php esc_html_e( 'Display this slide on homepage.', 'pfoa-theme' ); ?>
+							</label>
 						</section>
 						<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide appearance', 'pfoa-theme' ); ?>">
 							<h4 class="pfoa-hero-slide-heading"><?php esc_html_e( 'Appearance', 'pfoa-theme' ); ?></h4>
@@ -4399,6 +4488,8 @@ function pfoa_hero_admin_assets( $hook ) {
 				'conflictHomepage' => __( 'Slides changed elsewhere. Reload the page and use Save Homepage to keep every change.', 'pfoa-theme' ),
 				'linkWarning'      => __( '— External URL was invalid, so its link was removed.', 'pfoa-theme' ),
 				'noLinkLabel'      => __( '— No link —', 'pfoa-theme' ),
+				'active'           => __( 'Active', 'pfoa-theme' ),
+				'inactive'         => __( 'Inactive', 'pfoa-theme' ),
 				'ctaPages'         => pfoa_get_page_selector_choices(),
 			)
 		);
@@ -4486,7 +4577,7 @@ add_action( 'admin_post_pfoa_homepage_hero_save', 'pfoa_homepage_hero_save' );
  * Request (POST):
  *   nonce, post_id, slide_key ("0" = new slot), position (int DOM index),
  *   known_ids (array of DOM-ordered attachment ids),
- *   id, link_type, link_page_id, link_url, headline,
+ *   id, active (0|1 per-slide visibility), link_type, link_page_id, link_url, headline,
  *   brightness, headline_scale, headline_color, zoom, image_position.
  *
  * Error codes (responseJSON.data.code): new_slot, conflict, not_found,
@@ -4679,8 +4770,21 @@ function pfoa_hero_save_slide() {
 
 	$item_link_page_id = isset( $raw_post['link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $raw_post['link_page_id'] ) : 0;
 
+	// Per-slide Active toggle: the admin checkbox submits 1 when checked, 0
+	// (via the hidden field) when unchecked. Missing legacy clients preserve
+	// the stored value so an old save can never wipe visibility; new rows
+	// default to active.
+	$stored_active = 1;
+
+	if ( isset( $stored_items[ $found ] ) && is_array( $stored_items[ $found ] ) && array_key_exists( 'active', $stored_items[ $found ] ) ) {
+		$stored_active = pfoa_sanitize_hero_slide_active( $stored_items[ $found ]['active'] );
+	}
+
+	$new_active = array_key_exists( 'active', $raw_post ) ? pfoa_sanitize_hero_slide_active( $raw_post['active'] ) : $stored_active;
+
 	$new_slide = array(
 		'id'             => $new_id,
+		'active'         => $new_active,
 		'link_page_id'   => $item_link_page_id,
 		'link_type'      => pfoa_resolve_hero_link_type(
 			array(

@@ -76,8 +76,16 @@ $carousel_slide_count = isset( $hero['carousel_slide_count'] ) ? pfoa_sanitize_h
 
 		$slide_position = ( is_array( $raw_item ) && isset( $raw_item['position'] ) ) ? pfoa_sanitize_hero_position( $raw_item['position'] ) : 'center center';
 
+		// Per-slide Active toggle: missing legacy rows default to active.
+		$slide_active = true;
+
+		if ( is_array( $raw_item ) && array_key_exists( 'active', $raw_item ) && function_exists( 'pfoa_is_hero_slide_active' ) ) {
+			$slide_active = pfoa_is_hero_slide_active( $raw_item );
+		}
+
 		$carousel_slides[] = array(
 			'id'             => $slide_id,
+			'active'         => $slide_active ? 1 : 0,
 			'link_url'       => $slide_link['url'],
 			'link_title'     => $slide_link['title'],
 			'link_external'  => ! empty( $slide_link['external'] ),
@@ -96,14 +104,33 @@ $carousel_slide_count = isset( $hero['carousel_slide_count'] ) ? pfoa_sanitize_h
 	}
 
 	$carousel_slides = array_slice( $carousel_slides, 0, $carousel_slide_count );
+
+	// Per-slide Active toggle: inactive slides are excluded publicly while
+	// their stored configuration stays intact for reactivation. Filtering
+	// after the count slice keeps the toggle independent of the Number of
+	// Carousel Slides setting: disabling never pulls in extras beyond the
+	// count, and remaining actives render consecutively without gaps.
+	$carousel_slides = array_values(
+		array_filter(
+			$carousel_slides,
+			function ( $candidate ) {
+				if ( ! is_array( $candidate ) || ! array_key_exists( 'active', $candidate ) ) {
+					return true;
+				}
+
+				return 0 !== (int) $candidate['active'];
+			}
+		)
+	);
 }
 
 // Featured slide pinning: when a valid pin resolves, render ONLY that slide
 // as a single static hero (saved image/headline/destination/zoom/position
 // preserved) with rotation controls and rotation data attributes hidden.
 // pfoa_get_hero_pinned_slide_id() re-validates server-side on every request
-// (image, range, timed expiry), so an expired/invalid/missing-image pin
-// silently falls back to the configured rotation with all slides intact.
+// (image, range, active flag, timed expiry), so an expired/invalid/inactive/
+// missing-image pin silently falls back to the configured rotation with all
+// slides intact.
 //
 // Page-cache limitation: expiration is evaluated in PHP per uncached
 // request. A host, CDN, or plugin serving full-page cache may keep showing
@@ -124,6 +151,12 @@ if ( $pinned_slide_id ) {
 }
 
 $is_carousel = array() !== $carousel_slides;
+
+// Rotation (auto-advance + prev/next/toggle) only when 2+ active slides and
+// not pinned. A single active slide renders statically without carousel
+// data attributes or controls so no JS errors, blank frames, or dead
+// navigation occur; zero active slides fall through to featured/fallback.
+$has_rotation = count( $carousel_slides ) > 1 && ! $is_pinned;
 
 $carousel_interval_ms = isset( $hero['carousel_interval_ms'] ) ? pfoa_sanitize_hero_carousel_interval_ms( $hero['carousel_interval_ms'] ) : 5000;
 
@@ -230,7 +263,7 @@ if ( ! function_exists( 'pfoa_is_dine_out_promo_slide' ) ) {
 ?>
 <section id="homepage-hero" class="<?php echo esc_attr( implode( ' ', $hero_classes ) ); ?>" aria-labelledby="homepage-hero-title">
 	<?php if ( $is_carousel ) : ?>
-		<div class="homepage-hero__media" id="homepage-hero-media"<?php echo $is_pinned ? '' : ' data-pfoa-hero-carousel data-carousel-interval="' . esc_attr( (string) $carousel_interval_ms ) . '"'; ?>>
+		<div class="homepage-hero__media" id="homepage-hero-media"<?php echo $has_rotation ? ' data-pfoa-hero-carousel data-carousel-interval="' . esc_attr( (string) $carousel_interval_ms ) . '"' : ''; ?>>
 		<?php foreach ( $carousel_slides as $slide_index => $slide ) : ?>
 			<?php
 			$slide_id    = $slide['id'];
@@ -365,7 +398,7 @@ if ( ! function_exists( 'pfoa_is_dine_out_promo_slide' ) ) {
 		</div>
 	</div>
 
-	<?php if ( $is_carousel && ! $is_pinned ) : ?>
+	<?php if ( $has_rotation ) : ?>
 		<div class="homepage-hero__controls">
 			<button type="button" class="homepage-hero__nav homepage-hero__nav--prev" data-pfoa-hero-prev aria-controls="homepage-hero-media" aria-label="<?php esc_attr_e( 'Previous hero image', 'pfoa-theme' ); ?>">
 				<span aria-hidden="true">&#8249;</span>

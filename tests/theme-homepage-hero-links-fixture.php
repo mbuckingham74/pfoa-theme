@@ -28,8 +28,10 @@
  * - pfoa_resolve_hero_pin_for_save(): fresh expiry on new pin/slide
  *   change/indefinite-to-timed change/missing future expiry; preserved
  *   expires_at + created_at on unrelated saves with unchanged pin+mode and
- *   a valid future expires_at in the hidden field.
-  * - style.css version 0.1.246; no DB writes.
+  *   a valid future expires_at in the hidden field.
+  * - Per-slide Active toggle (0.1.274): missing legacy rows default active;
+  *   explicit 0 hides publicly, pin + rotation revalidate, config preserved.
+   * - style.css version 0.1.274; no DB writes.
  *
  * Run with:
  *   php tests/theme-homepage-hero-links-fixture.php
@@ -572,11 +574,69 @@ fixture_assert( 101 === $stored_hero['carousel_items'][0]['link_page_id'], 'get_
 fixture_assert( 'none' === $stored_hero['carousel_items'][1]['link_type'], 'get_hero: stored unlinked row resolves none' );
 fixture_assert( 'none' === $stored_hero['featured_pin']['mode'], 'get_hero: missing pin defaults to none' );
 
-	// style.css: version 0.1.246.
+// --- Per-slide Active toggle (0.1.274): defaults, sanitizer, persistence, pin. ---
+
+fixture_assert( 1 === pfoa_sanitize_hero_slide_active( 1 ), 'active: 1 stays active' );
+fixture_assert( 1 === pfoa_sanitize_hero_slide_active( '1' ), 'active: string 1 stays active' );
+fixture_assert( 0 === pfoa_sanitize_hero_slide_active( 0 ), 'active: 0 stays inactive' );
+fixture_assert( 0 === pfoa_sanitize_hero_slide_active( '0' ), 'active: string 0 stays inactive' );
+fixture_assert( true === pfoa_is_hero_slide_active( array( 'id' => 11 ) ), 'active: missing legacy key resolves active' );
+fixture_assert( true === pfoa_is_hero_slide_active( array( 'id' => 11, 'active' => 1 ) ), 'active: explicit 1 resolves active' );
+fixture_assert( false === pfoa_is_hero_slide_active( array( 'id' => 11, 'active' => 0 ) ), 'active: explicit 0 resolves inactive' );
+fixture_assert( false === pfoa_is_hero_slide_active( array( 'id' => 11, 'active' => '0' ) ), 'active: string 0 resolves inactive' );
+
+$active_default = pfoa_sanitize_hero(
+	fixture_hero_base(
+		array(
+			'carousel_items' => array(
+				array( 'id' => 11, 'headline' => 'Legacy Active Default' ),
+				array( 'id' => 12, 'headline' => 'Explicit Active', 'active' => 1 ),
+				array( 'id' => 13, 'headline' => 'Explicit Inactive', 'active' => 0 ),
+			),
+		)
+	)
+);
+fixture_assert( 1 === $active_default['carousel_items'][0]['active'], 'active: sanitizer defaults missing legacy rows to active' );
+fixture_assert( 1 === $active_default['carousel_items'][1]['active'], 'active: sanitizer preserves explicit active' );
+fixture_assert( 0 === $active_default['carousel_items'][2]['active'], 'active: sanitizer preserves explicit inactive' );
+fixture_assert( 'Explicit Inactive' === $active_default['carousel_items'][2]['headline'], 'active: inactive slide retains headline' );
+
+// Inactive pinned slide must not resolve publicly (stored config intact).
+fixture_assert(
+	0 === pfoa_get_hero_pinned_slide_id(
+		fixture_hero_base(
+			array(
+				'featured_pin'   => array( 'slide' => 2, 'mode' => 'indefinite' ),
+				'carousel_items' => array(
+					array( 'id' => 11, 'headline' => 'One' ),
+					array( 'id' => 12, 'headline' => 'Two', 'active' => 0 ),
+					array( 'id' => 13, 'headline' => 'Three' ),
+				),
+			)
+		)
+	),
+	'active pin: inactive pinned slide resolves 0 (fallback to rotation)'
+);
+fixture_assert(
+	11 === pfoa_get_hero_pinned_slide_id(
+		fixture_hero_base(
+			array(
+				'featured_pin'   => array( 'slide' => 1, 'mode' => 'indefinite' ),
+				'carousel_items' => array(
+					array( 'id' => 11, 'headline' => 'One', 'active' => 1 ),
+					array( 'id' => 12, 'headline' => 'Two', 'active' => 0 ),
+				),
+			)
+		)
+	),
+	'active pin: active pinned slide still resolves'
+);
+
+	// style.css: version 0.1.274.
 $css = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' );
-	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.246/', $css ), 'css: theme version 0.1.246' );
+	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.274/', $css ), 'css: theme version 0.1.274' );
 
 // No writes during helper evaluation.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during hero evaluation' );
 
-fwrite( STDOUT, "PASS: theme homepage hero links fixture (external accept/reject, legacy internal compat, type retention, slide-link resolver, invalid-link finder, pin resolve/save semantics, css 0.1.246, no writes)\n" );
+fwrite( STDOUT, "PASS: theme homepage hero links fixture (external accept/reject, legacy internal compat, type retention, slide-link resolver, invalid-link finder, pin resolve/save semantics, per-slide active toggle, css 0.1.274, no writes)\n" );
