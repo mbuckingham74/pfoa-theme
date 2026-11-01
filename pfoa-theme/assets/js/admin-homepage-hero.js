@@ -291,6 +291,52 @@
 		refreshSummaryLink( item );
 	}
 
+	function getActiveToggle( item ) {
+		return item.find( '.pfoa-hero-slide-active-toggle' );
+	}
+
+	function getActiveValue( item ) {
+		var toggle = getActiveToggle( item );
+
+		if ( toggle.length ) {
+			return toggle.is( ':checked' ) ? 1 : 0;
+		}
+
+		var legacy = item.find( '.pfoa-hero-slide-active-input[type="checkbox"]' );
+
+		if ( legacy.length ) {
+			return legacy.is( ':checked' ) ? 1 : 0;
+		}
+
+		var hidden = item.find( '.pfoa-hero-slide-active-input' );
+
+		if ( hidden.length ) {
+			return '0' === String( hidden.val() ) ? 0 : 1;
+		}
+
+		return 1;
+	}
+
+	function syncActiveMirror( item, value ) {
+		var hidden = item.find( 'input.pfoa-hero-slide-active-input[type="hidden"]' );
+
+		if ( hidden.length ) {
+			hidden.val( value ? '1' : '0' );
+		}
+
+		var legacy = item.find( '.pfoa-hero-slide-active-input[type="checkbox"]' );
+
+		if ( legacy.length ) {
+			legacy.prop( 'checked', !! value );
+		}
+	}
+
+	function activeAriaLabel( position, value ) {
+		var template = value ? ( labels.activeOn || 'Slide %d active' ) : ( labels.activeOff || 'Slide %d inactive' );
+
+		return String( template ).replace( '%d', String( position + 1 ) );
+	}
+
 	function refreshInactiveSlots() {
 		var list = $( '.pfoa-hero-carousel-list' );
 
@@ -305,8 +351,7 @@
 		list.children( '.pfoa-hero-carousel-item' ).each( function ( position ) {
 			var item = $( this );
 			var beyondCount = position >= count;
-			var toggleInput = item.find( '.pfoa-hero-slide-active-input' );
-			var toggleInactive = toggleInput.length ? ! toggleInput.is( ':checked' ) : false;
+			var toggleInactive = 1 !== getActiveValue( item );
 			var inactive = beyondCount || toggleInactive;
 
 			item.toggleClass( 'is-inactive', inactive );
@@ -318,12 +363,26 @@
 				slotLabel.text( 'Slide ' + ( position + 1 ) );
 			}
 
+			var toggle = getActiveToggle( item );
+
+			if ( toggle.length && ! toggle.data( 'pfoa-active-saving' ) ) {
+				toggle.attr( 'aria-label', activeAriaLabel( position, ! toggleInactive ) );
+			}
+
 			var pill = item.find( '.pfoa-hero-slide-status' );
 
-			if ( pill.length ) {
+			if ( pill.length && ! pill.hasClass( 'is-saving' ) ) {
 				pill.text( inactive ? inactiveLabel() : activeLabel() );
 				pill.toggleClass( 'is-inactive', inactive );
 				pill.toggleClass( 'is-active', ! inactive );
+			}
+
+			var note = item.find( '.pfoa-hero-carousel-inactive-note' );
+
+			if ( note.length ) {
+				if ( toggleInactive && ! beyondCount ) {
+					note.text( note.data( 'pfoa-toggle-text' ) || note.text() );
+				}
 			}
 
 			refreshSummary( item );
@@ -343,11 +402,200 @@
 		refreshDisplaySummary();
 	} );
 
-	// Per-slide Active toggle: update the header badge immediately; the
-	// generic input/change dirty tracker marks the card unsaved.
-	$( document ).on( 'change', '.pfoa-hero-slide-active-input', function () {
-		refreshInactiveSlots();
+	// Header Active switch: never toggles <details>. The summary toggle is
+	// the click event's default action, so stopPropagation alone is not
+	// enough — preventDefault cancels the expand/collapse while the switch
+	// state is flipped manually. Handlers are limited to the switch label
+	// and input so clicks on the status pill or elsewhere still expand.
+	$( document ).on( 'click', '.pfoa-hero-slide-active-switch', function ( event ) {
+		if ( $( event.target ).hasClass( 'pfoa-hero-slide-active-toggle' ) ) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+
+		var toggle = $( this ).find( '.pfoa-hero-slide-active-toggle' );
+
+		if ( toggle.length && ! toggle.prop( 'disabled' ) ) {
+			toggle.prop( 'checked', ! toggle.prop( 'checked' ) ).trigger( 'change' );
+		}
 	} );
+
+	$( document ).on( 'click', '.pfoa-hero-slide-active-toggle', function ( event ) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		var toggle = $( this );
+
+		if ( ! toggle.prop( 'disabled' ) ) {
+			toggle.prop( 'checked', ! toggle.prop( 'checked' ) ).trigger( 'change' );
+		}
+	} );
+
+	$( document ).on( 'keydown', '.pfoa-hero-slide-active-toggle', function ( event ) {
+		event.stopPropagation();
+
+		if ( 'Enter' === event.key ) {
+			event.preventDefault();
+			$( this ).trigger( 'click' );
+		}
+	} );
+
+	// Per-slide Active switch: immediate active-only AJAX save. Only the
+	// active flag is posted; unsaved edits elsewhere in the card are kept
+	// on screen and never serialized here.
+	$( document ).on( 'change', '.pfoa-hero-slide-active-toggle', function ( event ) {
+		event.stopPropagation();
+
+		var toggle = $( this );
+		var item = toggle.closest( '.pfoa-hero-carousel-item' );
+
+		if ( ! item.length ) {
+			return;
+		}
+
+		saveSlideActiveOnly( item );
+	} );
+
+	function activeSavingLabel() {
+		return savingLabel();
+	}
+
+	function activeRestoredMessage() {
+		return labels.activeRestored || 'Active save failed. Previous setting restored.';
+	}
+
+	function saveSlideActiveOnly( item ) {
+		var toggle = getActiveToggle( item );
+		var pill = item.find( '.pfoa-hero-slide-status' );
+		var status = item.find( '.pfoa-hero-slide-save-status' );
+		var value = getActiveValue( item );
+		var previous = value ? 0 : 1;
+		var key = item.attr( 'data-pfoa-slide-key' );
+		var ajaxUrl = labels.ajaxUrl || ( typeof window.ajaxurl === 'string' ? window.ajaxurl : '' );
+
+		syncActiveMirror( item, value );
+
+		var list = item.closest( '.pfoa-hero-carousel-list' );
+		var position = list.length ? list.children( '.pfoa-hero-carousel-item' ).index( item ) : 0;
+
+		if ( toggle.length ) {
+			toggle.attr( 'aria-label', activeAriaLabel( position, !! value ) );
+		}
+
+		// New not-yet-persisted slot: no POST, keep the visual state and
+		// mirror it into the hidden full-page field; Save Homepage persists.
+		if ( ! key || '0' === String( key ) ) {
+			refreshInactiveSlots();
+			return;
+		}
+
+		if ( ! ajaxUrl ) {
+			toggle.prop( 'checked', !! previous );
+			syncActiveMirror( item, previous );
+			refreshInactiveSlots();
+
+			if ( status.length ) {
+				status.text( activeRestoredMessage() ).removeClass( 'is-unsaved is-saved' ).addClass( 'is-error' );
+			}
+
+			return;
+		}
+
+		if ( toggle.length ) {
+			toggle.data( 'pfoa-active-saving', 1 );
+			toggle.prop( 'disabled', true );
+		}
+
+		if ( pill.length ) {
+			pill.data( 'pfoa-prior-text', pill.text() );
+			pill.text( activeSavingLabel() ).removeClass( 'is-active is-inactive' ).addClass( 'is-saving' );
+		}
+
+		var knownIds = [];
+
+		if ( list.length ) {
+			list.find( '.pfoa-hero-carousel-id' ).each( function () {
+				knownIds.push( $( this ).val() );
+			} );
+		}
+
+		$.ajax( {
+			url: ajaxUrl,
+			type: 'POST',
+			dataType: 'json',
+			data: {
+				action: 'pfoa_hero_save_slide',
+				nonce: labels.slideNonce,
+				post_id: labels.frontId,
+				slide_key: String( key ),
+				position: position,
+				known_ids: knownIds,
+				active_only: 1,
+				active: value
+			},
+			success: function ( response ) {
+				if ( toggle.length ) {
+					toggle.removeData( 'pfoa-active-saving' );
+					toggle.prop( 'disabled', false );
+				}
+
+				if ( pill.length ) {
+					pill.removeClass( 'is-saving' );
+				}
+
+				if ( response && response.success && response.data ) {
+					var saved = response.data.active;
+
+					if ( 'undefined' !== typeof saved ) {
+						value = 1 === parseInt( saved, 10 ) ? 1 : ( saved ? 1 : 0 );
+						toggle.prop( 'checked', !! value );
+						syncActiveMirror( item, value );
+					}
+
+					refreshInactiveSlots();
+
+					if ( status.length && status.hasClass( 'is-error' ) ) {
+						status.text( '' ).removeClass( 'is-unsaved is-saved is-error' );
+					}
+
+					return;
+				}
+
+				toggle.prop( 'checked', !! previous );
+				syncActiveMirror( item, previous );
+				refreshInactiveSlots();
+
+				var errData = response && response.data ? response.data : {};
+				var serverMessage = errData.message ? String( errData.message ) : '';
+
+				if ( status.length ) {
+					status.text( serverMessage || activeRestoredMessage() ).removeClass( 'is-unsaved is-saved' ).addClass( 'is-error' );
+					status.attr( 'aria-live', 'assertive' );
+				}
+			},
+			error: function () {
+				if ( toggle.length ) {
+					toggle.removeData( 'pfoa-active-saving' );
+					toggle.prop( 'disabled', false );
+				}
+
+				if ( pill.length ) {
+					pill.removeClass( 'is-saving' );
+				}
+
+				toggle.prop( 'checked', !! previous );
+				syncActiveMirror( item, previous );
+				refreshInactiveSlots();
+
+				if ( status.length ) {
+					status.text( activeRestoredMessage() ).removeClass( 'is-unsaved is-saved' ).addClass( 'is-error' );
+					status.attr( 'aria-live', 'assertive' );
+				}
+			}
+		} );
+	}
 
 	// Per-slide save (Lane B): dirty tracking + AJAX save for one card.
 	// The PHP lane renders `.pfoa-hero-slide-save` + `.pfoa-hero-slide-save-status`
@@ -407,6 +655,12 @@
 
 			if ( savedId ) {
 				item.attr( 'data-pfoa-slide-key', String( savedId ) );
+			}
+
+			if ( data.slide && 'undefined' !== typeof data.slide.active ) {
+				var savedActive = 1 === parseInt( data.slide.active, 10 ) ? 1 : ( data.slide.active ? 1 : 0 );
+				getActiveToggle( item ).prop( 'checked', !! savedActive );
+				syncActiveMirror( item, savedActive );
 			}
 
 			refreshSummary( item );
@@ -479,7 +733,7 @@
 	// Any real user edit inside a card marks only that card unsaved.
 	// Programmatic summary syncs (refreshSummary/refreshInactiveSlots) set
 	// .text() only and never fire input/change, so they stay clean.
-	$( document ).on( 'input change', '.pfoa-hero-carousel-item input, .pfoa-hero-carousel-item select', function () {
+	$( document ).on( 'input change', '.pfoa-hero-carousel-item input:not(.pfoa-hero-slide-active-toggle), .pfoa-hero-carousel-item select', function () {
 		var item = $( this ).closest( '.pfoa-hero-carousel-item' );
 
 		if ( item.length ) {
@@ -552,8 +806,7 @@
 
 		var editCount = item.data( 'pfoa-slide-edits' ) || 0;
 
-		var activeInput = item.find( '.pfoa-hero-slide-active-input' );
-		var activeValue = activeInput.length ? ( activeInput.is( ':checked' ) ? 1 : 0 ) : 1;
+		var activeValue = getActiveValue( item );
 
 		$.ajax( {
 			url: ajaxUrl,
@@ -674,7 +927,10 @@
 			'<span class="pfoa-hero-slide-thumb">' + ( thumb || '<span class="pfoa-hero-slide-empty" aria-hidden="true"></span>' ) + '</span> ' +
 			'<span class="pfoa-hero-slide-headline">' + noHeadlineLabel() + '</span> ' +
 			'<span class="pfoa-hero-slide-link">' + noLinkLabel() + '</span> ' +
-			'<span class="pfoa-hero-slide-status is-active">' + activeLabel() + '</span>' +
+			'<span class="pfoa-hero-slide-active-wrap">' +
+		'<label class="pfoa-hero-slide-active-switch"><input type="checkbox" class="pfoa-hero-slide-active-toggle" checked="checked" aria-label="Slide active" />' +
+		'<span class="pfoa-hero-slide-active-track" aria-hidden="true"><span class="pfoa-hero-slide-active-thumb" aria-hidden="true"></span></span></label> ' +
+		'<span class="pfoa-hero-slide-status is-active" role="status" aria-live="polite">' + activeLabel() + '</span></span>' +
 			'</summary>' +
 			'<div class="pfoa-hero-slide-body">' +
 			'<section class="pfoa-hero-slide-section">' +
@@ -689,7 +945,7 @@
 			'<span class="pfoa-hero-link-internal-wrap" style="display:none;"><label class="pfoa-hero-carousel-link">Image destination <select name="pfoa_hero[carousel_items][' + index + '][link_page_id]"><option value="0">' + noLinkLabel() + '</option></select></label></span> ' +
 			'<label class="pfoa-hero-link-external-wrap" style="display:none;">External URL <input type="url" class="regular-text pfoa-hero-link-url-input" name="pfoa_hero[carousel_items][' + index + '][link_url]" value="" placeholder="https://" /></label> ' +
 			'<label class="pfoa-hero-carousel-headline">Hero headline <input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][' + index + '][headline]" value="" /></label> ' +
-			'<label class="pfoa-hero-carousel-active"><input type="hidden" name="pfoa_hero[carousel_items][' + index + '][active]" value="0" /> <input type="checkbox" class="pfoa-hero-slide-active-input" name="pfoa_hero[carousel_items][' + index + '][active]" value="1" checked="checked" /> Display this slide on homepage.</label> ' +
+			'<input type="hidden" class="pfoa-hero-slide-active-input" name="pfoa_hero[carousel_items][' + index + '][active]" value="1" /> ' +
 			'</section>' +
 			'<section class="pfoa-hero-slide-section">' +
 			'<h4 class="pfoa-hero-slide-heading">Appearance</h4>' +

@@ -2624,8 +2624,8 @@ function pfoa_sanitize_hero_position( $value ) {
 /**
  * Sanitize a per-slide hero carousel Active flag.
  *
- * Explicit '0' (unchecked "Display this slide on homepage" checkbox via the
- * hidden 0 field, or AJAX 0) sanitizes to 0 (inactive). Any other explicitly
+ * Explicit '0' (header Active switch off via the hidden active field,
+ * or AJAX 0) sanitizes to 0 (inactive). Any other explicitly
  * provided value sanitizes to 1 (active). Callers default missing legacy
  * rows to active; this helper only normalizes provided values.
  *
@@ -4032,6 +4032,18 @@ function pfoa_site_homepage_page() {
 .pfoa-hero-carousel-list .pfoa-hero-slide-status{flex:none;font-size:12px;line-height:1.6;padding:2px 10px;border-radius:999px;border:1px solid #dcdcde;white-space:nowrap;}
 .pfoa-hero-carousel-list .pfoa-hero-slide-status.is-active{background:#e7f5ea;color:#1d5c2f;border-color:#b6dfc0;}
 .pfoa-hero-carousel-list .pfoa-hero-slide-status.is-inactive{background:#f0f0f1;color:#50575e;font-style:italic;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-status.is-saving{background:#e8f0fe;color:#1a3c8f;border-color:#b6ccf0;font-style:normal;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-active-wrap{flex:none;display:inline-flex;align-items:center;gap:8px;margin-left:auto;white-space:nowrap;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-active-switch{position:relative;display:inline-flex;align-items:center;width:40px;height:22px;flex:none;cursor:pointer;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-active-toggle{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-active-track{display:inline-flex;align-items:center;width:40px;height:22px;box-sizing:border-box;border-radius:999px;border:1px solid #8c8f94;background:#f0f0f1;transition:background-color .15s ease,border-color .15s ease;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-active-thumb{display:block;width:16px;height:16px;border-radius:50%;background:#fff;border:1px solid #8c8f94;margin-left:2px;transition:transform .15s ease;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-active-toggle:checked + .pfoa-hero-slide-active-track{background:#1d5c2f;border-color:#1d5c2f;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-active-toggle:checked + .pfoa-hero-slide-active-track .pfoa-hero-slide-active-thumb{transform:translateX(17px);border-color:#fff;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-active-toggle:focus-visible + .pfoa-hero-slide-active-track{outline:2px solid #2271b1;outline-offset:2px;}
+.pfoa-hero-carousel-list .pfoa-hero-slide-summary{flex-wrap:wrap;row-gap:8px;}
+@media (max-width: 782px){.pfoa-hero-carousel-list .pfoa-hero-slide-summary{gap:8px;}.pfoa-hero-carousel-list .pfoa-hero-slide-active-wrap{margin-left:0;}}
+@media (prefers-reduced-motion: reduce){.pfoa-hero-carousel-list .pfoa-hero-slide-active-track,.pfoa-hero-carousel-list .pfoa-hero-slide-active-thumb{transition:none;}}
 .pfoa-hero-carousel-list .pfoa-hero-slide-pinned{flex:none;font-size:12px;line-height:1.6;padding:2px 10px;border-radius:999px;border:1px solid #e9ad4e;background:#fdf3e3;color:#713033;white-space:nowrap;}
 .pfoa-hero-carousel-list .pfoa-hero-slide-body{padding:4px 12px 12px;border-top:1px solid #dcdcde;max-width:100%;box-sizing:border-box;}
 .pfoa-hero-carousel-list .pfoa-hero-slide-section{padding:10px 0;max-width:100%;}
@@ -4122,7 +4134,13 @@ function pfoa_site_homepage_page() {
 									<span class="pfoa-hero-slide-thumb"><?php echo $carousel_summary_thumb; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image() returns escaped markup. ?></span>
 									<span class="pfoa-hero-slide-headline"><?php echo esc_html( $carousel_summary_headline ); ?></span>
 									<span class="pfoa-hero-slide-link"><?php echo esc_html( $carousel_link_label ); ?></span>
-									<span class="pfoa-hero-slide-status<?php echo $is_inactive_slot ? ' is-inactive' : ' is-active'; ?>"><?php echo $is_inactive_slot ? esc_html__( 'Inactive', 'pfoa-theme' ) : esc_html__( 'Active', 'pfoa-theme' ); ?></span>
+									<span class="pfoa-hero-slide-active-wrap">
+										<label class="pfoa-hero-slide-active-switch">
+											<input type="checkbox" class="pfoa-hero-slide-active-toggle"<?php checked( $carousel_active, true ); ?> aria-label="<?php printf( esc_attr__( 'Slide %d active', 'pfoa-theme' ), $carousel_index + 1 ); ?>" />
+											<span class="pfoa-hero-slide-active-track" aria-hidden="true"><span class="pfoa-hero-slide-active-thumb" aria-hidden="true"></span></span>
+										</label>
+										<span class="pfoa-hero-slide-status<?php echo $is_inactive_slot ? ' is-inactive' : ' is-active'; ?>" role="status" aria-live="polite"><?php echo $is_inactive_slot ? esc_html__( 'Inactive', 'pfoa-theme' ) : esc_html__( 'Active', 'pfoa-theme' ); ?></span>
+									</span>
 									<?php if ( $pinned_slide_id && $carousel_id === $pinned_slide_id ) : ?>
 										<span class="pfoa-hero-slide-pinned"><?php esc_html_e( 'Pinned', 'pfoa-theme' ); ?></span>
 									<?php endif; ?>
@@ -4163,12 +4181,8 @@ function pfoa_site_homepage_page() {
 								<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[headline]" value="<?php echo esc_attr( $carousel_headline ); ?>" />
 							</label>
 								<p class="description"><?php esc_html_e( 'Optional. Leave blank to show no headline.', 'pfoa-theme' ); ?></p>
-							<label class="pfoa-hero-carousel-active">
-								<input type="hidden" name="<?php echo esc_attr( $carousel_field_base ); ?>[active]" value="0" />
-								<input type="checkbox" class="pfoa-hero-slide-active-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[active]" value="1"<?php checked( $carousel_active, true ); ?> />
-								<?php esc_html_e( 'Display this slide on homepage.', 'pfoa-theme' ); ?>
-							</label>
-								<p class="description"><?php esc_html_e( 'Inactive slides stay saved with all settings and are hidden publicly until reactivated.', 'pfoa-theme' ); ?></p>
+							<input type="hidden" class="pfoa-hero-slide-active-input" name="<?php echo esc_attr( $carousel_field_base ); ?>[active]" value="<?php echo $carousel_active ? '1' : '0'; ?>" />
+								<p class="description"><?php esc_html_e( 'Use the Active switch in the slide header to show or hide this slide. Inactive slides stay saved with all settings and are hidden publicly until reactivated.', 'pfoa-theme' ); ?></p>
 							</section>
 							<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide appearance', 'pfoa-theme' ); ?>">
 								<h4 class="pfoa-hero-slide-heading"><?php esc_html_e( 'Appearance', 'pfoa-theme' ); ?></h4>
@@ -4244,7 +4258,7 @@ function pfoa_site_homepage_page() {
 							<button type="button" class="button button-primary pfoa-hero-slide-save"><?php esc_html_e( 'Save Slide', 'pfoa-theme' ); ?></button>
 							<span class="pfoa-hero-slide-save-status" role="status" aria-live="polite"></span>
 								</div>
-								<p class="pfoa-hero-carousel-inactive-note"><?php echo $is_toggle_inactive ? esc_html__( 'Inactive — enable “Display this slide on homepage” to show this slide publicly.', 'pfoa-theme' ) : esc_html__( 'Inactive — will show if count increased', 'pfoa-theme' ); ?></p>
+								<p class="pfoa-hero-carousel-inactive-note"><?php echo $is_toggle_inactive ? esc_html__( 'Inactive — turn the header Active switch on to show this slide publicly.', 'pfoa-theme' ) : esc_html__( 'Inactive — will show if count increased', 'pfoa-theme' ); ?></p>
 							</section>
 								</div>
 							</details>
@@ -4259,7 +4273,13 @@ function pfoa_site_homepage_page() {
 								<span class="pfoa-hero-slide-thumb"><span class="pfoa-hero-slide-empty" aria-hidden="true"></span></span>
 								<span class="pfoa-hero-slide-headline"><?php esc_html_e( '— No headline —', 'pfoa-theme' ); ?></span>
 								<span class="pfoa-hero-slide-link"><?php esc_html_e( '— No link —', 'pfoa-theme' ); ?></span>
-								<span class="pfoa-hero-slide-status is-active"><?php esc_html_e( 'Active', 'pfoa-theme' ); ?></span>
+								<span class="pfoa-hero-slide-active-wrap">
+									<label class="pfoa-hero-slide-active-switch">
+										<input type="checkbox" class="pfoa-hero-slide-active-toggle" checked="checked" aria-label="<?php esc_attr_e( 'Slide active', 'pfoa-theme' ); ?>" />
+										<span class="pfoa-hero-slide-active-track" aria-hidden="true"><span class="pfoa-hero-slide-active-thumb" aria-hidden="true"></span></span>
+									</label>
+									<span class="pfoa-hero-slide-status is-active" role="status" aria-live="polite"><?php esc_html_e( 'Active', 'pfoa-theme' ); ?></span>
+								</span>
 							</summary>
 							<div class="pfoa-hero-slide-body">
 								<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide content', 'pfoa-theme' ); ?>">
@@ -4297,11 +4317,7 @@ function pfoa_site_homepage_page() {
 						<input type="text" class="regular-text pfoa-hero-carousel-headline-input" name="pfoa_hero[carousel_items][__INDEX__][headline]" value="" />
 					</label>
 							<p class="description"><?php esc_html_e( 'Optional. Leave blank to show no headline.', 'pfoa-theme' ); ?></p>
-							<label class="pfoa-hero-carousel-active">
-								<input type="hidden" name="pfoa_hero[carousel_items][__INDEX__][active]" value="0" />
-								<input type="checkbox" class="pfoa-hero-slide-active-input" name="pfoa_hero[carousel_items][__INDEX__][active]" value="1" checked="checked" />
-								<?php esc_html_e( 'Display this slide on homepage.', 'pfoa-theme' ); ?>
-							</label>
+							<input type="hidden" class="pfoa-hero-slide-active-input" name="pfoa_hero[carousel_items][__INDEX__][active]" value="1" />
 						</section>
 						<section class="pfoa-hero-slide-section" aria-label="<?php esc_attr_e( 'Slide appearance', 'pfoa-theme' ); ?>">
 							<h4 class="pfoa-hero-slide-heading"><?php esc_html_e( 'Appearance', 'pfoa-theme' ); ?></h4>
@@ -4490,6 +4506,9 @@ function pfoa_hero_admin_assets( $hook ) {
 				'noLinkLabel'      => __( '— No link —', 'pfoa-theme' ),
 				'active'           => __( 'Active', 'pfoa-theme' ),
 				'inactive'         => __( 'Inactive', 'pfoa-theme' ),
+				'activeOn'         => __( 'Slide %d active', 'pfoa-theme' ),
+				'activeOff'        => __( 'Slide %d inactive', 'pfoa-theme' ),
+				'activeRestored'   => __( 'Active save failed. Previous setting restored.', 'pfoa-theme' ),
 				'ctaPages'         => pfoa_get_page_selector_choices(),
 			)
 		);
@@ -4579,6 +4598,9 @@ add_action( 'admin_post_pfoa_homepage_hero_save', 'pfoa_homepage_hero_save' );
  *   known_ids (array of DOM-ordered attachment ids),
  *   id, active (0|1 per-slide visibility), link_type, link_page_id, link_url, headline,
  *   brightness, headline_scale, headline_color, zoom, image_position.
+ *   Active-only fast path (header switch): same nonce/post_id/slide_key/
+ *   position/known_ids plus active_only=1 and active (0|1). Only the stored
+ *   active flag is replaced; every other stored field is preserved.
  *
  * Error codes (responseJSON.data.code): new_slot, conflict, not_found,
  * moved, duplicate, forbidden, no_front_page, front_mismatch, save_failed.
@@ -4742,6 +4764,58 @@ function pfoa_hero_save_slide() {
 		);
 	}
 
+	// Header Active switch: active-only fast path. Updates ONLY the stored
+	// active flag for the matched slide; all other stored fields (image,
+	// link, headline, appearance) are preserved verbatim so unsaved edits
+	// elsewhere in the card are never overwritten.
+	$is_active_only = isset( $raw_post['active_only'] ) && '1' === (string) $raw_post['active_only'];
+
+	if ( $is_active_only ) {
+		$new_active = array_key_exists( 'active', $raw_post ) ? pfoa_sanitize_hero_slide_active( $raw_post['active'] ) : 1;
+
+		if ( ! isset( $hero['carousel_items'][ $found ] ) || ! is_array( $hero['carousel_items'][ $found ] ) ) {
+			wp_send_json_error(
+				array(
+					'code'    => 'not_found',
+					'message' => __( 'This slide is no longer saved. Reload the page and use Save Homepage.', 'pfoa-theme' ),
+				),
+				404
+			);
+		}
+
+		$hero['carousel_items'][ $found ]['active'] = $new_active;
+		$hero['carousel_items']                     = array_values( $hero['carousel_items'] );
+
+		$updated = update_post_meta( $front_id, PFOA_HERO_META_KEY, $hero );
+
+		if ( ! $updated ) {
+			$recheck = get_post_meta( $front_id, PFOA_HERO_META_KEY, true );
+			$matches = is_array( $recheck )
+				&& isset( $recheck['carousel_items'], $recheck['carousel_items'][ $found ] )
+				&& is_array( $recheck['carousel_items'][ $found ] )
+				&& array_key_exists( 'active', $recheck['carousel_items'][ $found ] )
+				&& (int) pfoa_sanitize_hero_slide_active( $recheck['carousel_items'][ $found ]['active'] ) === (int) $new_active;
+
+			if ( ! $matches ) {
+				wp_send_json_error(
+					array(
+						'code'    => 'save_failed',
+						'message' => __( 'Save failed. Please try again.', 'pfoa-theme' ),
+					),
+					500
+				);
+			}
+		}
+
+		wp_send_json_success(
+			array(
+				'slide'    => $hero['carousel_items'][ $found ],
+				'position' => $found,
+				'active'   => $new_active,
+			)
+		);
+	}
+
 	// Same per-field rules as pfoa_sanitize_hero() carousel items.
 	$new_id = absint( isset( $raw_post['id'] ) ? $raw_post['id'] : 0 );
 	$new_id = ( $new_id && wp_attachment_is_image( $new_id ) ) ? $new_id : 0;
@@ -4770,8 +4844,9 @@ function pfoa_hero_save_slide() {
 
 	$item_link_page_id = isset( $raw_post['link_page_id'] ) ? pfoa_sanitize_hero_link_page_id( $raw_post['link_page_id'] ) : 0;
 
-	// Per-slide Active toggle: the admin checkbox submits 1 when checked, 0
-	// (via the hidden field) when unchecked. Missing legacy clients preserve
+	// Per-slide Active toggle: the header switch submits 1 when on, 0 when
+	// off (mirrored into the hidden active field for full-page saves).
+	// Missing legacy clients preserve
 	// the stored value so an old save can never wipe visibility; new rows
 	// default to active.
 	$stored_active = 1;
