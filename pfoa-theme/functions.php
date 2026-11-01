@@ -4517,6 +4517,51 @@ function pfoa_hero_admin_assets( $hook ) {
 add_action( 'admin_enqueue_scripts', 'pfoa_hero_admin_assets' );
 
 /**
+ * Flush post + page caches affected by a homepage hero change.
+ *
+ * update_post_meta() already invalidates the post-meta object cache, but a
+ * host, CDN, or plugin serving full-page cache may keep showing the previous
+ * homepage hero until its cached page expires. Every hero save path (full
+ * Save Homepage + both AJAX per-slide lanes) calls this after a successful
+ * persistence so a header Active toggle takes effect publicly without any
+ * additional save or manual flush. All plugin-specific calls are guarded so
+ * a missing plugin is a no-op, never a fatal.
+ *
+ * @param int $front_id Static front page ID.
+ * @return void
+ */
+function pfoa_flush_hero_caches( $front_id ) {
+	$front_id = absint( $front_id );
+
+	if ( ! $front_id ) {
+		return;
+	}
+
+	if ( function_exists( 'clean_post_cache' ) ) {
+		clean_post_cache( $front_id );
+	}
+
+	if ( function_exists( 'w3tc_flush_post' ) ) {
+		w3tc_flush_post( $front_id );
+	}
+
+	if ( function_exists( 'rocket_clean_post' ) ) {
+		rocket_clean_post( $front_id );
+	}
+
+	if ( function_exists( 'wp_cache_post_change' ) ) {
+		wp_cache_post_change( $front_id );
+	}
+
+	// LiteSpeed Cache, WP Super Cache, and other full-page layers listen on
+	// actions; firing unbound actions is a safe no-op when absent.
+	if ( function_exists( 'do_action' ) ) {
+		do_action( 'litespeed_purge_post', $front_id );
+		do_action( 'pfoa_hero_updated', $front_id );
+	}
+}
+
+/**
  * Save the Hero Section from the PFOA Site > Homepage screen.
  *
  * Handles the admin-post submission: same nonce action/field names as before
@@ -4572,6 +4617,8 @@ function pfoa_homepage_hero_save() {
 	);
 
 	update_post_meta( $front_id, PFOA_HERO_META_KEY, $sanitized );
+
+	pfoa_flush_hero_caches( $front_id );
 
 	$redirect = add_query_arg( 'pfoa-homepage-updated', '1', admin_url( 'admin.php?page=pfoa-site' ) );
 
@@ -4669,6 +4716,17 @@ function pfoa_hero_save_slide() {
 	$slide_key_raw = isset( $raw_post['slide_key'] ) ? trim( (string) $raw_post['slide_key'] ) : '';
 	$slide_key     = absint( $slide_key_raw );
 	$raw_id        = isset( $raw_post['id'] ) ? absint( $raw_post['id'] ) : 0;
+
+	// Header Active switch: the active-only fast path identifies the slide by
+	// slide_key (the stored attachment ID). Older/short payloads may omit
+	// the redundant id field; fall back to slide_key so a toggle-only save
+	// never false-rejects as a new slot. Full per-slide saves still require
+	// an explicit image id below.
+	$is_active_only_probe = isset( $raw_post['active_only'] ) && '1' === (string) $raw_post['active_only'];
+
+	if ( $is_active_only_probe && 0 === $raw_id ) {
+		$raw_id = $slide_key;
+	}
 
 	if ( '' === $slide_key_raw || '0' === $slide_key_raw || 0 === $slide_key || 0 === $raw_id ) {
 		wp_send_json_error(
@@ -4807,6 +4865,8 @@ function pfoa_hero_save_slide() {
 			}
 		}
 
+		pfoa_flush_hero_caches( $front_id );
+
 		wp_send_json_success(
 			array(
 				'slide'    => $hero['carousel_items'][ $found ],
@@ -4915,6 +4975,8 @@ function pfoa_hero_save_slide() {
 			);
 		}
 	}
+
+	pfoa_flush_hero_caches( $front_id );
 
 	// Summary mirrors the PHP card render (headline fallback + truncated link label).
 	$summary_headline = '' !== trim( (string) $new_slide['headline'] ) ? $new_slide['headline'] : __( '— No headline —', 'pfoa-theme' );

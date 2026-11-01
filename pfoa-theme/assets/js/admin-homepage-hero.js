@@ -521,6 +521,15 @@
 			} );
 		}
 
+		// Identity for the concurrency guard: the stored attachment ID. Fall
+		// back to the slide key when the hidden image field is empty so a
+		// toggle-only save never false-rejects as a new slot.
+		var cardId = item.find( '.pfoa-hero-carousel-id' ).val() || String( key );
+
+		if ( status.length ) {
+			status.text( savingLabel() ).removeClass( 'is-unsaved is-saved is-error' );
+		}
+
 		$.ajax( {
 			url: ajaxUrl,
 			type: 'POST',
@@ -532,6 +541,7 @@
 				slide_key: String( key ),
 				position: position,
 				known_ids: knownIds,
+				id: cardId,
 				active_only: 1,
 				active: value
 			},
@@ -556,8 +566,23 @@
 
 					refreshInactiveSlots();
 
-					if ( status.length && status.hasClass( 'is-error' ) ) {
-						status.text( '' ).removeClass( 'is-unsaved is-saved is-error' );
+					if ( status.length ) {
+						status.text( savedLabel() ).removeClass( 'is-unsaved is-error' ).addClass( 'is-saved' );
+						status.attr( 'aria-live', 'polite' );
+
+						var pending = item.data( 'pfoa-save-timer' );
+
+						if ( pending ) {
+							clearTimeout( pending );
+						}
+
+						var timer = setTimeout( function () {
+							if ( item.attr( 'data-dirty' ) !== '1' ) {
+								status.text( '' ).removeClass( 'is-unsaved is-saved is-error' );
+							}
+						}, 4000 );
+
+						item.data( 'pfoa-save-timer', timer );
 					}
 
 					return;
