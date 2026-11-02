@@ -6114,9 +6114,34 @@ function pfoa_adoption_event_member_media( $image_id, $caption = '' ) {
 						$img = $matches[0];
 
 						if ( preg_match( '/\salt=(["\']).*?\1/i', $img ) ) {
-							$img = (string) preg_replace( '/\salt=(["\']).*?\1/i', ' alt="' . $alt . '"', $img );
+							// PFOA 0.1.278 — security (F01): build the
+							// replacement inside a callback so caption
+							// text is never interpreted as
+							// replacement-program syntax. esc_attr()
+							// neutralizes markup delimiters but leaves
+							// "$1"/"${1}"/"$0"/backslashes intact, and
+							// preg_replace() would expand those into
+							// the matched quote delimiter, breaking
+							// out of alt="" with a handler attribute.
+							$img = (string) preg_replace_callback(
+								'/\salt=(["\']).*?\1/i',
+								function () use ( $alt ) {
+									return ' alt="' . $alt . '"';
+								},
+								$img
+							);
 						} else {
-							$img = (string) preg_replace( '/<img\b/i', '<img alt="' . $alt . '"', $img, 1 );
+							// PFOA 0.1.278 — security (F01): same
+							// callback treatment; "$0" would otherwise
+							// expand to the whole "<img" match here.
+							$img = (string) preg_replace_callback(
+								'/<img\b/i',
+								function () use ( $alt ) {
+									return '<img alt="' . $alt . '"';
+								},
+								$img,
+								1
+							);
 						}
 
 						return $img;
