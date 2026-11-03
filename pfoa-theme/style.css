@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                      Version: 0.1.283
+                      Version: 0.1.284
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -8894,4 +8894,30 @@ body.page-id-4264 .pfoa-board-card span.pfoa-board-member-role {
 	body.page-id-4264 .pfoa-board-card span.pfoa-board-member-role {
 		font-size: 12px;
 	}
+}
+
+/* PFOA 0.1.284 — QA-07 authored emphasis-text contrast (CSS-only, no
+ * content edits, DEV only).
+ * Root cause: page-authored inline styles set lime #79be27 on Pawsome
+ * (page-id-19273, https://dev.safehavenpfoa.org/atrulypawsomeevent/) and
+ * pure red #ff0000 on Wish List (page-id-5027,
+ * https://dev.safehavenpfoa.org/wishlist/). On the #fbfcfa site background
+ * #79be27 measures ~2.22:1 (needs 3:1 for the 26px/20px-bold poster type,
+ * and one 16px-bold line needs 4.5:1) and #ff0000 measures ~3.89:1 (needs
+ * 4.5:1 for 16px-bold list type).
+ * Correction: page-scoped overrides darken the same hues in place --
+ * #79be27 -> #4a7a15 (~4.99:1, passes both thresholds) and #ff0000 ->
+ * #cc0000 (~5.72:1, passes 4.5:1). !important is required to beat the
+ * inline style attribute; the [style*="..." i] match covers hex-case and
+ * spacing variants. Children inherit the corrected color, so nested
+ * font-size spans need no separate rule. Wording, sizes, weights,
+ * alignment, layout, and every other page are untouched; these hues occur
+ * nowhere else in either page's content. The legacy-typography normalizer
+ * exemption for green poster type is unchanged (markup is byte-identical;
+ * only the rendered color is corrected). */
+body.page-id-19273 .entry-content [style*="79be27" i] {
+	color: #4a7a15 !important;
+}
+body.page-id-5027 .entry-content [style*="ff0000" i] {
+	color: #cc0000 !important;
 }
