@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                     Version: 0.1.279
+                     Version: 0.1.280
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -8770,5 +8770,19 @@ body.page-id-19273 .page-content .entry-content table.aligncenter:not(:has(td im
 		display: block;
 		width: auto;
 		padding: 4px;
+	}
+}
+
+/* PFOA 0.1.280 — Board roster narrow-width type scale (page-id-4264 only,
+ * <=360px follow-up to 0.1.279). At 320px the 2-across lanes are ~108px and
+ * 1.05rem/0.85rem leaves "Magenheimer" and "Treasurer/Media Manager"
+ * one mid-word split short of intact. Scale to 15px/12px so the longest
+ * words fit whole at 320px; 390px+ and desktop untouched. */
+@media (max-width: 360px) {
+	body.page-id-4264 .page-content .entry-content table.aligncenter td span.pfoa-board-member-name {
+		font-size: 15px;
+	}
+	body.page-id-4264 .page-content .entry-content table.aligncenter td span.pfoa-board-member-role {
+		font-size: 12px;
 	}
 }
