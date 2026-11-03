@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                     Version: 0.1.281
+                      Version: 0.1.282
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -8790,6 +8790,96 @@ body.page-id-19273 .page-content .entry-content table.aligncenter:not(:has(td im
 		font-size: 14px;
 	}
 	body.page-id-4264 .page-content .entry-content table.aligncenter td span.pfoa-board-member-role {
+		font-size: 12px;
+	}
+}
+
+/* PFOA 0.1.282 — Board per-member card grid (QA-05 structural).
+ * Scope: body.page-id-4264 only (DEV page 4264). No gallery/lightbox,
+ * functions.php, template, staff-2 (4968), memoriam, facilities,
+ * footer-map, or QA-04 Pawsome (19273) selectors touched; 0.1.279-0.1.281
+ * table fallback + Pawsome rules above kept verbatim.
+ * New content lane transposes the two-row table (5 photos, then 5 names)
+ * into <div class="pfoa-board-roster"> with 5x <div class="pfoa-board-card">
+ * (photo button/img + div.pfoa-board-card__text with
+ * span.pfoa-board-member-name + span.pfoa-board-member-role). Each card is
+ * one grid item, so photo/name/role can never detach into separate groups.
+ * Global overflow-wrap:anywhere (:396-399/:988-991, inherited) is
+ * neutralized on cards to break-word so "Magenheimer" / "Treasurer/Media
+ * Manager" wrap only at word boundaries. No fixed table-layout/widths,
+ * no !important (new markup has no inline styles), no horizontal overflow
+ * (roster + cards min-width:0, max-width:100%). Dialog rules untouched. */
+body.page-id-4264 .pfoa-board-roster {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: 16px 12px;
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+}
+body.page-id-4264 .pfoa-board-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	min-width: 0;
+	max-width: 100%;
+}
+body.page-id-4264 .pfoa-board-card .pfoa-board-bio-trigger {
+	display: block;
+	width: 100%;
+	max-width: 180px;
+	margin-inline: auto;
+}
+body.page-id-4264 .pfoa-board-card img {
+	display: block;
+	width: 100%;
+	max-width: 180px;
+	height: auto;
+	margin-inline: auto;
+}
+body.page-id-4264 .pfoa-board-card .pfoa-board-bio-trigger img {
+	max-width: 100%;
+}
+body.page-id-4264 .pfoa-board-card__text {
+	min-width: 0;
+	max-width: 100%;
+	overflow-wrap: break-word;
+}
+body.page-id-4264 .pfoa-board-card span.pfoa-board-member-name,
+body.page-id-4264 .pfoa-board-card span.pfoa-board-member-role {
+	display: block;
+	min-width: 0;
+	max-width: 100%;
+	overflow-wrap: break-word;
+	word-break: normal;
+	hyphens: none;
+}
+body.page-id-4264 .pfoa-board-card span.pfoa-board-member-name {
+	line-height: 1.3;
+}
+body.page-id-4264 .pfoa-board-card span.pfoa-board-member-role {
+	line-height: 1.45;
+}
+@media (max-width: 900px) {
+	body.page-id-4264 .pfoa-board-roster {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+@media (max-width: 600px) {
+	body.page-id-4264 .pfoa-board-roster {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 16px 12px;
+	}
+}
+@media (max-width: 360px) {
+	body.page-id-4264 .pfoa-board-roster {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	body.page-id-4264 .pfoa-board-card span.pfoa-board-member-name {
+		font-size: 14px;
+	}
+	body.page-id-4264 .pfoa-board-card span.pfoa-board-member-role {
 		font-size: 12px;
 	}
 }
