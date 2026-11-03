@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                     Version: 0.1.278
+                     Version: 0.1.279
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -8684,4 +8684,91 @@ body.page-id-25816 .entry-content p.pfoa-hf-article__signoff img[src*="paw-bulle
 	height: auto;
 	margin-left: 8px;
 	vertical-align: baseline;
+}
+
+/* PFOA 0.1.279 — Board roster mobile reflow (QA-05) + Pawsome sponsor
+ * tables mobile reflow (QA-04). DEV only, CSS-only, no content edits.
+ * Board (page-id-4264 only, https://dev.safehavenpfoa.org/boardofdirectors/):
+ * Root cause: content-authored table.aligncenter[style*="table-layout: fixed"]
+ * + td[width="20%"] keeps a rigid 5-column fixed row (~56px lanes at 390px),
+ * and the compat overflow-wrap:anywhere fragments names/roles mid-word
+ * (board spans are exempt from the shared caption break-word rescue).
+ * At <=600px restore word-boundary wrapping and reflow each 5-cell row into
+ * a 2-across grid (display change sidesteps the inline fixed layout; no
+ * !important). DOM/visual/keyboard order kept within each row; photo
+ * buttons, dialog triggers, and desktop (>600px) 5-column presentation
+ * untouched. Limitation: markup uses two rows (5 photos, then 5 names), so
+ * CSS-only yields a photo group followed by a name group rather than five
+ * photo+name cards; names/roles are intact and readable, satisfying the
+ * bounded correction. True per-member cards would need a one-time content
+ * transpose of post-4264 (out of scope here).
+ * Pawsome (page-id-19273 only, https://dev.safehavenpfoa.org/atrulypawsomeevent/):
+ * Root cause: sponsor text tables declare 142px/284px/426px cell widths with
+ * table-layout:fixed; the generic compat cap is max-width:100% only and the
+ * caption-companion rule keeps width:auto on the table but not table-layout
+ * or td widths, so the fixed minima expand the 390px document to ~1015px.
+ * Base page-scoped rule (all widths) neutralizes the fixed minima while
+ * keeping single-row desktop presentation; the <=600px grid reflows the two
+ * text tables 2-across so labels stay readable with zero page overflow.
+ * Logo (photo-grid :has(td img)) tables are excluded and untouched; navy
+ * 12px captions, order, links, and desktop rows preserved. */
+body.page-id-19273 .page-content .entry-content table.aligncenter:not(:has(td img)) {
+	table-layout: auto;
+	width: 100%;
+	max-width: 100%;
+}
+body.page-id-19273 .page-content .entry-content table.aligncenter:not(:has(td img)) td {
+	width: auto !important;
+	max-width: 100%;
+	white-space: normal;
+	overflow-wrap: break-word;
+	word-break: normal;
+}
+@media (max-width: 600px) {
+	body.page-id-4264 .page-content .entry-content table.aligncenter td span.pfoa-board-member-name,
+	body.page-id-4264 .page-content .entry-content table.aligncenter td span.pfoa-board-member-role {
+		overflow-wrap: break-word;
+		word-break: normal;
+	}
+	body.page-id-4264 .page-content .entry-content table.aligncenter,
+	body.page-id-4264 .page-content .entry-content table.aligncenter tbody {
+		display: block;
+		width: 100%;
+	}
+	body.page-id-4264 .page-content .entry-content table.aligncenter tr {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 12px 8px;
+		width: 100%;
+	}
+	body.page-id-4264 .page-content .entry-content table.aligncenter td {
+		display: block;
+		width: auto;
+		padding: 4px;
+	}
+	body.page-id-4264 .page-content .entry-content table.aligncenter td img,
+	body.page-id-4264 .page-content .entry-content table.aligncenter .pfoa-board-bio-trigger {
+		width: 100%;
+		max-width: 160px;
+		margin-inline: auto;
+	}
+	body.page-id-4264 .page-content .entry-content table.aligncenter .pfoa-board-bio-trigger img {
+		max-width: 100%;
+	}
+	body.page-id-19273 .page-content .entry-content table.aligncenter:not(:has(td img)),
+	body.page-id-19273 .page-content .entry-content table.aligncenter:not(:has(td img)) tbody {
+		display: block;
+		width: 100%;
+	}
+	body.page-id-19273 .page-content .entry-content table.aligncenter:not(:has(td img)) tr {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 8px;
+		width: 100%;
+	}
+	body.page-id-19273 .page-content .entry-content table.aligncenter:not(:has(td img)) td {
+		display: block;
+		width: auto;
+		padding: 4px;
+	}
 }
