@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                      Version: 0.1.282
+                      Version: 0.1.283
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -8872,9 +8872,21 @@ body.page-id-4264 .pfoa-board-card span.pfoa-board-member-role {
 		gap: 16px 12px;
 	}
 }
+/* PFOA 0.1.283 — Board roster <=360px single column (page-id-4264 only).
+ * Verified screenshots at 320px showed 2-col ~100px lanes still splitting
+ * "Magenheim/er" and "Me/dia Manager" mid-word; 390px 2-col stays whole-word
+ * and is unchanged. Single column gives ~280px lanes so 14px/12px type wraps
+ * only at word boundaries; cards centered at max ~260px so photos keep their
+ * scale with photo-above-name per card. <=900px 3-col, <=600px 2-col, and
+ * base 5-col untouched. */
 @media (max-width: 360px) {
 	body.page-id-4264 .pfoa-board-roster {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(1, minmax(0, 1fr));
+	}
+	body.page-id-4264 .pfoa-board-card {
+		width: 100%;
+		max-width: 260px;
+		margin-inline: auto;
 	}
 	body.page-id-4264 .pfoa-board-card span.pfoa-board-member-name {
 		font-size: 14px;
