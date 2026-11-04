@@ -20,6 +20,11 @@
  *       'has_required_card_image' => bool, // Must be exactly true (fail-closed:
  *                                          // missing/invalid = nothing renderable).
  *     ),
+ *     'lifecycle'      => array(
+ *       'effectively_pending' => bool, // Neutral pending fact; when true and
+ *                                      // record_status is 'Pending' the redundant
+ *                                      // gray status line is suppressed.
+ *     ),
  *     'card_image_id'  => int, // Single-cat Card Image; rendered via the
  *                              // post thumbnail, never read directly here.
  *     'legacy'         => array(
@@ -105,10 +110,11 @@ if ( ! function_exists( 'pfoa_theme_render_cat_card_compat' ) ) {
 		}
 
 		$record_status = isset( $profile_data['record_status'] ) ? (string) $profile_data['record_status'] : '';
-		$is_pending_card = function_exists( 'pfoa_cat_is_effectively_pending' )
-			? pfoa_cat_is_effectively_pending( $post_id )
-			: ( 'Pending' === $record_status );
-		$status        = ( '' !== $record_status && ! ( $is_pending_card && 'Pending' === $record_status ) )
+		$lifecycle       = isset( $profile_data['lifecycle'] ) && is_array( $profile_data['lifecycle'] )
+			? $profile_data['lifecycle']
+			: array();
+		$is_pending_card = isset( $lifecycle['effectively_pending'] ) ? (bool) $lifecycle['effectively_pending'] : false;
+		$status          = ( '' !== $record_status && ! ( $is_pending_card && 'Pending' === $record_status ) )
 			? '<p class="pfoa-cat-card-status">' . esc_html( $record_status ) . '</p>'
 			: '';
 

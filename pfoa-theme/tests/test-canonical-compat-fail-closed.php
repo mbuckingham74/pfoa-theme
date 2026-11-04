@@ -189,6 +189,7 @@ if ( 'static' === $scenario ) {
 			check( 'template contains ' . $needle, false !== strpos( $src, $needle ) );
 		}
 		check( 'header states NOT wired', false !== stripos( $src, 'not wired' ) );
+		check( 'template contains canonical main wrapper', false !== strpos( $src, '<main id="primary" class="pfoa-cat-single">' ) );
 		foreach ( array( 'add_action', 'add_filter', 'get_post_meta', 'update_post_meta', 'wp_update', 'wp_insert', 'wp_delete', 'wp_enqueue_', 'pfoa_cat_render_' ) as $banned ) {
 			check( 'template has no ' . $banned, false === strpos( $src, $banned ) );
 		}
@@ -205,14 +206,14 @@ if ( 'static' === $scenario ) {
 		case 'complete':
 		case 'incomplete':
 			check( 'header emitted', false !== strpos( $output, '<!--FIXTURE-HEADER-->' ) );
-			check( 'main wrapper present', false !== strpos( $output, '<main class="pfoa-cat-single">' ) );
+			check( 'main wrapper present', false !== strpos( $output, '<main id="primary" class="pfoa-cat-single">' ) );
 			check( 'detail rendering present', false !== strpos( $output, 'pfoa-cat-profile-stub' ) );
 			check( 'gallery rendering present', false !== strpos( $output, 'pfoa-cat-gallery-stub' ) );
 			check( 'footer emitted', false !== strpos( $output, '<!--FIXTURE-FOOTER-->' ) );
 			check(
 				'header before main before footer',
-				strpos( $output, '<!--FIXTURE-HEADER-->' ) < strpos( $output, '<main class="pfoa-cat-single">' )
-				&& strpos( $output, '<main class="pfoa-cat-single">' ) < strpos( $output, '<!--FIXTURE-FOOTER-->' )
+				strpos( $output, '<!--FIXTURE-HEADER-->' ) < strpos( $output, '<main id="primary" class="pfoa-cat-single">' )
+				&& strpos( $output, '<main id="primary" class="pfoa-cat-single">' ) < strpos( $output, '<!--FIXTURE-FOOTER-->' )
 			);
 			check( 'detail renderer called once', 1 === count( $GLOBALS['renderer_calls'] ) );
 			if ( 1 === count( $GLOBALS['renderer_calls'] ) ) {

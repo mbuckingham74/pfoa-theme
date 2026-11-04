@@ -159,7 +159,7 @@ function fixture_assert( $condition, $message ) {
 	}
 }
 
-function fixture_base_single( $post_id, $complete, $status = 'Available' ) {
+function fixture_base_single( $post_id, $complete, $status = 'Available', $effectively_pending = false ) {
 	return array(
 		'schema_version' => '1.0',
 		'post_id'        => $post_id,
@@ -170,12 +170,15 @@ function fixture_base_single( $post_id, $complete, $status = 'Available' ) {
 			'templated'               => false,
 			'has_required_card_image' => true,
 		),
+		'lifecycle'      => array(
+			'effectively_pending' => (bool) $effectively_pending,
+		),
 		'card_image_id'  => 901,
 		'legacy'         => null,
 	);
 }
 
-function fixture_base_multi( $post_id, $complete, $members, $card_ids, $labels = array() ) {
+function fixture_base_multi( $post_id, $complete, $members, $card_ids, $labels = array(), $effectively_pending = false ) {
 	return array(
 		'schema_version' => '1.0',
 		'post_id'        => $post_id,
@@ -185,6 +188,9 @@ function fixture_base_multi( $post_id, $complete, $members, $card_ids, $labels =
 			'complete'                => $complete,
 			'templated'               => false,
 			'has_required_card_image' => true,
+		),
+		'lifecycle'      => array(
+			'effectively_pending' => (bool) $effectively_pending,
 		),
 		'card_image_id'  => 0,
 		'legacy'         => array(
@@ -254,6 +260,40 @@ $profile = fixture_base_single( 43, false, '' );
 $html    = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( false === strpos( $html, 'pfoa-cat-card-status' ), 'single-incomplete-empty-status: no status line' );
 fixture_assert( false !== strpos( $html, 'Full profile coming soon.' ), 'single-incomplete-empty-status: note remains' );
+
+// (2c) Pending suppression is driven by neutral lifecycle.effectively_pending.
+// Effectively-pending + Pending suppresses the redundant gray status line.
+$profile = fixture_base_single( 42, true, 'Pending', true );
+$html    = pfoa_theme_render_cat_card_compat( $profile );
+fixture_assert( '' !== $html, 'pending-true-complete: non-empty output' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-card-status' ), 'pending-true-complete: redundant Pending status suppressed' );
+fixture_assert( false === strpos( $html, '>Pending<' ), 'pending-true-complete: no raw Pending text' );
+
+// Non-pending + Pending keeps the gray status line (proves snapshot drives presentation).
+$profile = fixture_base_single( 42, true, 'Pending', false );
+$html    = pfoa_theme_render_cat_card_compat( $profile );
+fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-status">Pending</p>' ), 'pending-false-complete: Pending status shown' );
+
+// Pending suppression applies to incomplete cards as well; note remains.
+$profile = fixture_base_single( 43, false, 'Pending', true );
+$html    = pfoa_theme_render_cat_card_compat( $profile );
+fixture_assert( false === strpos( $html, 'pfoa-cat-card-status' ), 'pending-true-incomplete: redundant Pending status suppressed' );
+fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-note">Full profile coming soon.</p>' ), 'pending-true-incomplete: note remains' );
+$profile = fixture_base_single( 43, false, 'Pending', false );
+$html    = pfoa_theme_render_cat_card_compat( $profile );
+fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-status">Pending</p>' ), 'pending-false-incomplete: Pending status shown' );
+fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-note">Full profile coming soon.</p>' ), 'pending-false-incomplete: note remains' );
+
+// Effectively-pending does not suppress non-Pending statuses.
+$profile = fixture_base_single( 42, true, 'Available', true );
+$html    = pfoa_theme_render_cat_card_compat( $profile );
+fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-status">Available</p>' ), 'pending-true-available: non-Pending status still shown' );
+
+// Missing lifecycle block fails open (status shown), never calls provider helpers.
+$profile = fixture_base_single( 42, true, 'Pending', false );
+unset( $profile['lifecycle'] );
+$html = pfoa_theme_render_cat_card_compat( $profile );
+fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-status">Pending</p>' ), 'pending-missing-lifecycle: Pending status shown without snapshot flag' );
 
 // (3) Missing/invalid Card Image: single thumbnail empty => ''.
 $GLOBALS['fixture_empty_thumb_ids'] = array( 44 );
