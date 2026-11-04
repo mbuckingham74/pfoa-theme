@@ -211,7 +211,7 @@ function fixture_base_multi( $post_id, $complete, $members, $card_ids, $labels =
 fixture_assert( function_exists( 'pfoa_theme_render_cat_card_compat' ), 'renderer function exists' );
 fixture_assert( defined( 'PFOA_THEME_CAT_CARD_COMPAT_RENDERER_LOADED' ), 'loaded guard constant defined' );
 
-// (1) Single complete happy path: linked media + title, status, no note.
+// (1) Single complete happy path: linked media + title, status, badge absent when non-pending, no note.
 $profile = fixture_base_single( 42, true );
 $html    = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( '' !== $html, 'single-complete: non-empty output' );
@@ -221,6 +221,8 @@ fixture_assert( false !== strpos( $html, '<a class="pfoa-cat-card-media" href="h
 fixture_assert( false !== strpos( $html, '<h3 class="pfoa-cat-card-title"><a href="https://example.com/cat/42/" data-pfoa-cat-dialog="whiskers">Whiskers</a></h3>' ), 'single-complete: linked title falls back to live title' );
 fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-status">Available</p>' ), 'single-complete: status shown' );
 fixture_assert( false === strpos( $html, 'pfoa-cat-card-note' ), 'single-complete: no coming-soon note' );
+fixture_assert( false === strpos( $html, 'Full profile coming soon.' ), 'single-complete: obsolete grid note absent' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-pending-line' ), 'single-complete-non-pending: no Pending badge' );
 fixture_assert( 42 === $GLOBALS['fixture_thumb_args']['id'] && 'medium' === $GLOBALS['fixture_thumb_args']['size'], 'single-complete: thumbnail requested for post at medium' );
 fixture_assert( 'pfoa-cat-card-thumb' === $GLOBALS['fixture_thumb_args']['attr']['class'], 'single-complete: thumb class passed' );
 
@@ -244,56 +246,75 @@ $profile['legacy'] = array(
 $html = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( false !== strpos( $html, '>Whiskers</a></h3>' ), 'single-complete: blank label falls back to title' );
 
-// (2) Single incomplete: plain div/h3, no links/dialog, status + note.
+// (2) Single incomplete: linked media + title with dialog attrs (0.1.172 parity), status, no note.
 $profile = fixture_base_single( 43, false );
 $html    = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( false !== strpos( $html, '<article class="pfoa-cat-card pfoa-cat-card-incomplete" data-pfoa-profile-id="43">' ), 'single-incomplete: incomplete class + profile id' );
-fixture_assert( false !== strpos( $html, '<div class="pfoa-cat-card-media">' ), 'single-incomplete: plain media div' );
-fixture_assert( false !== strpos( $html, '<h3 class="pfoa-cat-card-title">Mittens</h3>' ), 'single-incomplete: plain title' );
-fixture_assert( false === strpos( $html, '<a ' ), 'single-incomplete: no anchors at all' );
-fixture_assert( false === strpos( $html, 'data-pfoa-cat-dialog' ), 'single-incomplete: no dialog attrs' );
+fixture_assert( false !== strpos( $html, '<a class="pfoa-cat-card-media" href="https://example.com/cat/43/" data-pfoa-cat-dialog="mittens">' ), 'single-incomplete: linked media with dialog slug' );
+fixture_assert( false !== strpos( $html, '<h3 class="pfoa-cat-card-title"><a href="https://example.com/cat/43/" data-pfoa-cat-dialog="mittens">Mittens</a></h3>' ), 'single-incomplete: linked title with dialog slug' );
+fixture_assert( 2 === substr_count( $html, 'data-pfoa-cat-dialog="mittens"' ), 'single-incomplete: dialog attrs on media + title' );
 fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-status">Available</p>' ), 'single-incomplete: status shown' );
-fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-note">Full profile coming soon.</p>' ), 'single-incomplete: coming-soon note' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-card-note' ), 'single-incomplete: no coming-soon note on listing card' );
+fixture_assert( false === strpos( $html, 'Full profile coming soon.' ), 'single-incomplete: obsolete grid note absent' );
+fixture_assert( false === strpos( $html, '<div class="pfoa-cat-card-media">' ), 'single-incomplete: no plain media div' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-pending-line' ), 'single-incomplete-non-pending: no Pending badge' );
 
-// (2b) Single incomplete with empty status: no status line, note remains.
+// (2b) Single incomplete with empty status: no status line, links remain, no note.
 $profile = fixture_base_single( 43, false, '' );
 $html    = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( false === strpos( $html, 'pfoa-cat-card-status' ), 'single-incomplete-empty-status: no status line' );
-fixture_assert( false !== strpos( $html, 'Full profile coming soon.' ), 'single-incomplete-empty-status: note remains' );
+fixture_assert( false !== strpos( $html, '<a class="pfoa-cat-card-media" href="https://example.com/cat/43/" data-pfoa-cat-dialog="mittens">' ), 'single-incomplete-empty-status: linked media retained' );
+fixture_assert( false !== strpos( $html, '<h3 class="pfoa-cat-card-title"><a href="https://example.com/cat/43/" data-pfoa-cat-dialog="mittens">Mittens</a></h3>' ), 'single-incomplete-empty-status: linked title retained' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-card-note' ), 'single-incomplete-empty-status: no note' );
+fixture_assert( false === strpos( $html, 'Full profile coming soon.' ), 'single-incomplete-empty-status: obsolete grid note absent' );
 
 // (2c) Pending suppression is driven by neutral lifecycle.effectively_pending.
-// Effectively-pending + Pending suppresses the redundant gray status line.
+// Effectively-pending + Pending suppresses the redundant gray status line and shows the Pending pill.
+$pending_badge = '<p class="pfoa-cat-pending-line"><span class="pfoa-cat-pending-badge">Pending<span class="screen-reader-text"> adoption pending — still adoptable</span></span></p>';
 $profile = fixture_base_single( 42, true, 'Pending', true );
 $html    = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( '' !== $html, 'pending-true-complete: non-empty output' );
 fixture_assert( false === strpos( $html, 'pfoa-cat-card-status' ), 'pending-true-complete: redundant Pending status suppressed' );
-fixture_assert( false === strpos( $html, '>Pending<' ), 'pending-true-complete: no raw Pending text' );
+fixture_assert( false === strpos( $html, '<p class="pfoa-cat-card-status">Pending</p>' ), 'pending-true-complete: no Pending status paragraph' );
+fixture_assert( false !== strpos( $html, $pending_badge ), 'pending-true-complete: Pending badge markup present' );
+fixture_assert( false !== strpos( $html, '<a class="pfoa-cat-card-media" href="https://example.com/cat/42/" data-pfoa-cat-dialog="whiskers">' ), 'pending-true-complete: linked media retained' );
 
-// Non-pending + Pending keeps the gray status line (proves snapshot drives presentation).
+// Non-pending + Pending keeps the gray status line and shows no badge (proves snapshot drives presentation).
 $profile = fixture_base_single( 42, true, 'Pending', false );
 $html    = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-status">Pending</p>' ), 'pending-false-complete: Pending status shown' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-pending-line' ), 'pending-false-complete: no Pending badge' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-pending-badge' ), 'pending-false-complete: no badge span' );
 
-// Pending suppression applies to incomplete cards as well; note remains.
+// Pending suppression applies to incomplete cards as well; links retained, no note, badge shown.
 $profile = fixture_base_single( 43, false, 'Pending', true );
 $html    = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( false === strpos( $html, 'pfoa-cat-card-status' ), 'pending-true-incomplete: redundant Pending status suppressed' );
-fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-note">Full profile coming soon.</p>' ), 'pending-true-incomplete: note remains' );
+fixture_assert( false !== strpos( $html, $pending_badge ), 'pending-true-incomplete: Pending badge shown' );
+fixture_assert( false !== strpos( $html, '<a class="pfoa-cat-card-media" href="https://example.com/cat/43/" data-pfoa-cat-dialog="mittens">' ), 'pending-true-incomplete: linked media retained' );
+fixture_assert( false !== strpos( $html, '<h3 class="pfoa-cat-card-title"><a href="https://example.com/cat/43/" data-pfoa-cat-dialog="mittens">Mittens</a></h3>' ), 'pending-true-incomplete: linked title retained' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-card-note' ), 'pending-true-incomplete: no coming-soon note' );
+fixture_assert( false === strpos( $html, 'Full profile coming soon.' ), 'pending-true-incomplete: obsolete grid note absent' );
 $profile = fixture_base_single( 43, false, 'Pending', false );
 $html    = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-status">Pending</p>' ), 'pending-false-incomplete: Pending status shown' );
-fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-note">Full profile coming soon.</p>' ), 'pending-false-incomplete: note remains' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-pending-line' ), 'pending-false-incomplete: no Pending badge' );
+fixture_assert( false !== strpos( $html, '<a class="pfoa-cat-card-media" href="https://example.com/cat/43/"' ), 'pending-false-incomplete: linked media retained' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-card-note' ), 'pending-false-incomplete: no coming-soon note' );
 
-// Effectively-pending does not suppress non-Pending statuses.
+// Effectively-pending does not suppress non-Pending statuses; badge still shows after the status line.
 $profile = fixture_base_single( 42, true, 'Available', true );
 $html    = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-status">Available</p>' ), 'pending-true-available: non-Pending status still shown' );
+fixture_assert( false !== strpos( $html, $pending_badge ), 'pending-true-available: Pending badge shown alongside non-Pending status' );
+fixture_assert( strpos( $html, '<p class="pfoa-cat-card-status">Available</p>' ) < strpos( $html, 'pfoa-cat-pending-line' ), 'pending-true-available: badge placed after status' );
 
-// Missing lifecycle block fails open (status shown), never calls provider helpers.
+// Missing lifecycle block fails open (status shown, no badge), never calls provider helpers.
 $profile = fixture_base_single( 42, true, 'Pending', false );
 unset( $profile['lifecycle'] );
 $html = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( false !== strpos( $html, '<p class="pfoa-cat-card-status">Pending</p>' ), 'pending-missing-lifecycle: Pending status shown without snapshot flag' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-pending-line' ), 'pending-missing-lifecycle: no badge without snapshot flag' );
 
 // (3) Missing/invalid Card Image: single thumbnail empty => ''.
 $GLOBALS['fixture_empty_thumb_ids'] = array( 44 );
@@ -319,7 +340,7 @@ foreach ( array( 0, '', null, 1, '1' ) as $bad_flag ) {
 	fixture_assert( '' === pfoa_theme_render_cat_card_compat( $profile ), 'single: non-true card image flag yields empty string' );
 }
 
-// (4) Multi complete pair: stored order, explicit + fallback labels, pair classes, no status/note.
+// (4) Multi complete pair: stored order, explicit + fallback labels, pair classes, no status/note, badge absent when non-pending.
 $profile = fixture_base_multi( 42, true, array( 'Alpha', 'Beta' ), array( 101, 102 ), array( 'Alfie', '' ) );
 $html    = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( 2 === substr_count( $html, '<article class="pfoa-cat-card' ), 'multi-complete: two cards' );
@@ -330,22 +351,45 @@ $pos_beta  = strpos( $html, '>Beta</a></h3>' );
 fixture_assert( false !== $pos_alfie && false !== $pos_beta && $pos_alfie < $pos_beta, 'multi-complete: stored order preserved (explicit Alfie, fallback Beta)' );
 fixture_assert( false === strpos( $html, 'pfoa-cat-card-status' ), 'multi-complete: no status line beneath member cards' );
 fixture_assert( false === strpos( $html, 'pfoa-cat-card-note' ), 'multi-complete: no coming-soon note' );
+fixture_assert( false === strpos( $html, 'Full profile coming soon.' ), 'multi-complete: obsolete grid note absent' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-pending-line' ), 'multi-complete-non-pending: no Pending badge' );
 fixture_assert( 4 === substr_count( $html, 'data-pfoa-cat-dialog="whiskers"' ), 'multi-complete: dialog attrs on media + title per card' );
 fixture_assert( false !== strpos( $html, 'href="https://example.com/cat/42/"' ), 'multi-complete: canonical permalink links' );
 fixture_assert( 101 === $GLOBALS['fixture_attach_args']['id'] || 102 === $GLOBALS['fixture_attach_args']['id'], 'multi-complete: member card attachment requested' );
 fixture_assert( 'medium' === $GLOBALS['fixture_attach_args']['size'], 'multi-complete: member thumb at medium' );
 fixture_assert( 'pfoa-cat-card-thumb' === $GLOBALS['fixture_attach_args']['attr']['class'], 'multi-complete: member thumb class passed' );
 
-// (5) Multi incomplete: plain markup, notes, no links/dialog, pair classes kept.
+// (4b) Multi complete pending: one Pending pill per card, placed after the title, no status line.
+$profile = fixture_base_multi( 42, true, array( 'Alpha', 'Beta' ), array( 101, 102 ), array( 'Alfie', '' ), true );
+$html    = pfoa_theme_render_cat_card_compat( $profile );
+fixture_assert( 2 === substr_count( $html, $pending_badge ), 'multi-complete-pending: badge per card' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-card-status' ), 'multi-complete-pending: still no status line' );
+fixture_assert( false !== strpos( $html, 'href="https://example.com/cat/42/"' ), 'multi-complete-pending: canonical links retained' );
+fixture_assert( 4 === substr_count( $html, 'data-pfoa-cat-dialog="whiskers"' ), 'multi-complete-pending: dialog attrs retained' );
+
+// (5) Multi incomplete: linked media + title with dialog attrs (0.1.172 parity), pair classes kept, no status/note.
 $profile = fixture_base_multi( 43, false, array( 'Alpha', 'Beta' ), array( 101, 102 ) );
 $html    = pfoa_theme_render_cat_card_compat( $profile );
 fixture_assert( 2 === substr_count( $html, 'pfoa-cat-card-incomplete' ), 'multi-incomplete: both cards incomplete' );
-fixture_assert( 2 === substr_count( $html, '<p class="pfoa-cat-card-note">Full profile coming soon.</p>' ), 'multi-incomplete: note per card' );
-fixture_assert( false === strpos( $html, '<a ' ), 'multi-incomplete: no anchors' );
-fixture_assert( false === strpos( $html, 'data-pfoa-cat-dialog' ), 'multi-incomplete: no dialog attrs' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-card-note' ), 'multi-incomplete: no coming-soon note on listing cards' );
+fixture_assert( false === strpos( $html, 'Full profile coming soon.' ), 'multi-incomplete: obsolete grid note absent' );
+fixture_assert( 2 === substr_count( $html, '<a class="pfoa-cat-card-media" href="https://example.com/cat/43/" data-pfoa-cat-dialog="mittens">' ), 'multi-incomplete: linked media per card with dialog slug' );
+fixture_assert( false !== strpos( $html, '<h3 class="pfoa-cat-card-title"><a href="https://example.com/cat/43/" data-pfoa-cat-dialog="mittens">Alpha</a></h3>' ), 'multi-incomplete: first card linked title' );
+fixture_assert( false !== strpos( $html, '<h3 class="pfoa-cat-card-title"><a href="https://example.com/cat/43/" data-pfoa-cat-dialog="mittens">Beta</a></h3>' ), 'multi-incomplete: second card linked title' );
+fixture_assert( 4 === substr_count( $html, 'data-pfoa-cat-dialog="mittens"' ), 'multi-incomplete: dialog attrs on media + title per card' );
+fixture_assert( false === strpos( $html, '<div class="pfoa-cat-card-media">' ), 'multi-incomplete: no plain media divs' );
 fixture_assert( false !== strpos( $html, 'pfoa-cat-pair-left' ), 'multi-incomplete: pair-left kept' );
 fixture_assert( false !== strpos( $html, 'pfoa-cat-pair-right' ), 'multi-incomplete: pair-right kept' );
 fixture_assert( false === strpos( $html, 'pfoa-cat-card-status' ), 'multi-incomplete: no status line' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-pending-line' ), 'multi-incomplete-non-pending: no Pending badge' );
+
+// (5b) Multi incomplete pending: links retained, one Pending pill per card.
+$profile = fixture_base_multi( 43, false, array( 'Alpha', 'Beta' ), array( 101, 102 ), array(), true );
+$html    = pfoa_theme_render_cat_card_compat( $profile );
+fixture_assert( 2 === substr_count( $html, 'pfoa-cat-card-incomplete' ), 'multi-incomplete-pending: both cards incomplete' );
+fixture_assert( 2 === substr_count( $html, $pending_badge ), 'multi-incomplete-pending: badge per card' );
+fixture_assert( 4 === substr_count( $html, 'data-pfoa-cat-dialog="mittens"' ), 'multi-incomplete-pending: dialog attrs retained' );
+fixture_assert( false === strpos( $html, 'pfoa-cat-card-note' ), 'multi-incomplete-pending: no coming-soon note' );
 
 // (6) Three members: no pair classes.
 $profile = fixture_base_multi( 42, true, array( 'A', 'B', 'C' ), array( 101, 102, 103 ) );
@@ -420,4 +464,4 @@ foreach ( array( 'wp_insert', 'wp_update', 'wp_delete' ) as $needle ) {
 $functions_source = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/functions.php' );
 fixture_assert( false === strpos( $functions_source, 'theme-cat-card-compat-renderer' ), 'functions.php does not require new file' );
 
-fwrite( STDOUT, "PASS: theme cat card compat renderer fixture (single complete/incomplete, labels, card image, missing/invalid image, multi order/labels/pair, skips, status, links+dialog, escaping, missing, no-writes, no-hooks)\n" );
+fwrite( STDOUT, "PASS: theme cat card compat renderer fixture (single complete/incomplete linked + dialog, labels, card image, missing/invalid image, multi order/labels/pair linked + dialog, skips, status + Pending badge + placement, obsolete note absent, escaping, missing, no-writes, no-hooks)\n" );
