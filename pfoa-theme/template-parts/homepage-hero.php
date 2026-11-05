@@ -189,8 +189,10 @@ if ( ! $is_carousel && ! $has_featured_image && ! $has_fallback_hero ) {
 }
 
 // PFOA 0.1.215 — Dine Out promo slide identifier (National Cat Day / Black
-// Bear Diner). The promo artwork carries embedded text (date + 8am-8pm
-// hours) that cover-crops at 390px mobile widths. Slides are
+// Bear Diner), retained as a hook in 0.1.285. The promo artwork carries
+// embedded text (date + 8am-8pm hours); the general mobile stacked layout
+// now renders every slide contain-fit, so no slide cover-crops at mobile
+// widths. Slides are
 // admin-configured attachments, so identify this slide by content signals
 // (headline, attachment title/alt/caption/description/file, or its external
 // Facebook destination) and tag only the matching slide. Other slides,

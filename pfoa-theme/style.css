@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                      Version: 0.1.284
+                      Version: 0.1.285
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -2770,19 +2770,92 @@ body.page-id-4968 #staff-roster a:focus-visible {
 	transform: translate(-50%, -50%);
 }
 
-/* PFOA 0.1.215 — Dine Out promo slide (National Cat Day / Black Bear Diner)
- * mobile fit. The artwork carries embedded text (date + 8am-8pm hours) that
- * cover-crops at 390px widths (mobile hero is near-square ~390x343 vs
- * desktop panoramic ~1440x481). On mobile only, render just this slide with
- * contain so the full artwork (date/hours) stays visible, letterboxed on
- * the existing charcoal media background. Scoped to
- * .homepage-hero__slide--dine-out (tagged in homepage-hero.php); other
- * slides, pause/resume, link destinations, and desktop (>=721px cover)
+/* PFOA 0.1.285 — Mobile stacked carousel. Panoramic artwork center-cropped
+ * ~53-65% of its width in the tall mobile hero, and the overlaid site name /
+ * headline / CTAs sat on the art. On mobile widths the carousel stacks: the
+ * media layer joins normal flow at full width with every slide rendered
+ * contain (complete artwork, never distorted), while the site name,
+ * per-slide headline, and shared CTAs render below the image on the section
+ * background. Slides grid-stack (all in grid-area 1/1, inactive slides
+ * hidden but space-holding) so media height stays stable across rotation
+ * with no layout shift; shorter slides center in the leftover charcoal band.
+ * The overlay scrim is retired here (nothing overlays the art anymore) and
+ * the zoom-out blurred fill is hidden (art is fully visible, so the fill
+ * would only muddy it). Zoom-driven crop sizing is neutralized on mobile
+ * only so artwork is never cropped; the brightness filter is retained.
+ * Controls join normal flow below the content, which also fixes clipping in
+ * short landscape. Applies to every slide, including the former 0.1.215
+ * Dine Out exception whose slide-specific contain rule is retired by this
+ * general layout (the homepage-hero.php tagger stays as a harmless hook).
+ * Stored brightness/zoom/position data, the slide contract, rotation,
+ * keyboard operation, and desktop (>=769px, except short landscape) cover
  * presentation are unchanged. */
-@media (max-width: 720px) {
-	.front-page-content .homepage-hero--carousel .homepage-hero__slide--dine-out .homepage-hero__image {
+@media (max-width: 768px), (max-width: 960px) and (max-height: 500px) and (orientation: landscape) {
+	.front-page-content .homepage-hero--carousel {
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__media {
+		position: relative;
+		inset: auto;
+		display: grid;
+		width: 100%;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide {
+		grid-area: 1 / 1;
+		position: relative;
+		inset: auto;
+		align-self: center;
+		width: 100%;
+		visibility: hidden;
+		transition: opacity 0.6s ease, visibility 0s linear 0.6s;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide.is-active {
+		visibility: visible;
+		transition: opacity 0.6s ease, visibility 0s;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide .homepage-hero__image {
+		position: relative;
+		top: auto;
+		left: auto;
+		width: 100%;
+		height: auto;
+		transform: none;
 		object-fit: contain;
 		object-position: center center;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide.is-zoom-out::before {
+		display: none;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__scrim {
+		display: none;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__inner {
+		width: 100%;
+		min-height: 0;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__controls {
+		position: static;
+		align-self: flex-end;
+		margin: 0 var(--pfoa-gutter, 1.5rem) var(--pfoa-space-4);
+	}
+}
+
+/* PFOA 0.1.285 — Reduced motion keeps the mobile stacked carousel
+ * transition-free (the stacked rules above carry a delayed-visibility fade
+ * that would otherwise outrank the base reduced-motion override). */
+@media (max-width: 768px) and (prefers-reduced-motion: reduce), (max-width: 960px) and (max-height: 500px) and (orientation: landscape) and (prefers-reduced-motion: reduce) {
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide,
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide.is-active {
+		transition: none;
 	}
 }
 
