@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                       Version: 0.1.286
+                       Version: 0.1.288
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -8997,4 +8997,87 @@ body.page-id-19273 .entry-content [style*="79be27" i] {
 }
 body.page-id-5027 .entry-content [style*="ff0000" i] {
 	color: #cc0000 !important;
+}
+/* PFOA 0.1.287 — Week 278 structural layout correction (page-id-26031 only,
+ * https://safehavenpfoa.org/from-the-home-front-week-278/).
+ * Mirrors Week 277 0.1.272: bare wp-block-columns (Bowman + Jackie) are direct
+ * .entry-content children, so they use the full 960px shell lane while prose
+ * (p/h1/h2) centers at 720px (var(--pfoa-prose-width)) — photo groups run wider
+ * than the text; the content-owned H1 inherits the theme display H1
+ * clamp(2.25rem,4vw,3rem); the alignright Wills gif (120px) floats in the shell
+ * lane with default 1.5rem left margin, reading as disconnected offset.
+ * Correction: constrain both column groups to the prose measure (max-width +
+ * margin-inline:auto, no fixed px caps), keep images fluid (height:auto,
+ * arrangement/captions untouched), scale the content-owned H1 down to the
+ * normal page-heading step (Mission h2 clamp 1.35-1.75rem — at/below prior
+ * article size, well under the 2.25-3rem display default), tame the Wills float
+ * to 88px with sane margins, keep Bowman as side column desktop (66/33) stacked
+ * mobile, Jackie side-by-side desktop within content width stacked mobile.
+ * Title/header spacing tightened (eyebrow/byline margins) without adding
+ * article height. Mobile: WP core stacks columns at <=781px; the 720px cap
+ * yields to 100%-minus-gutters so there is no horizontal overflow; floats stack
+ * per theme at <=720px. Scoped strictly to body.page-id-26031; no globals. */
+body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman,
+body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-jackie {
+	max-width: var(--pfoa-prose-width);
+	margin-inline: auto;
+	gap: var(--pfoa-space-4);
+}
+body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman {
+	align-items: center;
+}
+body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman img,
+body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-jackie img {
+	width: 100%;
+	height: auto;
+}
+body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman figcaption {
+	text-align: center;
+}
+body.page-id-26031 .page-content .entry-content > h1.wp-block-heading.pfoa-hf-article__title {
+	font-size: clamp(1.35rem, 2vw, 1.75rem);
+	line-height: 1.25;
+	margin-bottom: 0.35rem;
+}
+body.page-id-26031 .page-content .entry-content > p.pfoa-hf-eyebrow {
+	margin-bottom: 0.15rem;
+}
+body.page-id-26031 .page-content .entry-content > p.pfoa-hf-article__byline {
+	margin-top: 0.15rem;
+	margin-bottom: 0.75rem;
+}
+body.page-id-26031 .page-content .entry-content > figure.pfoa-hf-article__wills.alignright {
+	width: 88px;
+	margin-top: 0.15rem;
+	margin-bottom: 0.75rem;
+	margin-left: 1rem;
+}
+body.page-id-26031 .page-content .entry-content > figure.pfoa-hf-article__wills.alignright img {
+	width: 88px;
+	height: auto;
+}
+@media (max-width: 781px) {
+	body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman,
+	body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-jackie {
+		max-width: 100%;
+	}
+}
+@media (max-width: 720px) {
+	body.page-id-26031 .page-content .entry-content > figure.pfoa-hf-article__wills.alignright {
+		width: 72px;
+	}
+	body.page-id-26031 .page-content .entry-content > figure.pfoa-hf-article__wills.alignright img {
+		width: 72px;
+	}
+}
+/* PFOA 0.1.288 — Week 278 Bowman-to-Meet Jackie spacing tightening (page-id-26031 only).
+ * Measured 48px border-box gap (Bowman margin-bottom 28px, Meet Jackie h2
+ * margin-top 48px) read as a large break. Tighten to natural 24px section
+ * rhythm with theme tokens; 720px prose width, images, and stacked mobile
+ * unchanged; no globals. */
+body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman {
+	margin-bottom: var(--pfoa-space-3);
+}
+body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman + h2.wp-block-heading.pfoa-hf-article__subhead {
+	margin-top: var(--pfoa-space-4);
 }
