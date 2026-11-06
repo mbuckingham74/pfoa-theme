@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                       Version: 0.1.288
+                       Version: 0.1.289
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -9080,4 +9080,29 @@ body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-b
 }
 body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman + h2.wp-block-heading.pfoa-hf-article__subhead {
 	margin-top: var(--pfoa-space-4);
+}
+/* PFOA 0.1.289 — Week 278 Bowman composition rebalance (page-id-26031 only).
+ * The 66/33 side columns pair a short ~6-line paragraph with a tall square
+ * photo, leaving ~140px of dead space between the prose end and Meet Jackie.
+ * Verified against the live render (not declarations): neither margin tweaks
+ * nor true vertical centering (WP core pins align-items with !important, so
+ * 0.1.287's centering never applied) can balance a side-by-side this short.
+ * Fix the layout instead: stack the Bowman group into one centered column —
+ * full-width prose, then a slightly smaller (200px, was ~232px) centered
+ * photo with its caption — so the section reads as one cohesive unit with no
+ * empty area, and Meet Jackie follows the completed section at the natural
+ * 24px rhythm. Photo keeps its natural square ratio (width-capped, height
+ * auto via 0.1.287); 720px prose cap, Jackie pair, H1, Wills float, dates,
+ * postscripts, and badge untouched; mobile already stacks, so composition is
+ * identical at every width with no overflow. display needs !important: core
+ * block CSS sets display:flex on .wp-block-columns. Scoped to page-id-26031. */
+body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman {
+	display: block !important;
+}
+body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman > .wp-block-column:first-child {
+	margin-bottom: var(--pfoa-space-3);
+}
+body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman figure.wp-block-image {
+	max-width: 200px;
+	margin-inline: auto;
 }
