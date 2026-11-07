@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                       Version: 0.1.291
+                       Version: 0.1.292
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -9089,27 +9089,36 @@ body.page-id-5027 .entry-content [style*="ff0000" i] {
 		flex-basis: 100%;
 	}
 }
-/* PFOA 0.1.291 — Week 278 Bowman-to-Meet Jackie spacing (shared Bowman scope).
- * Same values as 0.1.288 (24px section rhythm); page-id prefix removed. */
+/* PFOA 0.1.292 — Week 278 Bowman-to-Meet Jackie spacing (shared Bowman scope).
+ * Source fix (Marilyn 2026-11-07 polish): the Bowman container no longer adds
+ * its own bottom margin — the following h2 margin-top owns the single 24px
+ * rhythm — and the inner figure's outer bottom margin (theme
+ * figure{margin-block-end:1.25rem}) is zeroed so it stops inflating the flex
+ * container. Photo/caption composition unchanged (figcaption internal margins
+ * untouched). Previously 0.1.291 margin-bottom:var(--pfoa-space-3) stacked on
+ * top of the h2 margin-top plus the figure's 20px outer bottom. */
 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman {
-	margin-bottom: var(--pfoa-space-3);
+	margin-bottom: 0;
 }
 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman + h2.wp-block-heading.pfoa-hf-article__subhead {
 	margin-top: var(--pfoa-space-4);
 }
+.page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman figure.wp-block-image {
+	margin-bottom: 0;
+}
 /* PFOA 0.1.289 REVERSED by 0.1.291 (see shared layout above): the
  * page-id-26031 display:block stacking + 200px centered photo are removed. The
  * accepted presentation is side-by-side Bowman at every desktop width. */
-/* PFOA 0.1.291 — FTHF HTML article Wills header correction (shared, all HTML issues).
- * Same scope as 0.1.290, values aligned to the accepted presentation: the
- * photo renders 330px wide, left-aligned (left edge aligned to the "From the
- * Home Front" eyebrow), as the FIRST element of every HTML issue, with single
- * responsive column spacing. The Home Front 0.3.2+ plugin filter already
- * moves/dedupes the figure between the eyebrows at display time (post_content
- * untouched) and its inline CSS carries the same 330px; this rule makes the
- * canonical stylesheet truthful on its own (previously 440px here, always
- * overridden by the plugin). Mobile: the lane yields to 100% and the photo
- * caps at the viewport with no overflow. Scoped to
+/* PFOA 0.1.292 — FTHF HTML article Wills header correction (shared, all HTML issues).
+ * Same scope as 0.1.290/0.1.291, values aligned to the accepted presentation
+ * (Marilyn 2026-11-07 polish: 264px = 20% under 330px): the photo renders
+ * 264px wide, left-aligned (left edge aligned to the "From the Home Front"
+ * eyebrow), as the FIRST element of every HTML issue, with single responsive
+ * column spacing. The Home Front 0.3.4 plugin filter already moves/dedupes
+ * the figure between the eyebrows at display time (post_content untouched)
+ * and its inline CSS carries the same 264px; this rule keeps the canonical
+ * stylesheet truthful on its own. Mobile: the lane yields to 100% and the
+ * photo caps at the viewport with no overflow. Scoped to
  * .page-content .entry-content > figure.pfoa-hf-article__wills — that class
  * exists only on FTHF article headers — so the landing page (11290), archive,
  * video, PDFs, badges, signoffs, Bowman/Jackie figures, and every other page
@@ -9130,7 +9139,7 @@ body.page-id-5027 .entry-content [style*="ff0000" i] {
 }
 .page-content .entry-content > figure.pfoa-hf-article__wills img {
 	display: block;
-	width: min(330px, 100%);
+	width: min(264px, 100%);
 	max-width: 100%;
 	height: auto;
 	margin-left: 0;
