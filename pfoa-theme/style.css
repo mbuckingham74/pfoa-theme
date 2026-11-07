@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                       Version: 0.1.289
+                       Version: 0.1.290
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -9105,4 +9105,60 @@ body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-b
 body.page-id-26031 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman figure.wp-block-image {
 	max-width: 200px;
 	margin-inline: auto;
+}
+/* PFOA 0.1.290 — FTHF HTML article Wills header correction (shared, all HTML issues).
+ * Request (Marilyn/Michael 2026-11-06): on every From the Home Front HTML issue,
+ * Wills' existing photograph sits enlarged + left-aligned BETWEEN the two heading
+ * lines — order 1) p "From the Home Front", 2) figure Wills, 3) p "Tales of the
+ * Safe Haven Kitties", 4) h1 Week N title, 5) byline + body — with the photo's
+ * left edge aligned to the F in "From the Home Front".
+ * Differences found live: Week 278 (page-id-26031) embeds wills-header-278.gif
+ * (attachment 26032, native 1920x1478) at 88px alignright after the byline; Week
+ * 277 (page-id-25816) embeds no Wills header (its wills-portrait-277.jpg,
+ * attachment 25813, native 578x446, sits unused in the media library). A
+ * render-time filter in pfoa-staff-dashboard (pfoa_hf_article_header_correction,
+ * Home Front 0.3.2) moves/dedupes the figure between the eyebrows at display
+ * time — and injects the existing 25813 portrait on 277 only — so post_content
+ * is never rewritten and future issues using the pfoa-hf-article__wills class
+ * follow the same layout automatically.
+ * This CSS only presents that figure: it shares the 720px prose lane as the
+ * headings (max-width var(--pfoa-prose-width) + margin-inline:auto, the same
+ * centering the 0.1.147 rule gives p/h1/h2) so left edges align; the photo
+ * itself renders 440px wide (5x the prior 88px linear, middle of the requested
+ * 4-6x; both natives exceed 440px so nothing upscales), height auto (aspect
+ * preserved), float removed (overrides core alignright/alignleft), single
+ * left-aligned column with symmetric vertical margins so the two heading lines
+ * stay separated by the photo. Mobile: the lane yields to 100% and the photo
+ * caps at the viewport with no overflow. Scoped to
+ * .page-content .entry-content > figure.pfoa-hf-article__wills — that class
+ * exists only on FTHF article headers — so the landing page (11290), archive,
+ * video, PDFs, badges, signoffs, Bowman/Jackie/Nemo/Picasso figures, and every
+ * other page are untouched. No !important (theme loads after core blocks);
+ * 0.1.272/0.1.287-0.1.289 page rules preserved verbatim above. */
+.page-content .entry-content > figure.pfoa-hf-article__wills {
+	float: none;
+	max-width: var(--pfoa-prose-width);
+	margin-inline: auto;
+	margin-top: 0.75rem;
+	margin-bottom: 0.75rem;
+}
+.page-content .entry-content > figure.pfoa-hf-article__wills.alignright,
+.page-content .entry-content > figure.pfoa-hf-article__wills.alignleft,
+.page-content .entry-content > figure.pfoa-hf-article__wills.aligncenter {
+	float: none;
+	margin-left: auto;
+	margin-right: auto;
+}
+.page-content .entry-content > figure.pfoa-hf-article__wills img {
+	display: block;
+	width: min(440px, 100%);
+	max-width: 100%;
+	height: auto;
+	margin-left: 0;
+	margin-right: auto;
+}
+@media (max-width: 781px) {
+	.page-content .entry-content > figure.pfoa-hf-article__wills {
+		max-width: 100%;
+	}
 }
