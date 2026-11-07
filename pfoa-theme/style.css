@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                       Version: 0.1.292
+                        Version: 0.1.293
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -9096,14 +9096,23 @@ body.page-id-5027 .entry-content [style*="ff0000" i] {
  * figure{margin-block-end:1.25rem}) is zeroed so it stops inflating the flex
  * container. Photo/caption composition unchanged (figcaption internal margins
  * untouched). Previously 0.1.291 margin-bottom:var(--pfoa-space-3) stacked on
- * top of the h2 margin-top plus the figure's 20px outer bottom. */
+ * top of the h2 margin-top plus the figure's 20px outer bottom.
+ * PFOA 0.1.293 — final spacing (Marilyn 2026-11-07): zero core
+ * figcaption{margin-bottom:1em} (~14px) below the caption TEXT — invisible to
+ * container-to-h2 box measurement but fully visible as caption-text-to-h2-text
+ * — and retune the h2 margin-top to var(--pfoa-space-3) (16px) so the visible
+ * caption-text-to-heading gap is ~21px. Photo-to-caption top offset,
+ * centering, side-by-side, mobile stacking unchanged. */
 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman {
 	margin-bottom: 0;
 }
 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman + h2.wp-block-heading.pfoa-hf-article__subhead {
-	margin-top: var(--pfoa-space-4);
+	margin-top: var(--pfoa-space-3);
 }
 .page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman figure.wp-block-image {
+	margin-bottom: 0;
+}
+.page-content .entry-content > div.wp-block-columns.pfoa-hf-bowman figure.wp-block-image > figcaption.wp-element-caption {
 	margin-bottom: 0;
 }
 /* PFOA 0.1.289 REVERSED by 0.1.291 (see shared layout above): the
