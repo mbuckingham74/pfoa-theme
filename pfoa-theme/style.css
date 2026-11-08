@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                         Version: 0.1.294
+                          Version: 0.1.295
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3799,6 +3799,41 @@ body.page-id-4968 #staff-roster a:focus-visible {
 
 	.front-page-content .homepage-partner__link {
 		min-height: 6.5rem;
+	}
+}
+
+/* PFOA 0.1.295 — Compact stacked mobile carousel text panel (DEV).
+ * At <=720px the generic hero rule above (min-height clamp(22rem,88vw,32rem),
+ * equal specificity 0,2,0 but later order) overrides the carousel
+ * min-height:0, and content padding (space-6) + actions margin (space-5) +
+ * controls margin-bottom (space-4) make the blue panel needlessly tall.
+ * Scoped to .homepage-hero--carousel only so generic hero sizing is
+ * untouched; later order wins the tie. Content still determines height
+ * (min-height:0/height:auto, no max-height) so long headlines never clip.
+ * 0.1.294 PFOA Blue background re-stated (not changed). Photo (~2560-2838),
+ * desktop, buttons, and carousel JS unchanged. */
+@media (max-width: 768px), (max-width: 960px) and (max-height: 500px) and (orientation: landscape) {
+	.front-page-content .homepage-hero--carousel {
+		min-height: 0;
+		height: auto;
+		background: #002894;
+		background: var(--pfoa-surface-structural, #002894);
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__inner {
+		min-height: 0;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__content {
+		padding-block: var(--pfoa-space-4);
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__actions {
+		margin-top: var(--pfoa-space-3);
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__controls {
+		margin: 0 var(--pfoa-gutter, 1.5rem) var(--pfoa-space-3);
 	}
 }
 

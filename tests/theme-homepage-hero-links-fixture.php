@@ -633,11 +633,11 @@ fixture_assert(
 	'active pin: active pinned slide still resolves'
 );
 
-     	// style.css: version 0.1.294.
+     	// style.css: version 0.1.295.
 $css = (string) file_get_contents( dirname( __DIR__ ) . '/pfoa-theme/style.css' );
-      	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.294/', $css ), 'css: theme version 0.1.294' );
+      	fixture_assert( 1 === preg_match( '/Version:\s*0\.1\.295/', $css ), 'css: theme version 0.1.295' );
 
 // No writes during helper evaluation.
 fixture_assert( false === $GLOBALS['fixture_db_touched'], 'no DB writes during hero evaluation' );
 
-fwrite( STDOUT, "PASS: theme homepage hero links fixture (external accept/reject, legacy internal compat, type retention, slide-link resolver, invalid-link finder, pin resolve/save semantics, per-slide active toggle, css 0.1.294, no writes)\n" );
+fwrite( STDOUT, "PASS: theme homepage hero links fixture (external accept/reject, legacy internal compat, type retention, slide-link resolver, invalid-link finder, pin resolve/save semantics, per-slide active toggle, css 0.1.295, no writes)\n" );
