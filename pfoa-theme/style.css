@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                          Version: 0.1.295
+                           Version: 0.1.296
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3834,6 +3834,88 @@ body.page-id-4968 #staff-roster a:focus-visible {
 
 	.front-page-content .homepage-hero--carousel .homepage-hero__controls {
 		margin: 0 var(--pfoa-gutter, 1.5rem) var(--pfoa-space-3);
+	}
+}
+
+/* PFOA 0.1.296 — Photo-dominant mobile carousel (photo taller than blue panel).
+ * Photo: every slide gets a consistent 3:2 frame (aspect-ratio) rendered
+ * with object-fit:cover + object-position:var(--pfoa-hero-position), so the
+ * per-slide focal point set in the editor still steers the crop and no
+ * artwork is stretched. At 390px the frame resolves to ~260px tall (capped
+ * by max-height so wider phones and short-landscape stay bounded); this
+ * cover frame replaces the 0.1.285 height:auto/object-fit:contain strip
+ * whose height varied per artwork and read as a shallow band. Zoom sizing
+ * stays neutralized on mobile (a zoomed-out image would expose slide edges
+ * inside a cover frame) and the zoom-out blurred fill stays hidden; the
+ * brightness filter is retained. No per-slide position overrides are added:
+ * all five slides keep their stored focal points, so a visual pass over the
+ * live slides should confirm heads/bonded pairs sit clear of the frame.
+ * Panel: the blue stack is tightened end to end (content padding,
+ * site-name size/margin, headline leading, actions gap/margin, buttons cut
+ * from 3.25rem to the 2.75rem/44px minimum) so a short headline resolves to
+ * roughly 170-200px at 390px, while long headlines still expand naturally
+ * (no max-height or clipping anywhere on the panel).
+ * Controls overlay evaluated and deliberately kept in normal flow: the
+ * slide image link covers the whole photo (inset:0) and cat focal points
+ * vary per slide, so any photo overlay risks covering cats or intercepting
+ * the slide link; anchoring an overlay from the section would also need
+ * fragile viewport-width math to track the aspect-derived photo height, and
+ * flex-reordering the row above the content would split visual order from
+ * DOM/tab order. The in-flow right-aligned row keeps 44x44 targets, strong
+ * contrast on solid #002894, and matching visual/tab order with zero
+ * overlap risk and no horizontal scroll.
+ * Scoped to .homepage-hero--carousel inside the mobile/short-landscape
+ * query and placed after the 0.1.285/0.1.295 blocks so later order wins
+ * ties; desktop (>=769px except short landscape) untouched. */
+@media (max-width: 768px), (max-width: 960px) and (max-height: 500px) and (orientation: landscape) {
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide {
+		aspect-ratio: 3 / 2;
+		max-height: min(16.5rem, 62vh);
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide .homepage-hero__image {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		transform: none;
+		object-fit: cover;
+		object-position: var(--pfoa-hero-position, center center);
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide.is-zoom-out::before {
+		display: none;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__content {
+		padding-block: 0.875rem 1rem;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__site-name {
+		margin-bottom: 0.25rem;
+		font-size: 0.95rem;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__title {
+		line-height: 1.05;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__actions {
+		gap: 0.5rem;
+		margin-top: 0.625rem;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__actions .pfoa-button {
+		min-width: 0;
+		min-height: 2.75rem;
+		padding: 0.6rem 1rem;
+		font-size: 0.95rem;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__controls {
+		position: static;
+		align-self: flex-end;
+		margin: 0.625rem var(--pfoa-gutter, 1.5rem) 1rem;
 	}
 }
 
