@@ -3919,6 +3919,33 @@ body.page-id-4968 #staff-roster a:focus-visible {
 	}
 }
 
+/* PFOA 0.1.296-followup — Mobile cover-crop rescues (unversioned, CSS-only).
+ * Same mobile/short-landscape query as 0.1.296, placed immediately after it
+ * so later order wins ties; desktop (>=769px except short landscape)
+ * untouched. 3:2 cover frame, max-height cap, panel tightening, #002894,
+ * 44px targets, and brightness handling from 0.1.296 are unchanged.
+ * 1) Athena/Hunter (orange face at left edge): shift cover focal point
+ * left so left-side crop shrinks and right-side crop grows; both heads
+ * stay inside the 390x260 frame. 2) Empty-headline Pancake flyer (only
+ * slide with data-headline=""): keep the same 3:2 frame standing but
+ * render the art contain-fit on a warm paper field so no side text is
+ * cropped, with no distortion. No panel max-height/clipping added. */
+@media (max-width: 768px), (max-width: 960px) and (max-height: 500px) and (orientation: landscape) {
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide[data-headline="Meet Athena and Hunter!"] .homepage-hero__image {
+		object-position: 20% center;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide[data-headline=""] {
+		background: #fbeed3;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide[data-headline=""] .homepage-hero__image {
+		object-fit: contain;
+		object-position: center center;
+		background: #fbeed3;
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.front-page-content .homepage-pathway__link,
 	.front-page-content .homepage-adoption__link,
