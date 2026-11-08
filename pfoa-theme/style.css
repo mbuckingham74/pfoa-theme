@@ -2,7 +2,7 @@
  Theme Name: PFOA
  Author: PFOA project
    Description: A conventional, accessible foundation for the PFOA website.
-                           Version: 0.1.296
+                           Version: 0.1.297
 Requires at least: 6.4
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -3943,6 +3943,46 @@ body.page-id-4968 #staff-roster a:focus-visible {
 		object-fit: contain;
 		object-position: center center;
 		background: #fbeed3;
+	}
+}
+
+/* PFOA 0.1.297 — Mobile carousel headline scale-down + bonded-pair focal rescues.
+ * Headlines: the generic @media(max-width:720px) rule
+ * (.front-page-content .homepage-hero__title at 0,2,0, plus its .scale-*
+ * remaps at 0,3,0) resolves scale-100 to clamp(2rem,10vw,3rem) (~39px at
+ * 390px), oversized for the tightened 0.1.295/0.1.296 blue panel. This
+ * carousel-scoped rule (.front-page-content .homepage-hero--carousel
+ * .homepage-hero__title, 0,3,0) ties the generic .scale-* remaps at equal
+ * specificity and sits later in the cascade, so it alone governs every
+ * scale in use on DEV (50/70/80/90) with no .scale-* overrides needed:
+ * clamp(1.75rem,7.5vw,2rem) resolves to ~28px at 375px, ~29px at 390px,
+ * and caps at 32px by 430px. Family/weight/color untouched, gold kicker
+ * untouched, wrapping allowed (no white-space/overflow/height limits, no
+ * truncation, no fixed heights). Photos: verified against the live DEV
+ * slides (all stored position center center). Oliver/Issac (3:1 pano,
+ * both faces at ~48-77% width) shifts right so both faces and the
+ * paw-on-head stay inside the 3:2 window while only expendable
+ * foreground legs crop. Athena/Hunter (3.14:1 pano, faces at ~19-68%)
+ * recenters from the followup 20% — whose 10-58% window kept the orange
+ * kitten but cut the tortie's face — to 37%, centering both faces; outer
+ * ear tips at the pano extremes must give inside a ~48%-width window.
+ * Sable (single centered subject) and the Pet Tidings photo banner (key
+ * subject centered; masthead text illustrative, message carried by the
+ * HTML headline, contain would break photo-dominance) keep stored center
+ * center; the Pancake flyer contain rescue stands. Same
+ * mobile/short-landscape query, placed last so later order wins ties;
+ * desktop (>=769px except short landscape) untouched. */
+@media (max-width: 768px), (max-width: 960px) and (max-height: 500px) and (orientation: landscape) {
+	.front-page-content .homepage-hero--carousel .homepage-hero__title {
+		font-size: clamp(1.75rem, 7.5vw, 2rem);
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide[data-headline="Meet Oliver and Issac!"] .homepage-hero__image {
+		object-position: 60% center;
+	}
+
+	.front-page-content .homepage-hero--carousel .homepage-hero__slide[data-headline="Meet Athena and Hunter!"] .homepage-hero__image {
+		object-position: 37% center;
 	}
 }
 
